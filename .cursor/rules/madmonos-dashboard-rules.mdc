@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+
+{
+  "project_context": "Madmonos AI-First Marketing Agency Dashboard. A multi-tenant, subdomain-based (brand.madmonos.com) platform.",
+  "tech_stack": [
+    "Next.js 14+ (App Router)",
+    "TypeScript",
+    "Tailwind CSS",
+    "Supabase (PostgreSQL)",
+    "NextAuth.js (Custom Multi-tenant Auth)",
+    "Shadcn UI",
+    "Framer Motion"
+  ],
+  "architecture_rules": [
+    "Use Feature-Based Architecture: Organize by 'features/' directory (e.g., features/performance, features/creative).",
+    "Strict Decoupling: Modules must not have direct dependencies on each other. Use hooks and providers for state.",
+    "Multi-tenancy: Implement middleware-based subdomain routing. Use 'companyId' as a global filter.",
+    "Server Components: Favor React Server Components for data fetching to maximize performance."
+  ],
+  "ui_ux_standards": [
+    "Theme: High-end Dark Mode with 'glassmorphism' effects.",
+    "Vibe: Premium, engineering-heavy, futuristic, and 'frictionless'.",
+    "Responsive: Mobile-first approach, but 'God-level' desktop experience.",
+    "Terminology: Use 'Frictionless', 'GEO', 'Engineering Capacity', 'Brand Mono' in UI/UX copy."
+  ],
+  "coding_standards": [
+    "Clean Code: Descriptive naming, DRY principle, and high type safety.",
+    "No external CSS files: Use only Tailwind CSS.",
+    "Modularity: Every dashboard widget must be a self-contained component."
+  ]
+}
