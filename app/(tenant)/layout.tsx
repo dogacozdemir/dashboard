@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/config';
 import { getTenantBySlug, createSupabaseServerClient } from '@/lib/supabase/server';
@@ -26,7 +26,7 @@ export default async function TenantLayout({
       : headerTenantSlug;
 
   const tenantRaw = await getTenantBySlug(tenantSlug);
-  if (!tenantRaw) redirect('/not-found');
+  if (!tenantRaw) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tenant = tenantRaw as any;

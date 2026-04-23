@@ -3,16 +3,31 @@ import { auth } from '@/lib/auth/config';
 
 const PUBLIC_PATHS = ['/login', '/api/auth', '/_next', '/favicon.ico', '/not-found', '/unauthorized'];
 
+// e.g. "madmonos.nerdyreptile.com" — must be set in .env.local on the server
+const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000').split(':')[0];
+
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 }
 
+/**
+ * Extracts the tenant slug from the hostname.
+ *
+ * Examples (ROOT_DOMAIN = madmonos.nerdyreptile.com):
+ *   acme.madmonos.nerdyreptile.com  →  "acme"
+ *   admin.madmonos.nerdyreptile.com →  "admin"
+ *   madmonos.nerdyreptile.com       →  "localhost"  (root domain → fall back to JWT tenantSlug)
+ *   localhost                       →  "localhost"
+ */
 function parseSubdomain(host: string): string {
   const withoutPort = host.split(':')[0];
-  const parts = withoutPort.split('.');
-  // e.g. acme.madmonos.com → ['acme','madmonos','com'] → 'acme'
-  if (parts.length >= 3) return parts[0];
-  return withoutPort; // localhost fallback
+
+  if (withoutPort.endsWith(`.${ROOT_DOMAIN}`)) {
+    return withoutPort.slice(0, -(ROOT_DOMAIN.length + 1));
+  }
+
+  // Host IS the root domain itself, or localhost → treat as local dev
+  return 'localhost';
 }
 
 function isLocalDevHost(subdomain: string): boolean {
