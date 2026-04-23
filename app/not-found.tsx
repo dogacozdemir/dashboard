@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Compass, ArrowLeft } from 'lucide-react';
 
 // This is a server component — use regular div not motion.div

@@ -6,7 +6,15 @@ import type { SessionUser } from '@/types/user';
 
 export async function getTenantContext(): Promise<TenantContext | null> {
   const headersList = await headers();
-  const tenantSlug = headersList.get('x-tenant-slug');
+  let tenantSlug = headersList.get('x-tenant-slug') ?? '';
+
+  // When accessing the root domain (no real subdomain), proxy sets
+  // x-tenant-slug to "localhost". Fall back to the JWT tenantSlug —
+  // mirrors the same logic in app/(tenant)/layout.tsx.
+  if (!tenantSlug || tenantSlug === 'localhost' || tenantSlug === '127.0.0.1') {
+    const session = await auth();
+    tenantSlug = (session?.user as SessionUser | undefined)?.tenantSlug ?? '';
+  }
 
   if (!tenantSlug || tenantSlug === 'www' || tenantSlug === 'admin') return null;
 
