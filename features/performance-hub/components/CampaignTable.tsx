@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { PlatformBadge } from '@/components/shared/PlatformBadge';
 import { cn } from '@/lib/utils/cn';
@@ -19,24 +20,36 @@ const statusStyles: Record<CampaignRow['status'], string> = {
 };
 
 export function CampaignTable({ campaigns }: CampaignTableProps) {
+  const t = useTranslations('Performance.campaignTable');
+  const headers = [
+    t('colCampaign'),
+    t('colPlatform'),
+    t('colSpend'),
+    t('colImpressions'),
+    t('colClicks'),
+    t('colConv'),
+    t('colRoas'),
+    t('colStatus'),
+  ] as const;
+
   return (
-    <GlassCard padding="none">
+    <GlassCard padding="none" className="bento-card">
       <div className="px-6 py-4 border-b border-white/[0.06]">
-        <h3 className="text-sm font-semibold text-white/80">Active Campaigns</h3>
-        <p className="text-xs text-white/30 mt-0.5">All platforms · Real-time sync</p>
+        <h3 className="text-sm font-semibold text-white/80">{t('title')}</h3>
+        <p className="text-xs text-white/30 mt-0.5">{t('subtitle')}</p>
       </div>
 
       {campaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center px-6">
-          <p className="text-sm text-white/30">No campaigns found</p>
-          <p className="text-xs text-white/20">Campaigns synced from connected ad accounts will appear here</p>
+          <p className="text-sm text-white/30">{t('emptyTitle')}</p>
+          <p className="text-xs text-white/20">{t('emptySubtitle')}</p>
         </div>
       ) : (
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.04]">
-              {['Campaign', 'Platform', 'Spend', 'Impressions', 'Clicks', 'Conv.', 'ROAS', 'Status'].map((h) => (
+              {headers.map((h) => (
                 <th
                   key={h}
                   className="px-6 py-3 text-left text-[10px] font-semibold text-white/25 uppercase tracking-wider"
@@ -53,7 +66,7 @@ export function CampaignTable({ campaigns }: CampaignTableProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
-                className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
+                className="border-b border-white/[0.03] hover:bg-white/[0.03] transition-[background-color] duration-300 ease-out"
               >
                 <td className="px-6 py-4 max-w-[220px]">
                   <p className="text-sm text-white/80 font-medium truncate">{row.campaignName}</p>
@@ -91,7 +104,11 @@ export function CampaignTable({ campaigns }: CampaignTableProps) {
                     'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize',
                     statusStyles[row.status]
                   )}>
-                    {row.status}
+                    {row.status === 'active'
+                      ? t('statusActive')
+                      : row.status === 'paused'
+                        ? t('statusPaused')
+                        : t('statusCompleted')}
                   </span>
                 </td>
               </motion.tr>

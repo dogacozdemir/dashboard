@@ -1,4 +1,5 @@
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
+import { getTranslations } from 'next-intl/server';
 import {
   fetchCalendarMilestones,
   fetchCalendarEvents,
@@ -9,6 +10,7 @@ import { Calendar } from 'lucide-react';
 
 export default async function CalendarPage() {
   const { companyId, tenant } = await requireTenantContext();
+  const t = await getTranslations('Pages.calendar');
 
   const [milestones, events, creatives] = await Promise.all([
     fetchCalendarMilestones(companyId),
@@ -27,13 +29,16 @@ export default async function CalendarPage() {
             <Calendar className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white/80">Operations Calendar</h2>
+            <h2 className="text-sm font-semibold text-white/80">{t('title')}</h2>
             <p className="text-xs text-white/40 mt-0.5">
-              Milestones, calls & social posts for <span className="text-violet-300">{tenant.name}</span>
+              {t.rich('subtitle', {
+                tenant: tenant.name,
+                brand: (chunks) => <span className="text-violet-300">{chunks}</span>,
+              })}
             </p>
           </div>
           <div className="ml-auto text-xs text-white/30">
-            {totalItems} item{totalItems !== 1 ? 's' : ''}
+            {t('itemCount', { count: totalItems })}
           </div>
         </div>
       </div>

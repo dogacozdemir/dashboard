@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 // ─── Particle ─────────────────────────────────────────────────────────────────
 
@@ -26,8 +27,8 @@ interface Particle {
 function makeParticles(count = 50): Particle[] {
   return Array.from({ length: count }, (_, i) => ({
     id:    i,
-    x:     (Math.random() - 0.5) * 100, // % of viewport, from center
-    y:     -(Math.random() * 70 + 20),  // % upward
+    x:     (Math.random() - 0.5) * 100,
+    y:     -(Math.random() * 70 + 20),
     vx:    (Math.random() - 0.5) * 40,
     vy:    Math.random() * 40 + 60,
     rot:   Math.random() * 720 - 360,
@@ -41,17 +42,20 @@ function makeParticles(count = 50): Particle[] {
 // ─── Achievement toast ────────────────────────────────────────────────────────
 
 interface AchievementToastProps {
-  icon:  string;
-  title: string;
-  desc:  string;
-  xp:    number;
-  onDone: () => void;
+  icon:           string;
+  achievementKey: string;
+  xp:             number;
+  onDone:         () => void;
 }
 
-function AchievementToast({ icon, title, desc, xp, onDone }: AchievementToastProps) {
+function AchievementToast({ icon, achievementKey, xp, onDone }: AchievementToastProps) {
+  const t = useTranslations('Features.Gamification');
+  const title = t(`achievements.${achievementKey}.title` as Parameters<typeof t>[0]);
+  const desc  = t(`achievements.${achievementKey}.desc` as Parameters<typeof t>[0]);
+
   useEffect(() => {
-    const t = setTimeout(onDone, 4500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDone, 4500);
+    return () => clearTimeout(timer);
   }, [onDone]);
 
   return (
@@ -68,16 +72,15 @@ function AchievementToast({ icon, title, desc, xp, onDone }: AchievementToastPro
         </div>
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5">
-            🏆 Yeni Başarı!
+            {t('toastNewAchievement')}
           </p>
-          <p className="text-sm font-semibold text-white/90">{title}</p>
-          <p className="text-xs text-white/40 mt-0.5">{desc}</p>
+          <p className="text-sm font-semibold text-white/90 line-clamp-2">{title}</p>
+          <p className="text-xs text-white/40 mt-0.5 line-clamp-3">{desc}</p>
         </div>
         <div className="shrink-0 text-right">
-          <span className="text-xs font-bold text-amber-400">+{xp} XP</span>
+          <span className="text-xs font-bold text-amber-400">+{xp} {t('xpLabel')}</span>
         </div>
       </div>
-      {/* Progress bar */}
       <motion.div
         className="absolute bottom-0 left-0 h-0.5 rounded-full bg-indigo-500/60"
         initial={{ width: '100%' }}
@@ -93,14 +96,14 @@ function AchievementToast({ icon, title, desc, xp, onDone }: AchievementToastPro
 export interface CelebrationDetail {
   type:     'confetti' | 'achievement';
   message?: string;
-  achievement?: { icon: string; title: string; desc: string; xp: number };
+  achievement?: { icon: string; achievementKey: string; xp: number };
 }
 
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
 export function CelebrationOverlay() {
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [toasts,    setToasts]    = useState<Array<CelebrationDetail['achievement'] & { id: number }>>([]);
+  const [toasts,    setToasts]    = useState<Array<{ id: number; icon: string; achievementKey: string; xp: number }>>([]);
   const toastId = useRef(0);
 
   const handleCelebration = useCallback((e: Event) => {
@@ -124,7 +127,6 @@ export function CelebrationOverlay() {
 
   return (
     <>
-      {/* Particles */}
       <AnimatePresence>
         {particles.length > 0 && (
           <div className="fixed inset-0 z-[900] pointer-events-none overflow-hidden">
@@ -162,16 +164,14 @@ export function CelebrationOverlay() {
         )}
       </AnimatePresence>
 
-      {/* Achievement toasts */}
       <AnimatePresence mode="popLayout">
-        {toasts.map((t) => (
+        {toasts.map((toast) => (
           <AchievementToast
-            key={t.id}
-            icon={t.icon}
-            title={t.title}
-            desc={t.desc}
-            xp={t.xp}
-            onDone={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+            key={toast.id}
+            icon={toast.icon}
+            achievementKey={toast.achievementKey}
+            xp={toast.xp}
+            onDone={() => setToasts((prev) => prev.filter((x) => x.id !== toast.id))}
           />
         ))}
       </AnimatePresence>
@@ -189,12 +189,14 @@ export function triggerConfetti() {
   );
 }
 
-export function triggerAchievementToast(achievement: {
-  icon: string; title: string; desc: string; xp: number;
+export function triggerAchievementToast(payload: {
+  icon: string;
+  achievementKey: string;
+  xp: number;
 }) {
   window.dispatchEvent(
     new CustomEvent<CelebrationDetail>('mono:celebrate', {
-      detail: { type: 'achievement', achievement },
+      detail: { type: 'achievement', achievement: payload },
     })
   );
 }

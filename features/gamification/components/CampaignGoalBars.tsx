@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { formatNumber, formatCurrency } from '@/lib/utils/format';
 
 interface GoalBarProps {
@@ -25,11 +26,11 @@ function GoalBar({ label, current, goal, format = 'number', color }: GoalBarProp
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="text-white/40">{label}</span>
-        <span className={`font-semibold tabular-nums ${done ? 'text-emerald-400' : 'text-white/50'}`}>
+      <div className="flex items-center justify-between gap-2 text-[10px]">
+        <span className="text-white/40 truncate min-w-0">{label}</span>
+        <span className={`font-semibold tabular-nums shrink-0 ${done ? 'text-emerald-400' : 'text-white/50'}`}>
           {fmt(current)} / {fmt(goal)}
-          {done && ' ✓'}
+          {done ? ' ✓' : ''}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
@@ -58,19 +59,20 @@ interface CampaignGoalBarsProps {
 }
 
 export function CampaignGoalBars({ impressions, clicks, spend, goals }: CampaignGoalBarsProps) {
+  const t = useTranslations('Features.Gamification');
   const hasGoals = goals.goalImpressions || goals.goalClicks || goals.goalSpend;
   if (!hasGoals) return null;
 
   return (
     <div className="space-y-2 pt-1">
       {goals.goalImpressions != null && (
-        <GoalBar label="Görüntülenme" current={impressions} goal={goals.goalImpressions} color="cyan" />
+        <GoalBar label={t('goalImpressions')} current={impressions} goal={goals.goalImpressions} color="cyan" />
       )}
       {goals.goalClicks != null && (
-        <GoalBar label="Tıklama" current={clicks} goal={goals.goalClicks} color="indigo" />
+        <GoalBar label={t('goalClicks')} current={clicks} goal={goals.goalClicks} color="indigo" />
       )}
       {goals.goalSpend != null && (
-        <GoalBar label="Harcama" current={spend} goal={goals.goalSpend} format="currency" color="emerald" />
+        <GoalBar label={t('goalSpend')} current={spend} goal={goals.goalSpend} format="currency" color="emerald" />
       )}
     </div>
   );

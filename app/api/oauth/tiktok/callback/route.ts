@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
 import { syncAdPlatform } from '@/features/oauth/actions/syncPlatformData';
 import type { OAuthState } from '@/features/oauth/types';
+import { oauthSuccessRedirect } from '@/features/oauth/lib/oauthRedirect';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -63,5 +64,5 @@ export async function GET(req: NextRequest) {
     console.error('[tiktok-callback] sync error', err)
   );
 
-  return NextResponse.redirect(`${appUrl}${state.returnTo}?connected=tiktok`);
+  return oauthSuccessRedirect(appUrl, state.returnTo, 'tiktok');
 }

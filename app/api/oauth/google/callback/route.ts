@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
-import { syncAdPlatform } from '@/features/oauth/actions/syncPlatformData';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { runSyncAdPlatformForTenant, runSyncSEOForTenant } from '@/features/oauth/actions/syncPlatformData';
 import type { OAuthState } from '@/features/oauth/types';
+import { oauthSuccessRedirect } from '@/features/oauth/lib/oauthRedirect';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -68,9 +70,17 @@ export async function GET(req: NextRequest) {
     { onConflict: 'tenant_id,platform,account_id' }
   );
 
-  syncAdPlatform(tenantId, 'google').catch((err) =>
-    console.error('[google-callback] sync error', err)
-  );
+  try {
+    const admin = createSupabaseAdminClient();
+    void runSyncAdPlatformForTenant(tenantId, 'google', admin).catch((err) =>
+      console.error('[google-callback] ads sync error', err)
+    );
+    void runSyncSEOForTenant(tenantId, admin).catch((err) =>
+      console.error('[google-callback] SEO/GSC sync error', err)
+    );
+  } catch (e) {
+    console.error('[google-callback] admin client / sync bootstrap', e);
+  }
 
-  return NextResponse.redirect(`${appUrl}${state.returnTo}?connected=google`);
+  return oauthSuccessRedirect(appUrl, state.returnTo, 'google');
 }

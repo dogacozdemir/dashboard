@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const state: OAuthState = {
     tenantId: user.tenantId,
-    returnTo: '/performance',
+    returnTo: '/dashboard?magic=1',
     csrf:     randomBytes(16).toString('hex'),
   };
 
@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
     client_id:     clientId,
     redirect_uri:  `${appUrl}/api/oauth/google/callback`,
     response_type: 'code',
-    scope:         'https://www.googleapis.com/auth/adwords',
+    scope: [
+      'https://www.googleapis.com/auth/adwords',
+      'https://www.googleapis.com/auth/webmasters.readonly',
+    ].join(' '),
     access_type:   'offline',
     prompt:        'consent',
     state:         Buffer.from(JSON.stringify(state)).toString('base64url'),

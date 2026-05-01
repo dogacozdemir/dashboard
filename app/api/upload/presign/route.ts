@@ -8,6 +8,7 @@ import {
   type StorageBucket,
 } from '@/lib/storage/s3';
 import type { SessionUser } from '@/types/user';
+import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 
 export interface PresignRequest {
   filename:      string;
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
   }
   const user = session.user as SessionUser;
 
+  if (!user.tenantId) {
+    return NextResponse.json({ error: 'Tenant context required' }, { status: 403 });
+  }
+
   // 2. Parse body
   let body: PresignRequest;
   try {
@@ -39,6 +44,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { filename, contentType, contentLength, bucket, folder = 'uploads' } = body;
+
+  if (bucket === 'creative' && !sessionHasPermission(user, 'creative.upload')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (bucket === 'brand' && !sessionHasPermission(user, 'brand.upload')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   // 3. Validate MIME type
   const category = getMimeCategory(contentType);
@@ -60,7 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 5. Build scoped S3 key (tenantId prefix isolates files per tenant)
-  const tenantId = user.tenantId || 'admin';
+  const tenantId = user.tenantId;
   const s3Key = buildS3Key(tenantId, folder, filename);
 
   // 6. Generate presigned URL

@@ -36,7 +36,7 @@ export async function requireAdminSession() {
   const session = await auth();
   if (!session) throw new Error('Unauthorized: not authenticated');
   const role = (session.user as SessionUser).role;
-  if (role !== 'admin') throw new Error('Unauthorized: admin access required');
+  if (role !== 'super_admin') throw new Error('Unauthorized: admin access required');
   return session;
 }
 
@@ -51,14 +51,23 @@ export async function requireTenantAction(companyId: string): Promise<string> {
 
   const user = session.user as SessionUser;
 
-  // Admins can act on any tenant
-  if (user.role === 'admin') return companyId;
-
-  // For non-admins, companyId MUST match their own tenantId from the JWT
-  if (user.tenantId !== companyId) {
+  if (user.role !== 'super_admin' && user.tenantId !== companyId) {
     throw new Error(
       `Forbidden: tenant mismatch (expected=${user.tenantId}, got=${companyId})`
     );
+  }
+
+  /**
+   * Defense-in-depth vs IDOR: hostname / impersonation cookie must resolve to the same
+   * tenant UUID as the action payload (blocks confused-deputy cases for super_admin too).
+   */
+  const ctx = await getTenantContext();
+  if (user.role !== 'super_admin') {
+    if (!ctx || ctx.companyId !== companyId) {
+      throw new Error('Forbidden: tenant scope mismatch');
+    }
+  } else if (ctx && ctx.companyId !== companyId) {
+    throw new Error('Forbidden: tenant scope mismatch');
   }
 
   return companyId;

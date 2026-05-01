@@ -97,6 +97,29 @@ export function getPublicUrl(key: string): string {
   return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 }
 
+/** Public URL for a specific bucket (Brand Vault must use `brand`, not creative). */
+export function getPublicUrlForBucket(bucket: StorageBucket, key: string): string {
+  const cdnBase = process.env.AWS_CLOUDFRONT_URL;
+  if (cdnBase) return `${cdnBase.replace(/\/$/, '')}/${key}`;
+
+  const b      = BUCKET_MAP[bucket];
+  const region = process.env.AWS_REGION ?? 'eu-central-1';
+  return `https://${b}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/** Read object bytes from S3 (server-side; works for private buckets). */
+export async function getS3ObjectBuffer(
+  bucket: StorageBucket,
+  key: string,
+): Promise<Buffer> {
+  const out = await s3.send(
+    new GetObjectCommand({ Bucket: BUCKET_MAP[bucket], Key: key }),
+  );
+  if (!out.Body) throw new Error('Empty S3 response body');
+  const bytes = await out.Body.transformToByteArray();
+  return Buffer.from(bytes);
+}
+
 /**
  * Uploads a buffer directly from the server to S3.
  * Use this for server-generated files (AI PDFs, exports) rather than presigned URLs.

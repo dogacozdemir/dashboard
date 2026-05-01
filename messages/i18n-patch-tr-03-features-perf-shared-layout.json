@@ -1,0 +1,148 @@
+{
+  "Features": {
+    "Team": {
+      "title": "Ekip yönetimi",
+      "subtitle": "Davet gönderin, rolleri yönetin ve erişimi kontrol edin. İşlemler management.users izni ile korunur.",
+      "inviteHeading": "E-posta ile davet",
+      "emailPlaceholder": "ornek@sirket.com",
+      "inviteSubmit": "Davet et",
+      "membersHeading": "Mevcut üyeler",
+      "membersCount": "{count} kişi",
+      "revokeAria": "Erişimi kaldır",
+      "errNoAssignableRole": "Atanabilir rol yok.",
+      "toastInviteOk": "Davet gönderildi. E-postadaki bağlantıyla kayıt tamamlanır.",
+      "toastInviteFail": "Davet başarısız.",
+      "toastRoleFail": "Rol güncellenemedi.",
+      "confirmRevoke": "Bu kullanıcının erişimini kaldırmak istediğinize emin misiniz?",
+      "toastRevokeFail": "Kaldırılamadı."
+    },
+    "RoleArchitect": {
+      "tabGlobal": "Global roller",
+      "tabTenant": "Tenant üzerine yazım",
+      "rolesReorder": "Roller · sürükle sırala",
+      "tenantRolesHeading": "Tenant özel roller",
+      "newRole": "Yeni rol",
+      "slugPlaceholder": "slug (örn. junior_strategist)",
+      "descPlaceholder": "Açıklama (isteğe bağlı)",
+      "createSubmit": "Oluştur",
+      "matrixHeading": "İzin matrisi",
+      "selectRole": "Rol seçin",
+      "locked": "Kilitli",
+      "tenantLabel": "Tenant",
+      "globalRoleLabel": "Rol (global)",
+      "tenantDenyHeading": "Tenant’ta izni reddet",
+      "tenantDenySub": "Global matriste açık olan izinler bu tenant için kapatılabilir (super_admin hariç).",
+      "globalOff": "Global kapalı",
+      "effectiveYes": "Etkin: evet",
+      "effectiveNo": "Etkin: hayır (override)",
+      "deny": "Reddet",
+      "errSave": "Kaydedilemedi",
+      "errOverride": "Override kaydedilemedi",
+      "errCreate": "Oluşturulamadı",
+      "errDelete": "Silinemedi",
+      "confirmDeleteRole": "Bu rolü silmek istediğinize emin misiniz?"
+    },
+    "StrategyTechnical": {
+      "seoGeo": {
+        "searchVisibilityHeading": "Arama ve görünürlük",
+        "coldImpressionsTitle": "Gösterimler",
+        "coldImpressionsCaption": "Google Search Console senkronu sonrası arama gösterimleri burada görünür.",
+        "coldVisitsTitle": "Oturumlar / tıklamalar",
+        "coldVisitsCaption": "Sayfa ve sorgu trafiği bağlandığında otomatik dolar.",
+        "coldCtrTitle": "CTR",
+        "coldCtrCaption": "Tıklama oranı; içerik ve snippet mühendisliği ile şekillenir.",
+        "coldPositionTitle": "Ortalama sıra",
+        "coldPositionCaption": "Sorgu bazlı ortalama konum GSC verisiyle hesaplanır.",
+        "metricImpressions": "Toplam gösterim",
+        "metricVisits": "Oturumlar",
+        "metricCtr": "CTR",
+        "metricAvgPosition": "Ort. sıra",
+        "geoSubtitleFallback": "DeepSeek GEO motorundan simüle görünürlük · cron veya pipeline ile yenilenir",
+        "geoGapHeading": "GEO boşluk analizi",
+        "actionPlanHeading": "Aksiyon planı",
+        "geoInactiveBody": "GEO zekâsı, Search Console veri senkronu ve DeepSeek raporu (cron veya manuel) sonrası aktifleşir.",
+        "serviceVisibilityHeading": "Servis tabanlı görünürlük",
+        "serviceVisibilitySub": "GEO · AI atıfları ve izlenen anahtar kelimeler",
+        "avgGeoRankHeading": "Ort. GEO sırası",
+        "keywordsAcrossEngines": "{count} anahtar kelime · motorlar arası",
+        "errorSignalsHeading": "Hata sinyalleri",
+        "technicalLogsHint": "technical_logs · son 30 gün",
+        "cwvEmptyTitle": "Core Web Vitals",
+        "cwvEmptyBody": "Teknik SEO günlüğü veya PageSpeed simülasyonu geldiğinde LCP, FID ve CLS halkaları burada canlanır. Veri beklenirken mühendislik ekibi snapshot hazırlıyor olabilir.",
+        "seoLogInsightHeading": "SEO günlüğü içgörüsü"
+      },
+      "geoKeyword": {
+        "emptyTitle": "GEO anahtar kelime istihbaratı",
+        "emptyBody": "Google OAuth ile Search Console senkronu yapın, ardından GEO simülatörünü (cron veya pipeline) tetikleyerek sorgu bazlı DeepSeek görünürlük skorlarını ve aksiyon planlarını doldurun.",
+        "tableTitle": "GEO anahtar kelime performansı",
+        "tableSubtitle": "DeepSeek · simüle LLM görünürlüğü ve GSC bağlamı",
+        "colQuery": "Sorgu",
+        "colAiScore": "AI skoru",
+        "colGscImps": "GSC gösterim",
+        "colSteps": "Adımlar"
+      },
+      "geoRank": {
+        "emptyTitle": "Henüz GEO raporu yok",
+        "emptySub": "ChatGPT, Perplexity, Google ve Bing anahtar kelime takibi burada görünür",
+        "aiCitations": "AI atıfları",
+        "ofGeoKeywords": "{cited} / {total} GEO anahtar kelimesi",
+        "rankedGeo": "Sıralanan (GEO)",
+        "gscSynced": "Senkronize GSC sorguları: {count}",
+        "tableHeading": "GEO ve organik arama",
+        "tableSub": "GEO motorları + Google Search Console (son senkron)",
+        "gscBadge": "GSC",
+        "clicksImpsCtr": "{clicks} tıklama · {imps} gösterim · CTR %{ctr}",
+        "avgPos": "ort. sıra",
+        "rankLabel": "sıra"
+      },
+      "cwv": {
+        "title": "Core Web Vitals",
+        "subtitle": "Mühendislik sağlığı · son SEO anlık görüntüsünden tek doğru kaynak"
+      }
+    }
+  },
+  "Performance": {
+    "spendChart": {
+      "title": "Harcama trendi",
+      "subtitleSuffix": " · tüm platformlar",
+      "rangeDaily": "Son 7 gün",
+      "rangeWeekly": "Son 12 hafta",
+      "rangeMonthly": "Son 12 ay",
+      "rangeFallback": "Son 14 gün",
+      "emptyHint": "Harcama eğrisi, reklam hesapları bağlandıktan ve günlük senkron tamamlandıktan sonra burada çizilir."
+    },
+    "connectedAccounts": {
+      "title": "Bağlı reklam hesapları · SSOT",
+      "accountFallback": "Hesap",
+      "syncedPrefix": "senkron:",
+      "relJustNow": "şimdi",
+      "relMinutes": "{n} dk önce",
+      "relHours": "{n} sa önce",
+      "relDays": "{n} gün önce",
+      "disconnectTitle": "Hesapları bağla",
+      "disconnectDescription": "Aktif reklam hesabı bulunamadı. OAuth ile Meta, Google veya TikTok bağlantısını yenileyerek veri akışını başlatın."
+    }
+  },
+  "Shared": {
+    "dataDisconnected": {
+      "defaultTitle": "Veri akışı duraklatıldı",
+      "defaultDescription": "Reklam hesaplarına bağlantı yenilenemedi veya veri henüz ulaşmadı. Bağlantınızı yenileyerek akışı tekrar başlatabilirsiniz.",
+      "reconnectLabel": "Yeniden bağlan"
+    },
+    "fileUploader": {
+      "defaultLabel": "Dosyaları buraya bırakın veya tıklayarak seçin",
+      "defaultHint": "Görsel, video, PDF — en fazla {maxFiles} dosya",
+      "ariaUpload": "Dosya yükle",
+      "errPresign": "Yükleme bağlantısı alınamadı",
+      "errUploadFailed": "Yükleme başarısız",
+      "errS3": "S3 yükleme başarısız",
+      "uploadedCount": "{count} dosya S3’e yüklendi ✓"
+    }
+  },
+  "Layout": {
+    "impersonationBadge": "God Mode · Kimlik taklidi",
+    "impersonationBody": "Şu an {tenant} müşterisi gözüyle işlem yapıyorsunuz.",
+    "exitImpersonation": "Çıkış yap",
+    "mobileSheetDragClose": "{title} — sürükleyerek kapat"
+  }
+}

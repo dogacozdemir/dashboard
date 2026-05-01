@@ -1,5 +1,6 @@
 'use server';
 
+import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { auth } from '@/lib/auth/config';
@@ -47,18 +48,22 @@ export async function sendMessage(
   await requireTenantAction(companyId);
 
   const supabase = await createSupabaseServerClient();
+  const category =
+    type === 'system' ? 'system' : type === 'alert' ? 'ai_strategic' : 'operational';
+
   const { error } = await supabase.from('notifications').insert({
     tenant_id:   companyId,
     user_id:     user.id,
     sender_name: user.name ?? user.email,
     message:     message.trim(),
     type,
+    category,
     is_read:     false,
   });
 
   if (error) {
     console.error('[sendMessage]', error.message);
-    return { success: false, error: error.message };
+    return { success: false, error: await getPremiumActionError() };
   }
   return { success: true };
 }

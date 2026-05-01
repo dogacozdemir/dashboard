@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { getPublicUrl } from '@/lib/storage/s3';
 import type { SessionUser } from '@/types/user';
+import { recordCreativePendingAdminTasks } from '@/features/admin/lib/adminTaskBridge';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -39,10 +40,24 @@ export async function POST(request: NextRequest) {
       uploaded_by: user.id,
     }));
 
-  const { error } = await supabase.from('creative_assets').insert(rows);
+  const { data: inserted, error } = await supabase
+    .from('creative_assets')
+    .insert(rows)
+    .select('id, title, tenant_id');
+
   if (error) {
     console.error('[api/assets/creative]', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (inserted?.length) {
+    void recordCreativePendingAdminTasks(
+      inserted.map((r) => ({
+        id:         r.id,
+        tenant_id:  r.tenant_id,
+        title:      r.title,
+      })),
+    );
   }
 
   return NextResponse.json({ success: true, count: rows.length });

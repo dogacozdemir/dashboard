@@ -3,79 +3,86 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Lock, Globe, Palette, BookOpen, Type, ImageIcon, Package, Shield } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { formatFileSize, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import type { BrandAsset, BrandAssetType } from '../types';
-
-const typeConfig: Record<BrandAssetType, {
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  label: string;
-}> = {
-  logo:            { icon: ImageIcon, color: 'text-indigo-400 bg-indigo-500/10',  label: 'Logo' },
-  'brand-book':    { icon: BookOpen,  color: 'text-violet-400 bg-violet-500/10',  label: 'Brand Book' },
-  font:            { icon: Type,      color: 'text-cyan-400 bg-cyan-500/10',       label: 'Font' },
-  'color-palette': { icon: Palette,   color: 'text-amber-400 bg-amber-500/10',    label: 'Colors' },
-  other:           { icon: Package,   color: 'text-white/40 bg-white/[0.06]',     label: 'Asset' },
-};
-
-const ALL_TYPES: Array<{ label: string; value: BrandAssetType | 'all' }> = [
-  { label: 'All',        value: 'all' },
-  { label: 'Logo',       value: 'logo' },
-  { label: 'Brand Book', value: 'brand-book' },
-  { label: 'Font',       value: 'font' },
-  { label: 'Colors',     value: 'color-palette' },
-  { label: 'Other',      value: 'other' },
-];
 
 interface AssetGridProps {
   assets: BrandAsset[];
 }
 
 export function AssetGrid({ assets }: AssetGridProps) {
+  const t = useTranslations('Features.BrandVault');
   const [activeType, setActiveType] = useState<BrandAssetType | 'all'>('all');
+
+  const typeConfig: Record<BrandAssetType, {
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    labelKey: string;
+  }> = {
+    logo:            { icon: ImageIcon, color: 'text-[#b48dc8] bg-[#9c70b2]/12',     labelKey: 'typeLabelLogo' },
+    'brand-book':    { icon: BookOpen,  color: 'text-amber-300/90 bg-[#bea042]/12', labelKey: 'typeLabelBrandBook' },
+    font:            { icon: Type,      color: 'text-cyan-300/90 bg-cyan-500/10',     labelKey: 'typeLabelFont' },
+    'color-palette': { icon: Palette,   color: 'text-[#bea042] bg-[#bea042]/10',      labelKey: 'typeLabelPalette' },
+    other:           { icon: Package,   color: 'text-white/45 bg-white/[0.06]',     labelKey: 'typeLabelOther' },
+  };
+
+  const TAB_ITEMS: Array<{ value: BrandAssetType | 'all'; labelKey: string }> = [
+    { value: 'all', labelKey: 'tabAll' },
+    { value: 'logo', labelKey: 'typeLabelLogo' },
+    { value: 'brand-book', labelKey: 'typeLabelBrandBook' },
+    { value: 'font', labelKey: 'typeLabelFont' },
+    { value: 'color-palette', labelKey: 'typeLabelPalette' },
+    { value: 'other', labelKey: 'typeLabelOther' },
+  ];
 
   const filtered = activeType === 'all' ? assets : assets.filter((a) => a.type === activeType);
 
   if (assets.length === 0) {
     return (
       <GlassCard className="flex flex-col items-center justify-center gap-4 py-12 text-center border border-dashed border-white/[0.08]" padding="lg">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
-          <Shield className="w-5 h-5 text-indigo-400" />
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(156,112,178,0.12)', border: '1px solid rgba(156,112,178,0.22)' }}>
+          <Shield className="w-5 h-5 text-[#b48dc8]" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white/60">Brand Vault is empty</p>
-          <p className="text-xs text-white/25 mt-1">Upload logos, brand books, fonts and color palettes above</p>
+          <p className="text-sm font-semibold text-white/60">{t('emptyTitle')}</p>
+          <p className="text-xs text-white/25 mt-1 line-clamp-3">{t('emptySubtitle')}</p>
         </div>
       </GlassCard>
     );
   }
 
-  const availableTypes = ALL_TYPES.filter(
-    (t) => t.value === 'all' || assets.some((a) => a.type === t.value)
+  const availableTypes = TAB_ITEMS.filter(
+    (tab) => tab.value === 'all' || assets.some((a) => a.type === tab.value)
   );
 
   return (
     <div className="space-y-4">
-      {/* Category tabs */}
       <div className="flex gap-2 flex-wrap">
-        {availableTypes.map((t) => (
+        {availableTypes.map((tab) => (
           <button
-            key={t.value}
-            onClick={() => setActiveType(t.value)}
+            key={tab.value}
+            type="button"
+            onClick={() => setActiveType(tab.value)}
             className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-              activeType === t.value
-                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04] border-transparent'
+              'px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border max-w-[11rem]',
+              activeType === tab.value
+                ? 'text-white/88 border-[#bea042]/35'
+                : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04] border-transparent',
             )}
+            style={
+              activeType === tab.value
+                ? { background: 'linear-gradient(135deg, rgba(156,112,178,0.2), rgba(190,160,66,0.1))' }
+                : undefined
+            }
           >
-            {t.label}
+            <span className="truncate">{t(tab.labelKey)}</span>
             <span className="ml-1.5 text-white/25">
-              {t.value === 'all'
+              {tab.value === 'all'
                 ? assets.length
-                : assets.filter((a) => a.type === t.value).length}
+                : assets.filter((a) => a.type === tab.value).length}
             </span>
           </button>
         ))}
@@ -83,7 +90,7 @@ export function AssetGrid({ assets }: AssetGridProps) {
 
       {filtered.length === 0 ? (
         <GlassCard className="flex items-center justify-center py-10 text-center" padding="md">
-          <p className="text-sm text-white/30">No {activeType} assets found</p>
+          <p className="text-sm text-white/30">{t('filteredEmpty')}</p>
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -113,9 +120,9 @@ export function AssetGrid({ assets }: AssetGridProps) {
                           <Lock className="w-3 h-3 text-white/25 shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-white/30">
-                        <span className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-medium', config.color)}>
-                          {config.label}
+                      <div className="flex items-center gap-3 text-[11px] text-white/30 flex-wrap">
+                        <span className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-medium truncate max-w-[120px]', config.color)}>
+                          {t(config.labelKey)}
                         </span>
                         {asset.fileSize != null && <span>{formatFileSize(asset.fileSize)}</span>}
                         <span>{formatDate(asset.createdAt)}</span>
@@ -128,7 +135,7 @@ export function AssetGrid({ assets }: AssetGridProps) {
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/30 hover:text-white/70 hover:bg-white/[0.08] hover:border-indigo-500/30 transition-all opacity-0 group-hover:opacity-100"
+                        className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/30 hover:text-white/70 hover:bg-white/[0.08] hover:border-[#bea042]/35 transition-all opacity-0 group-hover:opacity-100"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Download className="w-4 h-4" />

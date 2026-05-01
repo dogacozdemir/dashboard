@@ -1,29 +1,29 @@
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth/config';
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
+import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 import { fetchAiHistory } from '@/features/ai-chat/actions/aiChatActions';
 import { AiChatInterface } from '@/features/ai-chat/components/AiChatInterface';
-import { Brain } from 'lucide-react';
+import type { SessionUser } from '@/types/user';
 
 export default async function MonoAiPage() {
+  const session = await auth();
+  const user = session?.user as SessionUser | undefined;
+  if (!sessionHasPermission(user, 'ai.mono_chat')) redirect('/unauthorized');
+
   const { companyId, tenant } = await requireTenantContext();
   const aiHistory = await fetchAiHistory(companyId);
 
   return (
-    <div className="space-y-4">
-      <div className="glass glow-inset rounded-2xl p-5 border border-indigo-500/10 bg-gradient-to-r from-indigo-500/5 to-transparent">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-white/80">Mono AI</h2>
-            <p className="text-xs text-white/40 mt-0.5">
-              monoAI v1 strategic assistant for {tenant.name}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="glass glow-inset rounded-2xl border border-white/[0.06] overflow-hidden">
+    <div className="flex flex-col h-full min-h-0">
+      <div
+        className="madmonos-chat-shell relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/[0.10]"
+        style={{
+          background: 'rgba(29, 15, 29, 0.45)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255,255,255,0.12), inset 1px 0 0 rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.4)',
+        }}
+      >
         <AiChatInterface
           companyId={companyId}
           tenantName={tenant.name}
@@ -33,4 +33,3 @@ export default async function MonoAiPage() {
     </div>
   );
 }
-

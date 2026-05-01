@@ -8,9 +8,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
+import { BlueprintChartArea } from '@/components/shared/BentoBlueprintEmpty';
 import type { ChartDataPoint } from '../types';
 
 import type { TimeRange } from '../actions/fetchMetrics';
@@ -20,13 +21,28 @@ interface SpendChartProps {
   range?: TimeRange;
 }
 
-const PLATFORM_COLORS = {
-  meta:   '#6366F1',
-  google: '#10B981',
-  tiktok: '#F59E0B',
+const PLATFORM_ORDER = ['meta', 'google', 'tiktok'] as const;
+
+const PLATFORM_COLORS: Record<(typeof PLATFORM_ORDER)[number], string> = {
+  meta: '#1877F2',
+  google: '#EA4335',
+  tiktok: '#E8E8E8',
 };
 
-function CustomTooltip({ active, payload, label }: {
+function platformsWithSpend(data: ChartDataPoint[]): Array<(typeof PLATFORM_ORDER)[number]> {
+  const sums = PLATFORM_ORDER.map((key) => ({
+    key,
+    total: data.reduce((acc, d) => acc + d[key], 0),
+  }));
+  const active = sums.filter((s) => s.total > 0).map((s) => s.key);
+  return active.length ? active : [];
+}
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
   label?: string;
@@ -42,55 +58,76 @@ function CustomTooltip({ active, payload, label }: {
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
             <span className="text-white/60 capitalize">{entry.name}</span>
           </span>
-          <span className="font-semibold text-white/90">
-            ${entry.value.toLocaleString()}
-          </span>
+          <span className="font-semibold text-white/90">${entry.value.toLocaleString()}</span>
         </div>
       ))}
     </div>
   );
 }
 
-const rangeLabel: Record<string, string> = {
-  daily:   'Last 7 days',
-  weekly:  'Last 12 weeks',
-  monthly: 'Last 12 months',
-};
-
 export function SpendChart({ data, range = 'monthly' }: SpendChartProps) {
-  const subtitle = rangeLabel[range] ?? 'Last 14 days';
+  const t = useTranslations('Performance.spendChart');
+  const subtitleRange =
+    range === 'daily'
+      ? t('rangeDaily')
+      : range === 'weekly'
+        ? t('rangeWeekly')
+        : range === 'monthly'
+          ? t('rangeMonthly')
+          : t('rangeFallback');
+
+  const keysToPlot = platformsWithSpend(data);
+  const subtitleLine =
+    keysToPlot.length === 1
+      ? `${subtitleRange}${t('subtitleSuffixSingle', { channel: t(`platformLabel.${keysToPlot[0]}`) })}`
+      : `${subtitleRange}${t('subtitleSuffix')}`;
 
   if (!data.length) {
     return (
-      <GlassCard padding="md">
+      <GlassCard padding="md" className="bento-card">
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-white/80">Ad Spend Trend</h3>
-          <p className="text-xs text-white/30 mt-0.5">{subtitle} · all platforms</p>
+          <h3 className="text-sm font-semibold text-white/80">{t('title')}</h3>
+          <p className="text-xs text-white/30 mt-0.5">{subtitleLine}</p>
         </div>
-        <div className="flex flex-col items-center justify-center h-[200px] text-center gap-2 border border-dashed border-white/[0.06] rounded-xl">
-          <p className="text-sm text-white/25">No spend data available</p>
-          <p className="text-xs text-white/15">Connect ad accounts to populate the chart</p>
+        <div className="flex flex-col items-center justify-center min-h-[200px] px-2 py-4 text-center gap-3 border border-dashed border-white/[0.08] rounded-xl bg-white/[0.02]">
+          <BlueprintChartArea />
+          <p className="text-xs text-white/35 max-w-sm leading-relaxed">{t('emptyHint')}</p>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  if (!keysToPlot.length) {
+    return (
+      <GlassCard padding="md" className="bento-card">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-white/80">{t('title')}</h3>
+          <p className="text-xs text-white/30 mt-0.5">{subtitleLine}</p>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[200px] px-2 py-4 text-center gap-3 border border-dashed border-white/[0.08] rounded-xl bg-white/[0.02]">
+          <BlueprintChartArea />
+          <p className="text-xs text-white/35 max-w-sm leading-relaxed">{t('noSpendInRange')}</p>
         </div>
       </GlassCard>
     );
   }
 
   return (
-    <GlassCard padding="md">
-        <div className="flex items-center justify-between mb-6">
+    <GlassCard padding="md" className="bento-card">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-sm font-semibold text-white/80">Ad Spend Trend</h3>
-          <p className="text-xs text-white/30 mt-0.5">{subtitle} · all platforms</p>
+          <h3 className="text-sm font-semibold text-white/80">{t('title')}</h3>
+          <p className="text-xs text-white/30 mt-0.5">{subtitleLine}</p>
         </div>
       </div>
 
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
           <defs>
-            {Object.entries(PLATFORM_COLORS).map(([key, color]) => (
+            {keysToPlot.map((key) => (
               <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                <stop offset="5%" stopColor={PLATFORM_COLORS[key]} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={PLATFORM_COLORS[key]} stopOpacity={0} />
               </linearGradient>
             ))}
           </defs>
@@ -107,18 +144,21 @@ export function SpendChart({ data, range = 'monthly' }: SpendChartProps) {
             tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+            tickFormatter={(v) =>
+              v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(v)}`
+            }
           />
 
           <Tooltip content={<CustomTooltip />} />
 
-          {Object.entries(PLATFORM_COLORS).map(([key, color]) => (
+          {keysToPlot.map((key) => (
             <Area
               key={key}
               type="monotone"
               dataKey={key}
-              stroke={color}
-              strokeWidth={2}
+              name={t(`platformLabel.${key}`)}
+              stroke={PLATFORM_COLORS[key]}
+              strokeWidth={key === 'tiktok' ? 1.5 : 2}
               fill={`url(#grad-${key})`}
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
@@ -129,4 +169,3 @@ export function SpendChart({ data, range = 'monthly' }: SpendChartProps) {
     </GlassCard>
   );
 }
-

@@ -18,14 +18,23 @@ export interface PlatformMetrics {
 
 export interface AggregateMetrics {
   spend: MetricValue;
+  revenue: MetricValue;
   impressions: MetricValue;
   clicks: MetricValue;
   conversions: MetricValue;
   roas: MetricValue;
   cpa: MetricValue;
+  ctr: MetricValue;
   conversionRate: MetricValue;
   hasData: boolean;
   dateRange: { from: string; to: string };
+}
+
+/** Connected ad account (SSOT: ad_accounts) — no tokens exposed to client. */
+export interface ConnectedAdAccount {
+  platform: Platform;
+  accountName: string | null;
+  lastSyncedAt: string | null;
 }
 
 export interface ChartDataPoint {

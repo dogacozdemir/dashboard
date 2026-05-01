@@ -46,9 +46,12 @@ export type ImageRevisionType =
   | 'subject';
 
 export interface ImageRevisionMeta {
-  revisionType: ImageRevisionType;
-  area?:        string;   // free-text: "sağ alt logo", "başlık metni"
-  references?:  RevisionReference[];
+  /** Legacy single-select revisions (before multi-aspect notes). */
+  revisionType?: ImageRevisionType;
+  area?: string;
+  /** Only non-empty fields are stored; each key is a separate instruction. */
+  aspectNotes?: Partial<Record<ImageRevisionType, string>>;
+  references?: RevisionReference[];
 }
 
 // ── Revision record ──────────────────────────────────────────────────────────

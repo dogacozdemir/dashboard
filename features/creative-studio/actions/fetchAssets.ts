@@ -1,38 +1,18 @@
 'use server';
 
+import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
+import { requirePermission } from '@/lib/auth/permissions';
 import { auth } from '@/lib/auth/config';
 import { createPresignedDownloadUrl } from '@/lib/storage/s3';
 import type { CreativeAsset, Revision, AssetStatus, VideoRevisionMeta, ImageRevisionMeta } from '../types';
 import type { SessionUser } from '@/types/user';
-
-function extractS3Key(value: string): string {
-  if (!value) return '';
-  // Accept both legacy full URL values and raw key storage.
-  if (value.startsWith('http://') || value.startsWith('https://')) {
-    try {
-      const parsed = new URL(value);
-      return decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
-    } catch {
-      return value;
-    }
-  }
-  return value;
-}
-
-function normalizeDuplicateTenantKey(key: string): string {
-  // Fix legacy keys shaped like: {tenantId}/creative/{tenantId}/file.ext
-  const parts = key.split('/');
-  if (
-    parts.length >= 4 &&
-    (parts[1] === 'creative' || parts[1] === 'brand') &&
-    parts[0] === parts[2]
-  ) {
-    return [parts[0], parts[1], ...parts.slice(3)].join('/');
-  }
-  return key;
-}
+import {
+  recordCreativeRevisionAdminTask,
+  resolveCreativeAdminTasksAfterStatus,
+} from '@/features/admin/lib/adminTaskBridge';
+import { extractS3Key, normalizeDuplicateTenantKey } from '@/features/creative-studio/lib/creativeS3Keys';
 
 export async function fetchCreativeAssets(companyId: string): Promise<CreativeAsset[]> {
   const validatedId = await requireTenantAction(companyId);
@@ -51,70 +31,77 @@ export async function fetchCreativeAssets(companyId: string): Promise<CreativeAs
 
   if (!data || data.length === 0) return [];
 
-  const mapped = await Promise.all(
-    data.map(async (a) => {
-      const key = normalizeDuplicateTenantKey(extractS3Key(a.url));
-      let signedUrl = a.url;
-      let signedThumb = a.thumbnail_url;
+  /** Cap parallel S3 presigns to avoid thundering herd on cold gallery loads. */
+  const PRESIGN_CONCURRENCY = 6;
+  const mapped: CreativeAsset[] = [];
 
-      // Creative assets are currently stored in S3 private bucket -> sign for viewing.
-      if (key) {
-        try {
-          signedUrl = await createPresignedDownloadUrl({
-            bucket: 'creative',
-            key,
-            expiresIn: 3600,
-          });
-        } catch {
-          signedUrl = a.url;
-        }
-      }
+  for (let i = 0; i < data.length; i += PRESIGN_CONCURRENCY) {
+    const slice = data.slice(i, i + PRESIGN_CONCURRENCY);
+    const part = await Promise.all(
+      slice.map(async (a) => {
+        const key = normalizeDuplicateTenantKey(extractS3Key(a.url));
+        let signedUrl = a.url;
+        let signedThumb = a.thumbnail_url;
 
-      if (a.thumbnail_url) {
-        const thumbKey = normalizeDuplicateTenantKey(extractS3Key(a.thumbnail_url));
-        if (thumbKey) {
+        if (key) {
           try {
-            signedThumb = await createPresignedDownloadUrl({
+            signedUrl = await createPresignedDownloadUrl({
               bucket: 'creative',
-              key: thumbKey,
+              key,
               expiresIn: 3600,
             });
           } catch {
-            signedThumb = a.thumbnail_url;
+            signedUrl = a.url;
           }
         }
-      }
 
-      return {
-        id:           a.id,
-        title:        a.title,
-        url:          signedUrl,
-        thumbnailUrl: signedThumb,
-        type:         a.type as 'image' | 'video',
-        status:       a.status as AssetStatus,
-        uploadedBy:   a.uploaded_by,
-        platform:     (a.platform as CreativeAsset['platform']) ?? null,
-        caption:      a.caption ?? null,
-        scheduledDate: a.scheduled_date ?? null,
-        scheduledTime: a.scheduled_time ?? null,
-        socialPostEventId: a.social_post_event_id ?? null,
-        createdAt:    a.created_at,
-      } satisfies CreativeAsset;
-    })
-  );
+        if (a.thumbnail_url) {
+          const thumbKey = normalizeDuplicateTenantKey(extractS3Key(a.thumbnail_url));
+          if (thumbKey) {
+            try {
+              signedThumb = await createPresignedDownloadUrl({
+                bucket: 'creative',
+                key: thumbKey,
+                expiresIn: 3600,
+              });
+            } catch {
+              signedThumb = a.thumbnail_url;
+            }
+          }
+        }
+
+        return {
+          id:           a.id,
+          title:        a.title,
+          url:          signedUrl,
+          thumbnailUrl: signedThumb,
+          type:         a.type as 'image' | 'video',
+          status:       a.status as AssetStatus,
+          uploadedBy:   a.uploaded_by,
+          platform:     (a.platform as CreativeAsset['platform']) ?? null,
+          caption:      a.caption ?? null,
+          scheduledDate: a.scheduled_date ?? null,
+          scheduledTime: a.scheduled_time ?? null,
+          socialPostEventId: a.social_post_event_id ?? null,
+          createdAt:    a.created_at,
+        } satisfies CreativeAsset;
+      })
+    );
+    mapped.push(...part);
+  }
 
   return mapped;
 }
 
 export async function fetchRevisions(assetId: string, companyId: string): Promise<Revision[]> {
-  await requireTenantAction(companyId);
+  const cid = await requireTenantAction(companyId);
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('revisions')
     .select('id, asset_id, comment, created_by, created_at, video_metadata, image_metadata')
     .eq('asset_id', assetId)
-    .eq('tenant_id', companyId)
+    .eq('tenant_id', cid)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -139,6 +126,7 @@ export async function updateAssetStatus(
   companyId: string
 ): Promise<{ success: boolean; error?: string }> {
   await requireTenantAction(companyId);
+  await requirePermission('creative.approve');
 
   const supabase = await createSupabaseServerClient();
   const { data: asset, error: assetError } = await supabase
@@ -150,7 +138,7 @@ export async function updateAssetStatus(
 
   if (assetError || !asset) {
     console.error('[updateAssetStatus] fetch asset', assetError?.message);
-    return { success: false, error: assetError?.message ?? 'Asset not found' };
+    return { success: false, error: await getPremiumActionError() };
   }
 
   const { error } = await supabase
@@ -161,7 +149,7 @@ export async function updateAssetStatus(
 
   if (error) {
     console.error('[updateAssetStatus]', error.message);
-    return { success: false, error: error.message };
+    return { success: false, error: await getPremiumActionError() };
   }
 
   // Bridge: when approved, automatically create Ops Calendar social post event once.
@@ -193,10 +181,7 @@ export async function updateAssetStatus(
 
     if (eventError || !eventData) {
       console.error('[updateAssetStatus] create calendar event', eventError?.message);
-      return {
-        success: false,
-        error: eventError?.message ?? 'Approved but failed to create calendar event',
-      };
+      return { success: false, error: await getPremiumActionError() };
     }
 
     const { error: linkError } = await supabase
@@ -207,12 +192,16 @@ export async function updateAssetStatus(
 
     if (linkError) {
       console.error('[updateAssetStatus] link calendar event', linkError.message);
-      return {
-        success: false,
-        error: linkError.message,
-      };
+      return { success: false, error: await getPremiumActionError() };
     }
   }
+
+  void resolveCreativeAdminTasksAfterStatus({
+    assetId,
+    tenantId: companyId,
+    newStatus: status,
+    assetTitle: asset.title,
+  });
 
   return { success: true };
 }
@@ -243,7 +232,7 @@ export async function addRevision(
 
   if (revError) {
     console.error('[addRevision] insert', revError.message);
-    return { success: false, error: revError.message };
+    return { success: false, error: await getPremiumActionError() };
   }
 
   const { error: statusError } = await supabase
@@ -254,8 +243,21 @@ export async function addRevision(
 
   if (statusError) {
     console.error('[addRevision] status update', statusError.message);
-    return { success: false, error: statusError.message };
+    return { success: false, error: await getPremiumActionError() };
   }
+
+  const { data: assetRow } = await supabase
+    .from('creative_assets')
+    .select('title')
+    .eq('id', assetId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  void recordCreativeRevisionAdminTask({
+    assetId,
+    tenantId,
+    assetTitle: (assetRow?.title as string) ?? 'Kreatif',
+  });
 
   return { success: true };
 }

@@ -1,12 +1,23 @@
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
+import { cookies } from 'next/headers';
+import { NextIntlClientProvider } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth/config';
+import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
 import { getTenantBySlug, createSupabaseServerClient } from '@/lib/supabase/server';
+import { sessionHasPermission } from '@/lib/auth/session-capabilities';
+import { getAdminTenantsUrl } from '@/lib/utils/tenant-urls';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { TenantProvider } from '@/hooks/useTenant';
 import { fetchUserGamification } from '@/features/gamification/actions/fetchGamification';
 import { ActivityTracker } from '@/features/gamification/components/ActivityTracker';
 import type { SessionUser } from '@/types/user';
+import { mapRowToLuxNotification } from '@/features/notifications/lib/mapNotificationRow';
+import type { LuxNotificationItem } from '@/features/notifications/types';
+import { resolveEffectiveLocale } from '@/lib/i18n/resolve-effective-locale';
+import { loadMessages } from '@/lib/i18n/load-messages';
 
 export default async function TenantLayout({
   children,
@@ -31,44 +42,75 @@ export default async function TenantLayout({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tenant = tenantRaw as any;
 
-  if (user.role !== 'admin' && user.tenantSlug && user.tenantSlug !== tenantSlug) {
+  if (user.role !== 'super_admin' && user.tenantSlug && user.tenantSlug !== tenantSlug) {
     redirect('/unauthorized');
   }
 
   // Fetch gamification data (non-blocking — returns null on error)
   const gamification = await fetchUserGamification();
 
-  // Pre-fetch recent unread notifications for the bell
-  const supabase = await createSupabaseServerClient();
-  const { data: notifRows } = await supabase
-    .from('notifications')
-    .select('id, message, type, sender_name, is_read, created_at')
-    .eq('tenant_id', tenant.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const canUseNotifications =
+    sessionHasPermission(user, 'notifications.view') || sessionHasPermission(user, 'chat.send');
 
-  const initialNotifs = (notifRows ?? []).map((n) => ({
-    id:         n.id,
-    message:    n.message,
-    type:       n.type as 'message' | 'alert' | 'approval' | 'system',
-    senderName: n.sender_name,
-    isRead:     n.is_read,
-    createdAt:  n.created_at,
-  }));
+  const supabase = await createSupabaseServerClient();
+  let initialNotifs: LuxNotificationItem[] = [];
+  if (canUseNotifications) {
+    const { data: notifRows } = await supabase
+      .from('notifications')
+      .select('id, message, type, sender_name, is_read, created_at, category, action_url, action_label')
+      .eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    initialNotifs = (notifRows ?? []).map((n) =>
+      mapRowToLuxNotification({
+        id: n.id,
+        message: n.message,
+        type: n.type,
+        sender_name: n.sender_name,
+        is_read: n.is_read,
+        created_at: n.created_at,
+        category: (n as { category?: string | null }).category,
+        action_url: (n as { action_url?: string | null }).action_url,
+        action_label: (n as { action_label?: string | null }).action_label,
+      })
+    );
+  }
+
+  const cookieStore = await cookies();
+  const impSlug = cookieStore.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim() ?? '';
+  const isImpersonating =
+    user.role === 'super_admin' && impSlug.length > 0 && impSlug === tenant.slug;
+
+  const impersonation = isImpersonating
+    ? { tenantName: String(tenant.name), exitHref: getAdminTenantsUrl() }
+    : null;
+
+  const canManageTeam = sessionHasPermission(user, 'management.users');
+
+  const locale = await resolveEffectiveLocale(user.locale);
+  setRequestLocale(locale);
+  const messages = loadMessages(locale);
+  const tDash = await getTranslations({ locale, namespace: 'Dashboard' });
 
   return (
-    <TenantProvider value={{ tenant, companyId: tenant.id }}>
-      <ActivityTracker />
-      <DashboardShell
-        tenant={tenant}
-        user={user}
-        title={tenant.name}
-        subtitle="Frictionless Marketing Operations"
-        initialNotifs={initialNotifs}
-        gamification={gamification}
-      >
-        {children}
-      </DashboardShell>
-    </TenantProvider>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <TenantProvider value={{ tenant, companyId: tenant.id }}>
+        <ActivityTracker />
+        <DashboardShell
+          tenant={tenant}
+          user={user}
+          title={tenant.name}
+          subtitle={tDash('shell.subtitle')}
+          initialNotifs={initialNotifs}
+          gamification={gamification}
+          impersonation={impersonation}
+          canManageTeam={canManageTeam}
+          canUseNotifications={canUseNotifications}
+        >
+          {children}
+        </DashboardShell>
+      </TenantProvider>
+    </NextIntlClientProvider>
   );
 }

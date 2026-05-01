@@ -1,9 +1,13 @@
 'use server';
 
+import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient }   from '@/lib/supabase/server';
 import { requireTenantAction }          from '@/lib/auth/tenant-guard';
+import { requirePermission }            from '@/lib/auth/permissions';
 import { auth }                         from '@/lib/auth/config';
-import { buildFullSystemPrompt, MEMORY_SUMMARIZER_PROMPT } from '../prompts/system';
+import { buildFullSystemPrompt, buildMemorySummarizerPrompt } from '../prompts/system';
+import { shouldSearchBrandVault } from '../lib/brandRagIntent';
+import { retrieveBrandVaultContext } from '../lib/retrieveBrandRag';
 import { generateAndStorePdf }          from '../tools/generate-pdf';
 import { webSearchTool }               from '../tools/web-search';
 import { assetSearchTool }             from '../tools/asset-search';
@@ -15,8 +19,91 @@ const DEEPSEEK_URL          = 'https://api.deepseek.com/v1/chat/completions';
 
 // Token budgets — adaptive based on request type
 const MAX_TOKENS_CHAT       = 800;   // everyday conversation: fast
+const MAX_TOKENS_CHAT_RICH  = 1600;  // conversation + live dashboard appendix
 const MAX_TOKENS_RESEARCH   = 2200;  // response that includes web research data
 const MAX_TOKENS_DOCUMENT   = 3000;  // PDF / full-document generation
+
+const HISTORY_TURNS = 28;
+
+type RpcAggRowLite = { platform: string; spend: string | number };
+
+/**
+ * Rich, tenant-scoped context for strategic answers (performance + last GEO cache).
+ * Token cost is intentional for high-ticket B2B quality.
+ */
+async function fetchTenantStrategicAppendix(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  tenantId: string,
+  locale: SessionUser['locale'],
+): Promise<string | null> {
+  const to    = new Date().toISOString().split('T')[0];
+  const fromD = new Date();
+  fromD.setDate(fromD.getDate() - 14);
+  const from = fromD.toISOString().split('T')[0];
+
+  const lines: string[] = [];
+
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('aggregate_daily_metrics_range', {
+    p_tenant_id: tenantId,
+    p_from:      from,
+    p_to:        to,
+  });
+
+  if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+    let total = 0;
+    for (const raw of rpcData as RpcAggRowLite[]) {
+      const s = Number(raw.spend);
+      total += s;
+      if (locale === 'en') {
+        lines.push(`- ${raw.platform}: spend ~${s.toFixed(2)} (last 14 days, synced data)`);
+      } else {
+        lines.push(`- ${raw.platform}: harcama ~${s.toFixed(2)} (son 14 gün, senkronize veri)`);
+      }
+    }
+    if (locale === 'en') {
+      lines.unshift(
+        `Paid media summary (last 14 days): total spend ~${total.toFixed(2)} (currency depends on account settings).`,
+      );
+    } else {
+      lines.unshift(`Paid media özeti (son 14 gün): toplam harcama ~${total.toFixed(2)} (para birimi hesap ayarına bağlı).`);
+    }
+  }
+
+  const { data: strat } = await supabase
+    .from('strategy_logs')
+    .select('content')
+    .eq('tenant_id', tenantId)
+    .eq('report_type', 'geo')
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const content = strat?.content as Record<string, unknown> | null | undefined;
+  if (content && typeof content === 'object') {
+    const head = typeof content.strategicHeadline === 'string' ? content.strategicHeadline : null;
+    const sum  = typeof content.strategicSummary === 'string' ? content.strategicSummary : null;
+    if (head || sum) {
+      if (locale === 'en') {
+        lines.push('Latest cached GEO strategy:');
+        if (head) lines.push(`- Headline: ${head}`);
+        if (sum) {
+          const clip = sum.length > 520 ? `${sum.slice(0, 520)}…` : sum;
+          lines.push(`- Summary: ${clip}`);
+        }
+      } else {
+        lines.push('Son üretilen GEO strateji önbelleği:');
+        if (head) lines.push(`- Başlık: ${head}`);
+        if (sum) {
+          const clip = sum.length > 520 ? `${sum.slice(0, 520)}…` : sum;
+          lines.push(`- Özet: ${clip}`);
+        }
+      }
+    }
+  }
+
+  if (!lines.length) return null;
+  return lines.join('\n');
+}
 
 // Only trigger Tavily when the user explicitly wants EXTERNAL web information.
 // Deliberately narrow — internal analysis, campaign questions, asset questions do NOT match.
@@ -49,6 +136,7 @@ async function generateConversationSummary(
   apiKey: string,
   tenantName: string,
   olderMessages: Array<{ role: string; content: string }>,
+  locale: SessionUser['locale'],
 ): Promise<string | null> {
   if (olderMessages.length === 0) return null;
 
@@ -66,10 +154,13 @@ async function generateConversationSummary(
     body: JSON.stringify({
       model:    'deepseek-chat',
       messages: [
-        { role: 'system', content: MEMORY_SUMMARIZER_PROMPT },
+        { role: 'system', content: buildMemorySummarizerPrompt(locale) },
         {
           role:    'user',
-          content: `Tenant: ${tenantName}\n\nCompress this transcript:\n\n${transcript}`,
+          content:
+            locale === 'en'
+              ? `Tenant: ${tenantName}\n\nCompress this transcript:\n\n${transcript}`
+              : `Tenant: ${tenantName}\n\nBu dökümü sıkıştır:\n\n${transcript}`,
         },
       ],
       max_tokens:  500,
@@ -172,6 +263,7 @@ function refreshSummaryAsync(
   tenantId: string,
   prevSummaryCount: number,
   tokensUsed: number,
+  locale: SessionUser['locale'],
 ): void {
   // Intentionally not awaited — runs after response is already returned to the client.
   Promise.resolve().then(async () => {
@@ -193,7 +285,7 @@ function refreshSummaryAsync(
 
       if (newlyAccrued < 6 && tokensUsed <= 1200) return;
 
-      const summaryText = await generateConversationSummary(apiKey, tenantName, older);
+      const summaryText = await generateConversationSummary(apiKey, tenantName, older, locale);
       if (!summaryText) return;
 
       await supabase.from('ai_chat_summaries').upsert({
@@ -212,6 +304,7 @@ function refreshSummaryAsync(
 
 export async function fetchAiHistory(companyId: string): Promise<AiMessage[]> {
   const validatedId = await requireTenantAction(companyId);
+  await requirePermission('ai.mono_chat');
   const supabase    = await createSupabaseServerClient();
 
   const { data } = await supabase
@@ -239,14 +332,19 @@ export async function sendAiMessage(
   if (!session) return { reply: '', error: 'Unauthorized' };
 
   const user        = session.user as SessionUser;
+  const locale      = user.locale;
   const validatedId = await requireTenantAction(companyId);
+  await requirePermission('ai.mono_chat');
   const supabase    = await createSupabaseServerClient();
   const apiKey      = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
     return {
       reply: '',
-      error: 'DEEPSEEK_API_KEY is not configured. Add it to your .env.local to enable monoAI.',
+      error:
+        locale === 'en'
+          ? 'MonoAI is not configured in this environment yet. Try again after your admin enables it.'
+          : 'MonoAI bu ortamda henüz yapılandırılmadı. Yönetici onayından sonra tekrar deneyin.',
     };
   }
 
@@ -254,6 +352,7 @@ export async function sendAiMessage(
   const [
     { data: summaryRow },
     { data: history },
+    strategicAppendix,
   ] = await Promise.all([
     supabase
       .from('ai_chat_summaries')
@@ -265,7 +364,8 @@ export async function sendAiMessage(
       .select('role, content')
       .eq('tenant_id', validatedId)
       .order('created_at', { ascending: false })
-      .limit(15),                          // reduced from 20 — keeps context lean
+      .limit(HISTORY_TURNS),
+    fetchTenantStrategicAppendix(supabase, validatedId, locale),
   ]);
 
   // Persist user message — fire-and-forget (non-blocking)
@@ -285,21 +385,29 @@ export async function sendAiMessage(
   }));
 
   // Build initial message list
-  const systemMessages: DeepSeekMessage[] = [
-    { role: 'system', content: buildFullSystemPrompt(tenantName) },
-  ];
+  const geoHeader =
+    locale === 'en'
+      ? '## LIVE PERFORMANCE / GEO SUMMARY (dashboard; this session)'
+      : '## CANLI PERFORMANS / GEO ÖZETİ (dashboard; bu oturum)';
+  const geoFooter =
+    locale === 'en'
+      ? 'This block is context only; figures depend on ad sync and cache. If anything is missing, suggest running sync or generating a GEO report.'
+      : 'Bu blok yalnızca bağlamdır; rakamlar reklam senkronu ve önbelleğe bağlıdır. Eksikse kullanıcıya senkron veya GEO raporu öner.';
+
+  const systemPromptBody = strategicAppendix
+    ? `${buildFullSystemPrompt(tenantName, locale)}\n\n${geoHeader}\n${strategicAppendix}\n\n${geoFooter}`
+    : buildFullSystemPrompt(tenantName, locale);
+
+  const systemMessages: DeepSeekMessage[] = [{ role: 'system', content: systemPromptBody }];
   if (summaryRow?.summary_text) {
     systemMessages.push({
       role:    'system',
-      content: `Conversation summary (older context):\n${summaryRow.summary_text}`,
+      content:
+        locale === 'en'
+          ? `Conversation summary (older context):\n${summaryRow.summary_text}`
+          : `Konuşma özeti (eski bağlam):\n${summaryRow.summary_text}`,
     });
   }
-
-  let currentMessages: DeepSeekMessage[] = [
-    ...systemMessages,
-    ...contextMessages,
-    { role: 'user', content: userMessage },
-  ];
 
   const toolCtx: ToolContext = { tenantId: validatedId };
 
@@ -319,7 +427,9 @@ export async function sendAiMessage(
       try {
         const r = await webSearchTool.execute({ query: userMessage, max_results: 5 }, toolCtx);
         if (!r.isError && r.content.trim()) {
-          toolSnippets.push(`**Web Araştırma Bulguları:**\n${r.content}`);
+          const label =
+            locale === 'en' ? '**Web research findings:**' : '**Web Araştırma Bulguları:**';
+          toolSnippets.push(`${label}\n${r.content}`);
         }
       } catch (e) {
         console.error('[tool:web_search]', e);
@@ -330,10 +440,22 @@ export async function sendAiMessage(
       try {
         const r = await assetSearchTool.execute({ query: userMessage, asset_type: 'all', status: 'all' }, toolCtx);
         if (!r.isError && r.content.trim()) {
-          toolSnippets.push(`**Mevcut Varlıklar:**\n${r.content}`);
+          const label = locale === 'en' ? '**Existing assets:**' : '**Mevcut Varlıklar:**';
+          toolSnippets.push(`${label}\n${r.content}`);
         }
       } catch (e) {
         console.error('[tool:asset_search]', e);
+      }
+    }
+
+    if (shouldSearchBrandVault(userMessage)) {
+      try {
+        const rag = await retrieveBrandVaultContext(supabase, validatedId, userMessage);
+        if (rag?.trim()) {
+          toolSnippets.push(rag);
+        }
+      } catch (e) {
+        console.error('[tool:brand_rag]', e);
       }
     }
 
@@ -342,14 +464,23 @@ export async function sendAiMessage(
     const hasResearchData = toolSnippets.length > 0;
 
     const userTurn: DeepSeekMessage = hasResearchData
-      ? {
-          role:    'user',
-          content:
-            `İstek: ${userMessage}\n\n` +
-            `---\nAşağıda bu konuyla ilgili araştırma verileri yer alıyor:\n\n` +
-            toolSnippets.join('\n\n---\n\n') +
-            `\n---\n\nYukarıdaki verileri kullanarak kapsamlı, iyi biçimlendirilmiş bir yanıt yaz.`,
-        }
+      ? locale === 'en'
+        ? {
+            role:    'user',
+            content:
+              `Request: ${userMessage}\n\n` +
+              `---\nResearch data for this topic:\n\n` +
+              toolSnippets.join('\n\n---\n\n') +
+              `\n---\n\nWrite a comprehensive, well-formatted answer using the data above.`,
+          }
+        : {
+            role:    'user',
+            content:
+              `İstek: ${userMessage}\n\n` +
+              `---\nAşağıda bu konuyla ilgili araştırma verileri yer alıyor:\n\n` +
+              toolSnippets.join('\n\n---\n\n') +
+              `\n---\n\nYukarıdaki verileri kullanarak kapsamlı, iyi biçimlendirilmiş bir yanıt yaz.`,
+          }
       : { role: 'user', content: userMessage };
 
     // Adaptive token budget — avoid paying the latency cost of large budgets for simple chat
@@ -357,7 +488,9 @@ export async function sendAiMessage(
       ? MAX_TOKENS_DOCUMENT
       : hasResearchData
         ? MAX_TOKENS_RESEARCH
-        : MAX_TOKENS_CHAT;
+        : strategicAppendix
+          ? MAX_TOKENS_CHAT_RICH
+          : MAX_TOKENS_CHAT;
 
     const synthMessages: DeepSeekMessage[] = [
       ...systemMessages,
@@ -384,7 +517,7 @@ export async function sendAiMessage(
     if (!response.ok) {
       const errText = await response.text();
       console.error('[sendAiMessage] DeepSeek error:', errText);
-      return { reply: '', error: 'AI service temporarily unavailable. Please try again.' };
+      return { reply: '', error: await getPremiumActionError() };
     }
 
     const json = await response.json() as {
@@ -402,7 +535,10 @@ export async function sendAiMessage(
     finalReply = (dsmlStart > 0 ? rawReply.slice(0, dsmlStart) : dsmlStart === 0 ? '' : rawReply).trim();
 
     if (!finalReply) {
-      finalReply = 'Yanıt oluşturulamadı. Lütfen tekrar deneyin.';
+      finalReply =
+        locale === 'en'
+          ? 'Could not generate a reply. Please try again.'
+          : 'Yanıt oluşturulamadı. Lütfen tekrar deneyin.';
     }
 
     // ── Auto PDF generation ─────────────────────────────────────────────────
@@ -420,14 +556,23 @@ export async function sendAiMessage(
         );
 
         const sizeKb = Math.round(pdfResult.sizeBytes / 1024);
-        finalReply +=
-          `\n\n---\n**PDF hazır** · ${filename} · ${sizeKb} KB\n` +
-          `**İndir / Download:** [${filename}](${pdfResult.downloadUrl})\n` +
-          `_(Link 1 saat geçerlidir · Link valid for 1 hour)_`;
+        if (locale === 'en') {
+          finalReply +=
+            `\n\n---\n**PDF ready** · ${filename} · ${sizeKb} KB\n` +
+            `**Download:** [${filename}](${pdfResult.downloadUrl})\n` +
+            `_(Link valid for 1 hour)_`;
+        } else {
+          finalReply +=
+            `\n\n---\n**PDF hazır** · ${filename} · ${sizeKb} KB\n` +
+            `**İndir / Download:** [${filename}](${pdfResult.downloadUrl})\n` +
+            `_(Link 1 saat geçerlidir · Link valid for 1 hour)_`;
+        }
       } catch (pdfErr) {
         console.error('[auto-pdf]', pdfErr);
-        // Non-fatal: the text response is still returned
-        finalReply += '\n\n_(PDF oluşturulurken bir hata oluştu. AWS S3 yapılandırmanızı kontrol edin.)_';
+        finalReply +=
+          locale === 'en'
+            ? '\n\n_(PDF generation failed. Check your AWS S3 configuration.)_'
+            : '\n\n_(PDF oluşturulurken bir hata oluştu. AWS S3 yapılandırmanızı kontrol edin.)_';
       }
     }
 
@@ -442,20 +587,26 @@ export async function sendAiMessage(
     });
 
     // ── Refresh long-term summary — fire-and-forget ──────────────────────────
-    refreshSummaryAsync(supabase, apiKey, tenantName, validatedId, summaryRow?.source_message_count ?? 0, tokensUsed ?? 0);
+    refreshSummaryAsync(
+      supabase,
+      apiKey,
+      tenantName,
+      validatedId,
+      summaryRow?.source_message_count ?? 0,
+      tokensUsed ?? 0,
+      locale,
+    );
 
     return { reply: finalReply };
   } catch (err) {
     console.error('[sendAiMessage]', err);
-    return {
-      reply: '',
-      error: 'Failed to reach DeepSeek API. Check your internet connection and API key.',
-    };
+    return { reply: '', error: await getPremiumActionError() };
   }
 }
 
 export async function clearAiHistory(companyId: string): Promise<void> {
   const validatedId = await requireTenantAction(companyId);
+  await requirePermission('ai.mono_chat');
   const supabase    = await createSupabaseServerClient();
   await supabase
     .from('ai_chat_history')

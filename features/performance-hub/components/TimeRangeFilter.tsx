@@ -1,13 +1,14 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import type { TimeRange } from '../actions/fetchMetrics';
 
-const OPTIONS: { label: string; value: TimeRange }[] = [
-  { label: 'Daily',   value: 'daily' },
-  { label: 'Weekly',  value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
+const RANGE_KEYS: { value: TimeRange; labelKey: 'daily' | 'weekly' | 'monthly' }[] = [
+  { value: 'daily', labelKey: 'daily' },
+  { value: 'weekly', labelKey: 'weekly' },
+  { value: 'monthly', labelKey: 'monthly' },
 ];
 
 interface TimeRangeFilterProps {
@@ -18,6 +19,7 @@ export function TimeRangeFilter({ current }: TimeRangeFilterProps) {
   const router       = useRouter();
   const pathname     = usePathname();
   const searchParams = useSearchParams();
+  const t            = useTranslations('Performance');
 
   function select(range: TimeRange) {
     const params = new URLSearchParams(searchParams.toString());
@@ -27,9 +29,10 @@ export function TimeRangeFilter({ current }: TimeRangeFilterProps) {
 
   return (
     <div className="inline-flex items-center rounded-xl bg-white/[0.04] border border-white/[0.06] p-0.5 gap-0.5">
-      {OPTIONS.map((opt) => (
+      {RANGE_KEYS.map((opt) => (
         <button
           key={opt.value}
+          type="button"
           onClick={() => select(opt.value)}
           className={cn(
             'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
@@ -38,7 +41,7 @@ export function TimeRangeFilter({ current }: TimeRangeFilterProps) {
               : 'text-white/40 hover:text-white/70'
           )}
         >
-          {opt.label}
+          {t(`timeRange.${opt.labelKey}`)}
         </button>
       ))}
     </div>

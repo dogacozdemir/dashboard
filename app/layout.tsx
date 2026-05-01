@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { cookies } from 'next/headers';
+import { NextIntlClientProvider } from 'next-intl';
+import { LOCALE_COOKIE, normalizeLocale } from '@/lib/i18n/constants';
+import { loadMessages } from '@/lib/i18n/load-messages';
 import './globals.css';
 
 const geistSans = Geist({
@@ -31,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#07070E',
+  themeColor: '#0c070c',
   colorScheme: 'dark',
   width: 'device-width',
   initialScale: 1,
@@ -39,15 +43,23 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const jar = await cookies();
+  const locale = normalizeLocale(jar.get(LOCALE_COOKIE)?.value);
+  const messages = loadMessages(locale);
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full dark`}
     >
-      <body className="h-full antialiased">{children}</body>
+      <body className="h-full antialiased">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }

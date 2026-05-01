@@ -37,15 +37,15 @@ export function GlassCard({
   return (
     <motion.div
       className={cn(
-        'glass glow-inset rounded-2xl',
+        'relative overflow-hidden glass glow-inset rounded-2xl',
         paddingMap[padding],
         glowMap[glow],
         hover && 'glass-hover cursor-pointer',
         gradientBorder && 'gradient-border',
         className,
       )}
-      whileHover={hover ? { y: -2, scale: 1.005 } : undefined}
-      transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+      whileHover={hover ? { y: -3, scale: 1.008 } : undefined}
+      transition={{ type: 'spring', stiffness: 260, damping: 20, mass: 1 }}
       {...props}
     >
       {children}

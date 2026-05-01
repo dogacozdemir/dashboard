@@ -1,5 +1,6 @@
 'use server';
 
+import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { auth } from '@/lib/auth/config';
@@ -116,7 +117,7 @@ export async function createCalendarEvent(
 
   if (error) {
     console.error('[createCalendarEvent]', error.message);
-    return { success: false, error: error.message };
+    return { success: false, error: await getPremiumActionError() };
   }
   return { success: true };
 }

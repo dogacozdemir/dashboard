@@ -14,13 +14,11 @@ export interface UserAchievement {
 }
 
 export interface AchievementDef {
-  key:         string;
-  title:       string;
-  desc:        string;
-  icon:        string;
-  color:       string; // tailwind color name: indigo | cyan | emerald | amber | violet | pink | orange
-  xp:          number;
-  secret?:     boolean;
+  key:   string;
+  icon:  string;
+  color: string;
+  xp:    number;
+  secret?: boolean;
 }
 
 export interface EarnedAchievement extends AchievementDef {
@@ -35,11 +33,10 @@ export interface UserGamificationData {
 }
 
 export interface XPLevel {
-  level:    number;
-  title:    string;
-  minXP:    number;
-  maxXP:    number | null;
-  color:    string;
+  level: number;
+  minXP: number;
+  maxXP: number | null;
+  color: string;
 }
 
 export interface WeeklyDigestData {

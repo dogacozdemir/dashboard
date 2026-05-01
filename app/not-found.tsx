@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { Compass, ArrowLeft } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 
-// This is a server component — use regular div not motion.div
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations('Pages.notFound');
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#07070E]">
       <div className="glass glow-inset rounded-2xl p-8 max-w-md w-full mx-6 text-center space-y-6">
@@ -12,10 +14,8 @@ export default function NotFound() {
 
         <div className="space-y-2">
           <p className="text-5xl font-bold gradient-text-indigo">404</p>
-          <h2 className="text-lg font-semibold text-white/80">Page not found</h2>
-          <p className="text-sm text-white/40 leading-relaxed">
-            This subdomain or page doesn&apos;t exist, or you may not have access.
-          </p>
+          <h2 className="text-lg font-semibold text-white/80">{t('title')}</h2>
+          <p className="text-sm text-white/40 leading-relaxed">{t('description')}</p>
         </div>
 
         <Link
@@ -23,7 +23,7 @@ export default function NotFound() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Dashboard
+          {t('backDashboard')}
         </Link>
       </div>
     </div>

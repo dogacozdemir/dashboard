@@ -1,30 +1,34 @@
+import { getTranslations } from 'next-intl/server';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { Upload, FileText, Image, Video, HardDrive } from 'lucide-react';
 
 const recentUploads = [
-  { name: 'Brand Book v2.1.pdf',      tenant: 'Acme Corp',     size: '24.0 MB', type: 'pdf',   time: '2h ago' },
-  { name: 'Summer Hero Video.mp4',    tenant: 'Brand X',       size: '128 MB',  type: 'video', time: '5h ago' },
-  { name: 'Product Banner Pack.zip',  tenant: 'Nova Digital',  size: '8.4 MB',  type: 'image', time: '1d ago' },
-  { name: 'Logo SVG Variations.zip',  tenant: 'Acme Corp',     size: '2.1 MB',  type: 'image', time: '2d ago' },
-  { name: 'TikTok Campaign Cut.mp4',  tenant: 'Brand X',       size: '64 MB',   type: 'video', time: '3d ago' },
-];
+  { name: 'Brand Book v2.1.pdf', tenant: 'Acme Corp', size: '24.0 MB', type: 'pdf', timeKey: 'demoTime2h' as const },
+  { name: 'Summer Hero Video.mp4', tenant: 'Brand X', size: '128 MB', type: 'video', timeKey: 'demoTime5h' as const },
+  { name: 'Product Banner Pack.zip', tenant: 'Nova Digital', size: '8.4 MB', type: 'image', timeKey: 'demoTime1d' as const },
+  { name: 'Logo SVG Variations.zip', tenant: 'Acme Corp', size: '2.1 MB', type: 'image', timeKey: 'demoTime2d' as const },
+  { name: 'TikTok Campaign Cut.mp4', tenant: 'Brand X', size: '64 MB', type: 'video', timeKey: 'demoTime3d' as const },
+] as const;
 
 const typeIcon: Record<string, React.ComponentType<{ className?: string }>> = {
-  pdf:   FileText,
+  pdf: FileText,
   video: Video,
   image: Image,
 };
 
-export default function AdminUploadsPage() {
+export default async function AdminUploadsPage() {
+  const t = await getTranslations('Admin.uploadsPage');
+
+  const overviewStats = [
+    { label: t('statStorage'), value: '12.4 GB', icon: HardDrive },
+    { label: t('statFilesMonth'), value: '47', icon: Upload },
+    { label: t('statTenantsFiles'), value: '3', icon: FileText },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Storage overview */}
       <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total Storage Used', value: '12.4 GB', icon: HardDrive },
-          { label: 'Files This Month',   value: '47',      icon: Upload },
-          { label: 'Tenants with Files', value: '3',       icon: FileText },
-        ].map((stat) => {
+        {overviewStats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="glass glow-inset rounded-2xl p-5 flex items-center gap-4">
@@ -40,11 +44,10 @@ export default function AdminUploadsPage() {
         })}
       </div>
 
-      {/* Recent uploads */}
       <GlassCard padding="none">
         <div className="px-6 py-4 border-b border-white/[0.06]">
-          <h3 className="text-sm font-semibold text-white/80">Recent Uploads</h3>
-          <p className="text-xs text-white/30 mt-0.5">Across all tenant accounts</p>
+          <h3 className="text-sm font-semibold text-white/80">{t('recentTitle')}</h3>
+          <p className="text-xs text-white/30 mt-0.5">{t('recentSubtitle')}</p>
         </div>
         <div className="divide-y divide-white/[0.04]">
           {recentUploads.map((file, i) => {
@@ -63,7 +66,7 @@ export default function AdminUploadsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-white/50">{file.size}</p>
-                  <p className="text-[10px] text-white/25 mt-0.5">{file.time}</p>
+                  <p className="text-[10px] text-white/25 mt-0.5">{t(file.timeKey)}</p>
                 </div>
               </div>
             );

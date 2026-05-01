@@ -1,0 +1,1014 @@
+{
+  "Common": {
+    "navigationSubtitle": "Navigation",
+    "quickSubtitle": "Quick action",
+    "commandNav": {
+      "dashboardOverview": "Overview · Dashboard",
+      "performanceHub": "Performance Hub",
+      "creativeStudio": "Creative Studio",
+      "seoGeoReport": "SEO & GEO Report",
+      "brandVault": "Brand Vault",
+      "teamChat": "Team Chat",
+      "monoAi": "Mono AI",
+      "opsCalendar": "Ops Calendar",
+      "teamManagement": "Users & Team Management",
+      "profileSettings": "Profile & Settings"
+    },
+    "commandQuick": {
+      "uploadCreative": "Upload new creative",
+      "syncConnected": "Sync from connected accounts",
+      "manageRolesPlatform": "Manage roles (platform)"
+    },
+    "commandPalette": {
+      "ariaClose": "Close",
+      "ariaDialog": "Command Center",
+      "placeholder": "Page, data, or question… (e.g. ROAS status?)",
+      "loadingAi": "MonoAI is interpreting…",
+      "loadingData": "Scanning data…",
+      "empty": "No results · try another term",
+      "footerHint": "↑ ↓ choose · Enter apply · Esc close · Permissions auto-filter",
+      "aiHintSubtitle": "MonoAI · natural language → action",
+      "commandCenterAria": "Command Center",
+      "searchAria": "Search",
+      "searchPlaceholderDesktop": "Search…",
+      "profileSettings": "Profile & Settings",
+      "signOut": "Sign out"
+    }
+  },
+  "Dashboard": {
+    "shell": {
+      "subtitle": "Frictionless Marketing Operations"
+    },
+    "sidebar": {
+      "overview": "Overview",
+      "performanceHub": "Performance",
+      "creativeStudio": "Creative",
+      "seoGeo": "SEO & GEO",
+      "brandVault": "Brand Vault",
+      "chat": "Chat",
+      "monoAi": "Mono AI",
+      "opsCalendar": "Ops Calendar",
+      "badgeLive": "Live",
+      "badgeAi": "AI",
+      "brandLabel": "Brand",
+      "tagline": "AI-First Agency",
+      "workspace": "Workspace",
+      "team": "Team",
+      "collapse": "Collapse",
+      "expandSidebar": "Expand sidebar",
+      "collapseSidebar": "Collapse sidebar"
+    },
+    "mobileNav": {
+      "home": "Home",
+      "performance": "Perf.",
+      "creative": "Studio",
+      "mono": "Mono",
+      "chat": "Chat",
+      "mainNavAria": "Main navigation"
+    },
+    "mobileDrawer": {
+      "openAria": "Open navigation",
+      "closeAria": "Close navigation"
+    }
+  },
+  "Performance": {
+    "metricCard": {
+      "vsPrev": "vs prev"
+    },
+    "metrics": {
+      "totalSpend": "Total spend",
+      "revenue": "Revenue",
+      "avgRoas": "Avg. ROAS",
+      "cpa": "CPA",
+      "clicks": "Clicks",
+      "ctr": "CTR",
+      "impressions": "Impressions",
+      "conversionRate": "Conversion rate"
+    },
+    "disconnected": {
+      "reconnectLabel": "Performance · reconnect",
+      "description": "Your ad API tokens may need refresh or data may not have synced yet. Refresh the connection to restore daily metrics.",
+      "zeroAccountsDescription": "Connect one or more paid channels (Meta, Google Ads, TikTok). Metrics and charts populate automatically after the first sync — you do not need every channel.",
+      "connectMeta": "Connect Meta",
+      "connectGoogle": "Connect Google",
+      "connectTiktok": "Connect TikTok"
+    },
+    "syncPendingBanner": "Accounts connected — pulling the last 30 days from each API. Metrics usually appear within a minute; refresh if numbers stay at zero.",
+    "cockpit": {
+      "toolbarHint": {
+        "srFilters": "Time range and channel scope filters"
+      },
+      "platform": {
+        "all": "All",
+        "meta": "Meta",
+        "google": "Google",
+        "tiktok": "TikTok",
+        "seo": "SEO"
+      },
+      "executiveTrend": {
+        "title": "Executive trend",
+        "subtitle": "Paid media · spend vs attributed revenue · SSOT",
+        "legendSpend": "Spend",
+        "legendRevenue": "Revenue",
+        "tooltipSpend": "Spend {amount}",
+        "tooltipRevenue": "Revenue {amount}"
+      },
+      "seoMatrix": {
+        "sectionTitle": "SEO & Search Console matrix",
+        "sectionSubtitle": "Organic visibility from Google Search Console and on-site experience signals — descriptive metrics only. No campaign recommendations.",
+        "empty": "Connect Google and complete a GSC sync to populate this matrix.",
+        "impressionsTitle": "Impressions",
+        "impressionsHint": "How many times you appeared on Google results surfaces.",
+        "nonBrandTitle": "Non-brand impressions",
+        "nonBrandHint": "Visibility driven by service-intent queries — excluding your brand name tokens.",
+        "positionTitle": "Average position",
+        "positionHint": "Weighted average rank where Google placed your listings for these queries.",
+        "clicksTitle": "Clicks",
+        "clicksHint": "Net visits from Google search to your site for this snapshot.",
+        "ctrTitle": "CTR",
+        "ctrHint": "Of everyone who saw you, what share clicked through.",
+        "indexingTitle": "Indexing issues",
+        "indexingHint": "URLs Google could not crawl or index — requires Search Console indexing export (not wired yet).",
+        "cwvTitle": "Experience metrics",
+        "cwvHint": "Core Web Vitals snapshot — how quickly key pages become usable on mobile."
+      },
+      "comparison": {
+        "title": "Platform comparison",
+        "subtitle": "Paid channels · ROAS, CPA and spend side-by-side",
+        "colPlatform": "Channel",
+        "colSpend": "Spend",
+        "colRevenue": "Revenue",
+        "colRoas": "ROAS",
+        "colCpa": "CPA"
+      }
+    },
+    "blueprint": {
+      "spendCurveTitle": "Spend curve",
+      "spendCurveCaption": "Channel spend appears here after connection.",
+      "revenueRoasTitle": "Revenue / ROAS",
+      "revenueRoasCaption": "Computed from SSOT daily metrics.",
+      "clickEfficiencyTitle": "Click efficiency",
+      "clickEfficiencyCaption": "CTR and conversion cards fill automatically.",
+      "campaignIntensityTitle": "Campaign intensity",
+      "campaignIntensityCaption": "Campaign table fills after sync."
+    },
+    "timeRange": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "recentActivity": {
+      "title": "Activity feed",
+      "empty": "No activity yet",
+      "emptyHint": "Actions across Creative Studio, Performance and Strategy will appear here"
+    },
+    "performancePage": {
+      "connectedBanner": "{platform} connected · syncing last 30 days of data in the background",
+      "overviewHeading": "Performance overview",
+      "platformBreakdown": "Platform breakdown",
+      "channelCaption": "Channel comparison · Frictionless SSOT",
+      "metricSpend": "Spend",
+      "metricImpressions": "Impressions",
+      "metricClicks": "Clicks",
+      "metricRoas": "ROAS",
+      "metricCtr": "CTR"
+    },
+    "campaignTable": {
+      "title": "Active campaigns",
+      "subtitle": "All platforms · real-time sync",
+      "emptyTitle": "No campaigns found",
+      "emptySubtitle": "Campaigns synced from connected ad accounts will appear here",
+      "colCampaign": "Campaign",
+      "colPlatform": "Platform",
+      "colSpend": "Spend",
+      "colImpressions": "Impressions",
+      "colClicks": "Clicks",
+      "colConv": "Conv.",
+      "colRoas": "ROAS",
+      "colStatus": "Status",
+      "statusActive": "Active",
+      "statusPaused": "Paused",
+      "statusCompleted": "Completed"
+    },
+    "spendChart": {
+      "title": "Ad spend trend",
+      "subtitleSuffix": " · all platforms",
+      "subtitleSuffixSingle": " · {channel}",
+      "rangeDaily": "Last 7 days",
+      "rangeWeekly": "Last 12 weeks",
+      "rangeMonthly": "Last 12 months",
+      "rangeFallback": "Last 14 days",
+      "emptyHint": "The spend curve renders after ad accounts connect and daily sync completes.",
+      "noSpendInRange": "No paid spend recorded in this window yet. If you just connected, wait for sync; otherwise check campaign dates or currency.",
+      "platformLabel": {
+        "meta": "Meta",
+        "google": "Google",
+        "tiktok": "TikTok"
+      }
+    },
+    "connectedAccounts": {
+      "title": "Connected ad accounts · SSOT",
+      "accountFallback": "Account",
+      "syncedPrefix": "synced",
+      "relJustNow": "just now",
+      "relMinutes": "{n}m ago",
+      "relHours": "{n}h ago",
+      "relDays": "{n}d ago",
+      "disconnectTitle": "Connect accounts",
+      "disconnectDescription": "No active ad account found. OAuth with Meta, Google, or TikTok to start data flow.",
+      "connectAria": {
+        "meta": "Connect Meta Ads",
+        "google": "Connect Google Ads",
+        "tiktok": "Connect TikTok Ads"
+      },
+      "reauthAria": {
+        "meta": "Refresh Meta authorization",
+        "google": "Refresh Google authorization",
+        "tiktok": "Refresh TikTok authorization"
+      }
+    }
+  },
+  "PremiumMessages": {
+    "actionError": "We're processing this data right now. Please try again in a few minutes. If it persists, contact your team.",
+    "adminActionError": "This action couldn't be completed. Please try again or contact support.",
+    "integrationReconnectHint": "We need to refresh the connection. Re-authorize the platform from Integrations.",
+    "integrationOauthRefresh": "We need to refresh the connection. Re-authorize the relevant platform from Integrations, then try sync again.",
+    "integrationDecrypt": "Secure credentials couldn't be read. Remove and reconnect the account from Integrations. If it persists, contact support.",
+    "integrationRateLimit": "The platform temporarily rate-limited requests. Try sync again in a few minutes.",
+    "integrationMetaApi": "The Meta API didn't respond. Retry sync from Integrations shortly; if it persists, refresh the connection.",
+    "integrationGoogleAdsApi": "Google Ads API didn't return data. Check the connection and try again in a few minutes.",
+    "integrationTiktokApi": "The TikTok API didn't respond. Refresh the connection and retry sync.",
+    "integrationGsc": "Search Console data couldn't be fetched. Check your Google connection and site verification, then retry.",
+    "integrationNetwork": "The network dropped. Check your connection and try again shortly."
+  },
+  "SEO_GEO": {},
+  "Pages": {
+    "notFound": {
+      "title": "Page not found",
+      "description": "This subdomain or page doesn't exist, or you may not have access.",
+      "backDashboard": "Back to dashboard"
+    },
+    "unauthorized": {
+      "title": "Access denied",
+      "description": "You don't have permission to access this resource. Contact your admin if you believe this is an error.",
+      "backDashboard": "Back to dashboard"
+    },
+    "errorRoot": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Our engineering team has been notified.",
+      "refPrefix": "Ref:",
+      "goBack": "Go back",
+      "tryAgain": "Try again"
+    },
+    "errorTenant": {
+      "title": "We couldn't load this section",
+      "fallbackDetail": "Connection or data source may be unavailable. Try again in a moment.",
+      "retry": "Retry"
+    },
+    "profile": {
+      "settingsTitle": "Profile settings",
+      "settingsSubtitle": "Manage your account and preferences"
+    },
+    "calendar": {
+      "title": "Operations calendar",
+      "subtitle": "Milestones, calls & social posts for <brand>{tenant}</brand>",
+      "itemCount": "{count, plural, one {# item} other {# items}}"
+    }
+  },
+  "UI": {
+    "dialogClose": "Close",
+    "dialogFooterClose": "Close"
+  },
+  "Admin": {
+    "nav": {
+      "controlCenter": "Control Center",
+      "opsCenter": "Ops Center",
+      "tenants": "Tenants",
+      "roleArchitect": "Role Architect",
+      "subdomains": "Subdomains",
+      "uploads": "Uploads"
+    },
+    "sidebarTitle": "Admin",
+    "sidebarSubtitle": "God Mode",
+    "headerLive": "LIVE",
+    "headerTitle": "Madmonos Control Center",
+    "platformSettings": "Platform Settings",
+    "footerAccess": "Admin Access",
+    "language": "Language",
+    "controlCenter": {
+      "eyebrow": "Madmonos · Super Admin",
+      "heroTitle": "Welcome, Madmonos",
+      "aiBadge": "AI · DeepSeek",
+      "aiHealthPrefix": "AI system health:",
+      "summary": "Today {activeTenants} tenants are active, {recentSyncs24h} new syncs completed, system performance {perfPercent}.",
+      "tenantOverview": "Tenant overview",
+      "activeShort": "active",
+      "inactiveShort": "inactive",
+      "manageCustomers": "Manage customers",
+      "systemVolume": "System volume",
+      "spendSubtitle": "Last 30 days ad spend ·",
+      "managedAssets": "{count} managed assets",
+      "campaignRows": "{count} campaign rows · Engineering capacity visible",
+      "syncStatus": "Sync status",
+      "healthOk": "Healthy",
+      "healthWarn": "Delayed",
+      "healthBad": "Attention",
+      "roleCardTitle": "Role Architect",
+      "roleCardLead": "Role hierarchy & permission matrix — frictionless management.",
+      "roleCardSub": "New roles, policies, and Brand Mono access layers.",
+      "openRoleBuilder": "Open Role Builder",
+      "dockAria": "Admin quick actions",
+      "dockNewTenant": "New tenant",
+      "dockGlobalNotif": "Global notification",
+      "dockLogs": "System logs",
+      "dockRoleBuilder": "Role Builder",
+      "platformMeta": "Meta",
+      "platformGoogle": "Google",
+      "platformTiktok": "TikTok"
+    },
+    "opsCenter": {
+      "eyebrow": "Ops Center · Task hub",
+      "heroTitle": "Tenant operations in one view",
+      "heroSubtitle": "Track bottlenecks, approvals, and vault health. Use Browse to impersonate the tenant — frictionless Madmonos control.",
+      "activeTasks": "Active tasks",
+      "openTasksSuffix": "{count} open",
+      "emptyStableTitle": "All systems stable, Madmonos is secure",
+      "emptyStableSubtitle": "The task queue is empty. Brand Vault alerts and creative bridges will appear here live.",
+      "taskMissingVault": "Missing data",
+      "taskPendingApproval": "Awaiting approval",
+      "taskRevision": "Revision request",
+      "taskApproved": "Approved",
+      "taskOps": "Operations",
+      "priorityCritical": "Critical",
+      "priorityHigh": "High",
+      "priorityMedium": "Medium",
+      "priorityLow": "Low",
+      "liveScan": "Live scan",
+      "recentApprovals": "Recent approvals",
+      "noApprovalsYet": "No approvals yet.",
+      "goCreative": "Go to Creative",
+      "healthCheck": "Health check",
+      "perfScore": "Performance score",
+      "activeTenantsLabel": "Active tenants",
+      "sync24h": "24h sync"
+    },
+    "tenantsPage": {
+      "statTotal": "Total tenants",
+      "statActive": "Active",
+      "statEnterprise": "Enterprise",
+      "statGrowth": "Growth"
+    },
+    "subdomainsPage": {
+      "statTotal": "Total subdomains",
+      "statCustom": "Custom domains",
+      "statSsl": "SSL active"
+    },
+    "uploadsPage": {
+      "statStorage": "Total storage used",
+      "statFilesMonth": "Files this month",
+      "statTenantsFiles": "Tenants with files",
+      "recentTitle": "Recent uploads",
+      "recentSubtitle": "Across all tenant accounts",
+      "demoTime2h": "2h ago",
+      "demoTime5h": "5h ago",
+      "demoTime1d": "1d ago",
+      "demoTime2d": "2d ago",
+      "demoTime3d": "3d ago"
+    },
+    "rolesPage": {
+      "title": "Role Architect",
+      "description": "Manage global roles and the permission matrix; customize core hierarchy safely with per-tenant overrides. super_admin is locked; management.users stays protected for tenant_admin."
+    },
+    "tenantTable": {
+      "heading": "All brands",
+      "subheading": "{count} tenants · God Mode",
+      "searchPlaceholder": "Search: brand, slug…",
+      "colBrand": "Brand",
+      "colSubdomain": "Subdomain",
+      "colPlan": "Plan",
+      "colUsers": "Users",
+      "colCampaigns": "Campaigns",
+      "colAssets": "Assets",
+      "colStatus": "Status",
+      "colLastActivity": "Last activity",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "impersonate": "View as customer",
+      "menuEdit": "Edit tenant",
+      "menuDeactivate": "Deactivate",
+      "menuActivate": "Activate"
+    },
+    "subdomainRegistry": {
+      "title": "Subdomain registry",
+      "subtitle": "Nginx routing & SSL certificate status",
+      "alias": "Alias:",
+      "ssl": "SSL",
+      "live": "Live",
+      "inactive": "Inactive"
+    },
+    "tasks": {
+      "notifySender": "Madmonos Ops Center",
+      "creativePendingTitle": "Creative awaiting approval: {title}",
+      "creativePendingBody": "Action needed in Creative Studio for client or team approval.",
+      "creativePendingNotifySingle": "{tenant}: new creative awaiting approval — {title}",
+      "creativePendingNotifyMulti": "{tenant}: {count} new creatives awaiting approval",
+      "creativeRevisionTitle": "Revision request: {title}",
+      "creativeRevisionBody": "Client requested revisions; review and respond in Creative Studio.",
+      "creativeRevisionNotify": "{tenant}: revision request — {title}",
+      "actionBrowse": "Browse",
+      "actionGoCreative": "Go to Creative",
+      "actionOpenRevision": "Open revision",
+      "approvedNotify": "{tenant}: creative approved — {title}",
+      "tenantFallback": "Tenant",
+      "vaultMissingTitle": "Brand Vault / knowledge base incomplete",
+      "vaultMissingBodyBoth": "brand_assets and brand_knowledge_chunks are empty for this tenant. Populate the vault for GEO and Mono AI.",
+      "vaultMissingBodyAssets": "No brand_assets rows — add vault content.",
+      "vaultMissingBodyChunks": "brand_knowledge_chunks is empty — check indexing / chunk pipeline."
+    }
+  },
+  "AI_Chat": {},
+  "Auth": {
+    "brandTitle": "madmonos",
+    "tagline": "AI-First Marketing Agency",
+    "signInSubtitle": "Sign in to your brand dashboard",
+    "email": "Email",
+    "password": "Password",
+    "placeholderEmail": "you@brand.com",
+    "placeholderPassword": "••••••••",
+    "submit": "Enter dashboard",
+    "invalidCredentials": "Invalid credentials. Please try again.",
+    "footer": "Powered by Madmonos Engineering Capacity™"
+  },
+  "Features": {
+    "Gamification": {
+      "toastNewAchievement": "🏆 New achievement!",
+      "leaderboardEmptyTitle": "No leaderboard yet",
+      "leaderboardEmptySubtitle": "Shows up as your team earns XP",
+      "leaderboardHeading": "Leaderboard",
+      "leaderboardByXp": "By XP",
+      "youBadge": "You",
+      "badgesCount": "{count} badges",
+      "levelShort": "Lv.{level}",
+      "weeklyDigestTitle": "Weekly digest",
+      "weeklyDigestSubtitle": "What happened this week",
+      "weeklyDigestEmpty": "No activity this week yet",
+      "weeklyStatApproved": "Approved",
+      "weeklyStatRevision": "Revisions",
+      "weeklyStatAi": "AI messages",
+      "weeklyStatActiveDays": "Active days",
+      "weeklyStatNewBadge": "New badges",
+      "trendFirstWeek": "✦ First week",
+      "trendUnchanged": "Unchanged",
+      "goalImpressions": "Impressions",
+      "goalClicks": "Clicks",
+      "goalSpend": "Spend",
+      "brandHealthTitle": "Brand Health",
+      "scoreBandExcellent": "Excellent",
+      "scoreBandGood": "Good",
+      "scoreBandMedium": "Fair",
+      "scoreBandWeak": "Weak",
+      "scoreOutOf": "/ 100",
+      "brandHealthFooterHint": "Complete missing items to raise your score and unlock badges",
+      "pointsSuffix": "+{points} pts",
+      "streakDayShort": "d",
+      "streakDailyLabel": "day streak",
+      "streakLongest": "Best: {count} days",
+      "xpLabel": "XP",
+      "xpProgressCompact": "Lv.{level} · {title}",
+      "xpProgressFull": "Level {level} · {title}",
+      "xpToNext": "<highlight>{xp} XP</highlight> to next level",
+      "anonymousMember": "Member",
+      "levelTitles": {
+        "1": "Newcomer",
+        "2": "Active user",
+        "3": "Expert",
+        "4": "Master",
+        "5": "Elite",
+        "6": "Legend"
+      },
+      "milestones": {
+        "logo": "Logo",
+        "brand-book": "Brand guidelines (PDF)",
+        "color-palette": "Brand colors",
+        "font": "Fonts"
+      },
+      "achievements": {
+        "first_login": {
+          "title": "First step",
+          "desc": "You signed in to the dashboard for the first time"
+        },
+        "first_upload": {
+          "title": "First upload",
+          "desc": "You uploaded your first creative"
+        },
+        "first_approval": {
+          "title": "First approval",
+          "desc": "You approved your first creative"
+        },
+        "first_revision": {
+          "title": "Detail-oriented",
+          "desc": "You sent your first revision request"
+        },
+        "quick_approver": {
+          "title": "Quick approver",
+          "desc": "You approved a creative within 24 hours"
+        },
+        "approval_10": {
+          "title": "Approval master",
+          "desc": "You approved 10 creatives"
+        },
+        "streak_3": {
+          "title": "Streak starter",
+          "desc": "You stayed active 3 days in a row"
+        },
+        "streak_7": {
+          "title": "Weekly streak",
+          "desc": "You stayed active 7 days in a row"
+        },
+        "streak_30": {
+          "title": "Monthly legend",
+          "desc": "You stayed active 30 days in a row"
+        },
+        "ai_explorer": {
+          "title": "AI explorer",
+          "desc": "You used Mono AI for the first time"
+        },
+        "ai_power_user": {
+          "title": "AI power user",
+          "desc": "You sent 50 Mono AI messages"
+        },
+        "first_pdf": {
+          "title": "Report pro",
+          "desc": "You generated your first PDF report"
+        },
+        "brand_milestone_logo": {
+          "title": "Brand logo",
+          "desc": "You added your logo to Brand Vault"
+        },
+        "brand_milestone_guidelines": {
+          "title": "Brand guidelines",
+          "desc": "You uploaded PDF brand guidelines"
+        },
+        "brand_milestone_palette": {
+          "title": "Color palette",
+          "desc": "You added your brand color palette"
+        },
+        "brand_milestone_fonts": {
+          "title": "Typography",
+          "desc": "You uploaded font files"
+        },
+        "brand_builder_50": {
+          "title": "Brand builder",
+          "desc": "You reached 50% Brand Vault completion"
+        },
+        "brand_builder_100": {
+          "title": "Brand legend",
+          "desc": "You completed Brand Vault 100%"
+        },
+        "calendar_pro": {
+          "title": "Calendar pro",
+          "desc": "You created 10+ calendar events"
+        },
+        "reach_100k": {
+          "title": "100K views",
+          "desc": "You reached 100K impressions"
+        }
+      }
+    },
+    "Creative": {
+      "statusApproved": "Approved",
+      "statusPending": "Pending review",
+      "statusRevision": "Needs revision",
+      "filterAll": "All",
+      "filterPending": "Pending",
+      "filterApproved": "Approved",
+      "filterRevision": "Revision",
+      "scheduleAllDates": "All dates",
+      "scheduleUnscheduled": "Unscheduled",
+      "scheduleMonth": "Month",
+      "emptyTitle": "No creative assets yet",
+      "emptySubtitle": "Upload your first asset using the panel above",
+      "filteredEmptyTitle": "No creatives match these filters",
+      "filteredEmptySubtitle": "Try another month, include all dates, or change the review status filter.",
+      "noSchedule": "No schedule",
+      "mediaFallback": "Media",
+      "inspect": "Inspect",
+      "reviewAria": "{title} — {status}",
+      "uploadPanelTitle": "Upload creative assets",
+      "uploadDropTitle": "Drop creative here or click to pick a file",
+      "uploadDropHint": "After file selection, the social post details modal opens before upload.",
+      "modalTitle": "Upload creative as social post",
+      "modalDescription": "This mirrors Ops Calendar → Add Event → Social Post flow.",
+      "selectedFile": "Selected file",
+      "labelPostTitle": "Post title *",
+      "placeholderPostTitle": "Instagram Reel — Product launch",
+      "labelPlatform": "Platform *",
+      "labelCaption": "Caption",
+      "placeholderCaption": "Post caption and hashtags…",
+      "labelScheduleDate": "Schedule date *",
+      "labelScheduleTime": "Schedule time",
+      "cancel": "Cancel",
+      "upload": "Upload",
+      "uploadErrorPresign": "Failed to get upload URL",
+      "uploadErrorS3": "File upload failed ({status})",
+      "uploadErrorSave": "Failed to save creative asset",
+      "uploadErrorGeneric": "Upload failed",
+      "platformMeta": "Meta",
+      "platformGoogle": "Google",
+      "platformTiktok": "TikTok",
+      "platformInstagram": "Instagram",
+      "platformLinkedin": "LinkedIn",
+      "platformX": "X (Twitter)",
+      "revisionThread": {
+        "videoFull": "Full video",
+        "videoTimeRange": "Time range",
+        "videoAudio": "Audio / music",
+        "videoText": "Subtitles / text",
+        "videoColor": "Color / grade",
+        "imageGeneral": "General",
+        "imageColorTone": "Color & tone",
+        "imageTextTypography": "Text & typography",
+        "imageComposition": "Composition",
+        "imageBackground": "Background",
+        "imageSubject": "Subject",
+        "refsHeading": "Reference examples",
+        "refsOptional": "(optional, max 3)",
+        "refDescPlaceholder": "e.g. match this color transition…",
+        "refAdd": "Add reference",
+        "revisionTypeLabel": "Revision type",
+        "aspectNotePlaceholder": "Clear notes for this heading… (left blank, it won't appear in the revision)",
+        "generalNoteLabel": "General note",
+        "expandThread": "Show more",
+        "collapseThread": "Show less",
+        "emptyTitle": "No revisions yet",
+        "emptySubtitle": "Add a note below or approve when ready.",
+        "dangerZoneTitle": "Platform · Permanent delete",
+        "dangerZoneBody": "Removes the creative from the database and S3; cannot be undone.",
+        "deleteCreativeCta": "Delete creative",
+        "placeholderVideoComment": "Write your revision note here…",
+        "placeholderImageComment": "General note (optional) — applies to the whole image; use the headings below for detail.",
+        "sectionVideoDetails": "Video details",
+        "sectionImageDetails": "Image details",
+        "timeRangeLabel": "Time range",
+        "timeRangeFormatHint": "(MM:SS)",
+        "imageDetailsHint": "Pick a heading; each saves separately. Empty fields are omitted and won't appear in the revision.",
+        "aspectNoteCaption": "Your note under this heading",
+        "assetPreview": "Asset preview",
+        "revisionThreadHeading": "Revision thread",
+        "openFullAsset": "Open full asset",
+        "submitRevision": "Send revision",
+        "approve": "Approve",
+        "approveConfirmTitle": "Confirm approval?",
+        "approveConfirmBody": "When approved, this creative is added to the Ops Calendar as a Social Post at the scheduled date/time from upload.",
+        "cancel": "Cancel",
+        "approveConfirmSubmit": "Yes, approve",
+        "deleteConfirmTitle": "Delete creative permanently?",
+        "deleteConfirmBody": "Removes the database row and the file on S3; revision history is deleted. Cannot be undone.",
+        "deleteConfirmSubmit": "Yes, delete",
+        "ariaHideDetails": "Hide revision details",
+        "ariaShowDetails": "Show revision details"
+      }
+    },
+    "CreativePage": {
+      "statPending": "Pending review",
+      "statApproved": "Approved",
+      "statRevision": "Needs revision",
+      "assetsHeading": "Creative assets"
+    },
+    "BrandVaultPage": {
+      "heroTitle": "Brand Vault",
+      "heroSubtitle": "Secure brand assets for {tenant}",
+      "encrypted": "Encrypted storage",
+      "firstUpload": "First upload:",
+      "lastUpdate": "Last update:",
+      "statTotal": "Total files",
+      "statPublic": "Public",
+      "statPrivate": "Private",
+      "filesHeading": "Brand files"
+    },
+    "BrandVault": {
+      "uploadHeading": "Upload brand files",
+      "uploadKindSr": "Asset type",
+      "uploadKindHint": "Select company colors for images; otherwise auto-detection defaults to logo.",
+      "uploaderLabel": "Drop files here or click to browse",
+      "uploaderHint": "Logo (SVG/PNG), brand book (PDF), fonts — max 50 MB",
+      "typeAuto": "Auto (from file)",
+      "typeLogo": "Logo",
+      "typeBrandBook": "Brand guidelines (PDF)",
+      "typePalette": "Brand colors / palette",
+      "typeFont": "Font",
+      "typeOther": "Other",
+      "tabAll": "All",
+      "typeLabelLogo": "Logo",
+      "typeLabelBrandBook": "Brand book",
+      "typeLabelFont": "Font",
+      "typeLabelPalette": "Colors",
+      "typeLabelOther": "Other",
+      "emptyTitle": "Brand Vault is empty",
+      "emptySubtitle": "Upload logos, brand books, fonts and color palettes above",
+      "filteredEmpty": "No assets in this category"
+    },
+    "StrategyPage": {
+      "sectionStrategy": "Strategic intelligence",
+      "sectionMarket": "Market insight",
+      "sectionGeo": "Generative Engine Optimization",
+      "sectionRoadmap": "Technical roadmap"
+    },
+    "Chat": {
+      "placeholder": "Message your team…",
+      "fallbackYou": "You",
+      "teamChatTitle": "Team chat",
+      "workspaceSubtitle": "{tenant} workspace",
+      "live": "Live",
+      "connecting": "Connecting…",
+      "emptyTitle": "No messages yet",
+      "emptySubtitle": "Start a conversation below",
+      "footerHint": "Enter to send · Shift+Enter for new line · Messages are visible to your Madmonos team"
+    },
+    "Notifications": {
+      "luxTitle": "Lux Notification Center",
+      "heading": "Strategic insights",
+      "subtitleUnread": "Madmonos proactive layer — {count} unread notifications",
+      "markAllRead": "Mark all as read",
+      "emptyTitle": "No notifications yet",
+      "emptySubtitle": "New insights appear here in real time.",
+      "realtimeConnected": "Realtime connected",
+      "reconnecting": "Reconnecting…",
+      "teamChat": "Team chat →",
+      "ariaCloseBackdrop": "Close notification panel",
+      "ariaDragClose": "Drag to close panel",
+      "ariaBell": "Notification center",
+      "categoryAiStrategic": "AI Strategic",
+      "categoryAiStrategicSub": "DeepSeek · proactive insight",
+      "categoryOperational": "Operational",
+      "categoryOperationalSub": "Process & approvals",
+      "categorySystem": "System",
+      "categorySystemSub": "Sync & infrastructure",
+      "actionGo": "Go",
+      "actionStrategy": "Go to strategy",
+      "actionCreative": "Review creative",
+      "actionPerformance": "Performance"
+    },
+    "MonoAi": {
+      "inputPlaceholder": "Ask your AI Strategist, generate a PDF, search the web…",
+      "headerTitle": "Mono AI",
+      "headerSubtitle": "monoAI v1 · PDF · Web search · Asset search",
+      "clearHistory": "Clear",
+      "confirmClear": "Clear entire conversation history?",
+      "strategistFor": "AI Strategist for {tenant}",
+      "poweredBy": "Powered by monoAI v1 · Long-term memory enabled",
+      "starter0": "Analyze our current ad performance and suggest optimizations",
+      "starter1": "How can we improve our GEO visibility in ChatGPT and Perplexity?",
+      "starter2": "Create a 30-day content strategy brief as a PDF report",
+      "starter3": "Search web for latest Meta Ads algorithm changes in 2026",
+      "toolRunning": {
+        "generate_pdf": "Generating PDF",
+        "web_fetch": "Reading page",
+        "web_search": "Searching web",
+        "search_assets": "Searching assets"
+      },
+      "toolPill": {
+        "generate_pdf": "PDF",
+        "web_fetch": "Page",
+        "web_search": "Search",
+        "search_assets": "Assets"
+      }
+    },
+    "Profile": {
+      "fullNamePlaceholder": "Your full name",
+      "passwordPlaceholder": "••••••••",
+      "profileInfoHeading": "Profile info",
+      "fullName": "Full name",
+      "email": "Email",
+      "emailHint": "Email cannot be changed here",
+      "saveChanges": "Save changes",
+      "changePasswordHeading": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "updatePassword": "Update password",
+      "toastProfileOk": "Profile updated successfully",
+      "toastProfileFail": "Update failed",
+      "toastPwOk": "Password changed successfully",
+      "toastPwFail": "Update failed",
+      "toastPwMismatch": "New passwords do not match",
+      "toastPwShort": "Password must be at least 8 characters",
+      "planStarter": "Starter",
+      "planGrowth": "Growth",
+      "planEnterprise": "Enterprise"
+    },
+    "DashboardPage": {
+      "yourProfile": "Your profile",
+      "dailyStreak": "day streak",
+      "badgesEarned": "{earned} / {total} badges earned",
+      "earnedBadgesHeading": "Earned badges",
+      "performanceOverview": "Performance overview",
+      "executiveTrendHeading": "Executive pulse",
+      "leaderboardHeading": "Leaderboard",
+      "recentActivity": "Recent activity",
+      "welcomeFallback": "Hello"
+    },
+    "Strategy": {
+      "skeletonLoading": "Loading",
+      "skeletonVisibility": "Preparing search visibility cards…",
+      "skeletonTraffic": "Traffic silhouette…",
+      "skeletonRatio": "Ratio sketch…",
+      "skeletonRank": "Rank ladder…"
+    },
+    "Calendar": {
+      "weekday0": "Sun",
+      "weekday1": "Mon",
+      "weekday2": "Tue",
+      "weekday3": "Wed",
+      "weekday4": "Thu",
+      "weekday5": "Fri",
+      "weekday6": "Sat",
+      "month0": "January",
+      "month1": "February",
+      "month2": "March",
+      "month3": "April",
+      "month4": "May",
+      "month5": "June",
+      "month6": "July",
+      "month7": "August",
+      "month8": "September",
+      "month9": "October",
+      "month10": "November",
+      "month11": "December",
+      "add": "Add",
+      "legendTitle": "Legend",
+      "legendStrategyCall": "Strategy call",
+      "legendSocialPost": "Social post",
+      "legendMilestone": "Milestone",
+      "upcomingTitle": "Upcoming",
+      "upcomingEmpty": "Nothing scheduled",
+      "selectedHeading": "{month} {day} — {count, plural, one {# item} other {# items}}",
+      "typeMilestone": "Milestone",
+      "typeStrategyCall": "Strategy call",
+      "typeSocialPost": "Social post",
+      "detailPlatform": "Platform",
+      "detailCaption": "Caption",
+      "detailCreativeAsset": "Creative asset",
+      "viewCreativeFallback": "View creative",
+      "openCreativeHint": "Click to open in Creative Studio",
+      "detailNotes": "Notes",
+      "joinMeeting": "Join meeting",
+      "durationMin": "{n} min",
+      "modalTitle": "Add calendar event",
+      "modalStrategyCall": "Strategy call",
+      "modalSocialPost": "Social post",
+      "labelTitle": "Title *",
+      "labelNotes": "Notes",
+      "phStrategyTitle": "Monthly strategy call",
+      "phSocialTitle": "Instagram Reel — Product launch",
+      "phNotes": "Optional description…",
+      "labelDate": "Date *",
+      "labelTime": "Time",
+      "labelDurationMin": "Duration (min)",
+      "labelMeetingUrl": "Meeting URL",
+      "phMeetingUrl": "https://meet.google.com/...",
+      "labelPlatform": "Platform",
+      "labelCaption": "Caption",
+      "phCaption": "Post caption and hashtags…",
+      "labelCreativeOptional": "Creative asset (optional)",
+      "noCreativeLinked": "— No creative linked —",
+      "cancel": "Cancel",
+      "createEvent": "Create event",
+      "errorTitleDate": "Title and date are required",
+      "errorCreateFailed": "Failed to create event",
+      "msCompleted": "Completed",
+      "msInProgress": "In progress",
+      "msUpcoming": "Upcoming"
+    },
+    "Team": {
+      "title": "Team management",
+      "subtitle": "Send invites, manage roles, and control access. Operations are gated by <perm>management.users</perm>.",
+      "inviteHeading": "Invite by email",
+      "emailPlaceholder": "you@company.com",
+      "inviteSubmit": "Invite",
+      "membersHeading": "Current members",
+      "membersCount": "{count} people",
+      "revokeAria": "Remove access",
+      "errNoAssignableRole": "No assignable role.",
+      "toastInviteOk": "Invitation sent. Registration completes via the email link.",
+      "toastInviteFail": "Invitation failed.",
+      "toastRoleFail": "Could not update role.",
+      "confirmRevoke": "Remove this user’s access?",
+      "toastRevokeFail": "Could not remove."
+    },
+    "RoleArchitect": {
+      "tabGlobal": "Global roles",
+      "tabTenant": "Tenant override",
+      "rolesReorder": "Roles · drag to reorder",
+      "tenantRolesHeading": "Tenant-specific roles",
+      "newRole": "New role",
+      "slugPlaceholder": "slug (e.g. junior_strategist)",
+      "descPlaceholder": "Description (optional)",
+      "createSubmit": "Create",
+      "matrixHeading": "Permission matrix",
+      "selectRole": "Select a role",
+      "locked": "Locked",
+      "tenantLabel": "Tenant",
+      "globalRoleLabel": "Role (global)",
+      "tenantDenyHeading": "Deny permission for tenant",
+      "tenantDenySub": "Permissions enabled globally can be turned off for this tenant (except super_admin).",
+      "globalOff": "Globally off",
+      "effectiveYes": "Effective: yes",
+      "effectiveNo": "Effective: no (override)",
+      "deny": "Deny",
+      "scopeGlobalOption": "Global role",
+      "tenantScopedOption": "{tenant}: {name}",
+      "errSave": "Could not save",
+      "errOverride": "Could not save override",
+      "errCreate": "Could not create",
+      "errDelete": "Could not delete",
+      "confirmDeleteRole": "Delete this role?"
+    },
+    "StrategyTechnical": {
+      "seoGeo": {
+        "searchVisibilityHeading": "Search & visibility",
+        "coldImpressionsTitle": "Impressions",
+        "coldImpressionsCaption": "Search impressions appear here after Google Search Console sync.",
+        "coldVisitsTitle": "Sessions / clicks",
+        "coldVisitsCaption": "Page and query traffic fills automatically once connected.",
+        "coldCtrTitle": "CTR",
+        "coldCtrCaption": "Click-through rate shaped by content and snippet engineering.",
+        "coldPositionTitle": "Average position",
+        "coldPositionCaption": "Query-level average position computed from GSC data.",
+        "metricImpressions": "Total impressions",
+        "metricVisits": "Visits",
+        "metricCtr": "CTR",
+        "metricAvgPosition": "Avg. position",
+        "geoSubtitleFallback": "Simulated visibility from DeepSeek GEO engine · refresh via cron or pipeline",
+        "geoGapHeading": "GEO gap analysis",
+        "actionPlanHeading": "Action plan",
+        "geoInactiveBody": "GEO intelligence activates after Search Console sync and DeepSeek report generation (cron or manual).",
+        "serviceVisibilityHeading": "Service-based visibility",
+        "serviceVisibilitySub": "GEO · AI citations vs tracked keywords",
+        "avgGeoRankHeading": "Avg. GEO rank",
+        "keywordsAcrossEngines": "{count} keywords across engines",
+        "errorSignalsHeading": "Error signals",
+        "technicalLogsHint": "technical_logs · last 30 days",
+        "cwvEmptyTitle": "Core Web Vitals",
+        "cwvEmptyBody": "When technical SEO logs or PageSpeed simulation arrive, LCP, FID, and CLS rings come alive here. Engineering may be preparing the snapshot while data is pending.",
+        "seoLogInsightHeading": "SEO log insight"
+      },
+      "geoKeyword": {
+        "emptyTitle": "GEO keyword intelligence",
+        "emptyBody": "Run Google OAuth with Search Console, then trigger the GEO simulator (cron or pipeline) to populate DeepSeek visibility scores and action plans per query.",
+        "tableTitle": "GEO keyword performance",
+        "tableSubtitle": "DeepSeek · simulated LLM visibility vs GSC context",
+        "colQuery": "Query",
+        "colAiScore": "AI score",
+        "colGscImps": "GSC imps",
+        "colSteps": "Steps"
+      },
+      "geoRank": {
+        "emptyTitle": "No GEO reports yet",
+        "emptySub": "Keyword tracking across ChatGPT, Perplexity, Google, and Bing will appear here",
+        "aiCitations": "AI citations",
+        "ofGeoKeywords": "{cited} of {total} GEO keywords",
+        "rankedGeo": "Ranked (GEO)",
+        "gscSynced": "GSC queries synced: {count}",
+        "tableHeading": "GEO & organic search",
+        "tableSub": "GEO engines + Google Search Console (last sync)",
+        "gscBadge": "GSC",
+        "clicksImpsCtr": "{clicks} clicks · {imps} imps · CTR {ctr}%",
+        "avgPos": "avg pos",
+        "rankLabel": "rank"
+      },
+      "cwv": {
+        "title": "Core Web Vitals",
+        "subtitle": "Engineering health · SSOT from latest SEO snapshot"
+      }
+    }
+  },
+  "Shared": {
+    "dataDisconnected": {
+      "defaultTitle": "Data stream paused",
+      "defaultDescription": "Ad account connection could not be refreshed or data has not arrived yet. Reconnect to restart the stream.",
+      "reconnectLabel": "Reconnect"
+    },
+    "fileUploader": {
+      "defaultLabel": "Drop files here or click to upload",
+      "defaultHint": "Images, videos, PDFs — up to {maxFiles} files",
+      "ariaUpload": "Upload files",
+      "errPresign": "Failed to get upload URL",
+      "errUploadFailed": "Upload failed",
+      "errS3": "S3 upload failed",
+      "uploadedCount": "{count} file(s) uploaded to S3 ✓"
+    },
+    "relativeTime": {
+      "justNow": "just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "days": "{n}d ago"
+    }
+  },
+  "Layout": {
+    "impersonationBadge": "God Mode · Impersonation",
+    "impersonationBody": "You are acting as customer {tenant}.",
+    "exitImpersonation": "Exit",
+    "mobileSheetDragClose": "{title} — drag to close"
+  }
+}

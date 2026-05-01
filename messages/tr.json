@@ -1,0 +1,1014 @@
+{
+  "Common": {
+    "navigationSubtitle": "Gezinme",
+    "quickSubtitle": "Hızlı işlem",
+    "commandNav": {
+      "dashboardOverview": "Özet · Pano",
+      "performanceHub": "Performans Hub",
+      "creativeStudio": "Kreatif Stüdyo",
+      "seoGeoReport": "SEO & GEO Raporu",
+      "brandVault": "Brand Vault",
+      "teamChat": "Ekip Sohbeti",
+      "monoAi": "Mono AI",
+      "opsCalendar": "Operasyon Takvimi",
+      "teamManagement": "Kullanıcı & Ekip Yönetimi",
+      "profileSettings": "Profil & Ayarlar"
+    },
+    "commandQuick": {
+      "uploadCreative": "Yeni kreatif yükle",
+      "syncConnected": "Bağlı hesaplardan senkron başlat",
+      "manageRolesPlatform": "Rolleri yönet (Platform)"
+    },
+    "commandPalette": {
+      "ariaClose": "Kapat",
+      "ariaDialog": "Komuta Merkezi",
+      "placeholder": "Sayfa, veri veya soru… (örn. ROAS durumu?)",
+      "loadingAi": "MonoAI yorumluyor…",
+      "loadingData": "Veri taranıyor…",
+      "empty": "Sonuç yok · farklı bir terim deneyin",
+      "footerHint": "↑ ↓ seç · Enter uygula · Esc kapat · İzinler otomatik filtrelenir",
+      "aiHintSubtitle": "MonoAI · doğal dil → aksiyon",
+      "commandCenterAria": "Komuta Merkezi",
+      "searchAria": "Ara",
+      "searchPlaceholderDesktop": "Ara…",
+      "profileSettings": "Profil ve Ayarlar",
+      "signOut": "Çıkış yap"
+    }
+  },
+  "Dashboard": {
+    "shell": {
+      "subtitle": "Sürtünmesiz Pazarlama Operasyonları"
+    },
+    "sidebar": {
+      "overview": "Özet",
+      "performanceHub": "Performans",
+      "creativeStudio": "Kreatif",
+      "seoGeo": "SEO & GEO",
+      "brandVault": "Brand Vault",
+      "chat": "Sohbet",
+      "monoAi": "Mono AI",
+      "opsCalendar": "Ops Takvim",
+      "badgeLive": "Canlı",
+      "badgeAi": "AI",
+      "brandLabel": "Marka",
+      "tagline": "AI-Öncelikli Ajans",
+      "workspace": "Çalışma Alanı",
+      "team": "Ekip",
+      "collapse": "Daralt",
+      "expandSidebar": "Kenar çubuğunu genişlet",
+      "collapseSidebar": "Kenar çubuğunu daralt"
+    },
+    "mobileNav": {
+      "home": "Özet",
+      "performance": "Perf.",
+      "creative": "Kreatif",
+      "mono": "Mono",
+      "chat": "Sohbet",
+      "mainNavAria": "Ana gezinme"
+    },
+    "mobileDrawer": {
+      "openAria": "Gezinmeyi aç",
+      "closeAria": "Gezinmeyi kapat"
+    }
+  },
+  "Performance": {
+    "metricCard": {
+      "vsPrev": "önceki döneme göre"
+    },
+    "metrics": {
+      "totalSpend": "Toplam harcama",
+      "revenue": "Gelir",
+      "avgRoas": "Ort. ROAS",
+      "cpa": "CPA",
+      "clicks": "Tıklama",
+      "ctr": "CTR",
+      "impressions": "Gösterim",
+      "conversionRate": "Dönüşüm oranı"
+    },
+    "disconnected": {
+      "reconnectLabel": "Performans · yeniden bağlan",
+      "description": "Reklam API anahtarlarınız yenilenmemiş veya henüz veri akışı oluşmamış olabilir. Bağlantıyı yenileyerek günlük metriklerinizi tekrar açın.",
+      "zeroAccountsDescription": "Meta, Google Ads veya TikTok’tan en az bir kanalı bağlayın. İlk senkron sonrası metrikler ve grafikler otomatik dolar — üçünün birden gerekmez.",
+      "connectMeta": "Meta bağla",
+      "connectGoogle": "Google bağla",
+      "connectTiktok": "TikTok bağla"
+    },
+    "syncPendingBanner": "Hesaplar bağlı — son 30 gün API’den çekiliyor. Metrikler genelde bir dakika içinde görünür; sıfır kalırsa sayfayı yenileyin.",
+    "cockpit": {
+      "toolbarHint": {
+        "srFilters": "Zaman aralığı ve kanal filtresi"
+      },
+      "platform": {
+        "all": "Tümü",
+        "meta": "Meta",
+        "google": "Google",
+        "tiktok": "TikTok",
+        "seo": "SEO"
+      },
+      "executiveTrend": {
+        "title": "Yönetici trendi",
+        "subtitle": "Ücretli medya · harcama ve gelir (SSOT)",
+        "legendSpend": "Harcama",
+        "legendRevenue": "Gelir",
+        "tooltipSpend": "Harcama {amount}",
+        "tooltipRevenue": "Gelir {amount}"
+      },
+      "seoMatrix": {
+        "sectionTitle": "SEO ve Search Console matrisi",
+        "sectionSubtitle": "Google Search Console organik görünürlük ve deneyim sinyalleri — yalnızca açıklayıcı metrikler; kampanya önerisi yok.",
+        "empty": "Google bağlayıp GSC senkronu tamamlayınca matris dolacak.",
+        "impressionsTitle": "Gösterim",
+        "impressionsHint": "Google sonuçlarında kaç kez insanların karşısına çıktınız?",
+        "nonBrandTitle": "Marka dışı gösterim",
+        "nonBrandHint": "Sizi isminizle değil, sunduğunuz hizmetle bulan potansiyel kitle.",
+        "positionTitle": "Ortalama sıralama",
+        "positionHint": "Google sıralamasında — gösterim ağırlıklı ortalama pozisyon.",
+        "clicksTitle": "Tıklama",
+        "clicksHint": "Google üzerinden sitenize gelen net kişi sayısı.",
+        "ctrTitle": "CTR",
+        "ctrHint": "Sizi gören her 100 kişiden kaçı sitenize girmeye karar verdi?",
+        "indexingTitle": "Dizin sorunları",
+        "indexingHint": "Google’ın okuyamadığı sayfalar — Search Console dizin raporu bağlanınca görünür (henüz bağlı değil).",
+        "cwvTitle": "Deneyim metrikleri",
+        "cwvHint": "Core Web Vitals — mobilde sayfalarınız ne kadar hızlı açılıyor?"
+      },
+      "comparison": {
+        "title": "Kanal karşılaştırması",
+        "subtitle": "Ücretli kanallar · ROAS, CPA ve harcama yan yana",
+        "colPlatform": "Kanal",
+        "colSpend": "Harcama",
+        "colRevenue": "Gelir",
+        "colRoas": "ROAS",
+        "colCpa": "CPA"
+      }
+    },
+    "blueprint": {
+      "spendCurveTitle": "Harcama eğrisi",
+      "spendCurveCaption": "Bağlantı sonrası kanal bazlı harcama burada görünür.",
+      "revenueRoasTitle": "Gelir / ROAS",
+      "revenueRoasCaption": "SSOT günlük metriklerinden hesaplanır.",
+      "clickEfficiencyTitle": "Tıklama verimi",
+      "clickEfficiencyCaption": "CTR ve dönüşüm oranı kartları otomatik dolar.",
+      "campaignIntensityTitle": "Kampanya yoğunluğu",
+      "campaignIntensityCaption": "Kampanya tablosu senkron ile dolar."
+    },
+    "timeRange": {
+      "daily": "Günlük",
+      "weekly": "Haftalık",
+      "monthly": "Aylık"
+    },
+    "recentActivity": {
+      "title": "Aktivite akışı",
+      "empty": "Henüz aktivite yok",
+      "emptyHint": "Kreatif Stüdyo, Performans ve Strateji aksiyonları burada görünür"
+    },
+    "performancePage": {
+      "connectedBanner": "{platform} bağlandı · son 30 gün verisi arka planda senkronize ediliyor",
+      "overviewHeading": "Performans özeti",
+      "platformBreakdown": "Kanal dağılımı",
+      "channelCaption": "Kanal karşılaştırması · Sürtünmesiz SSOT",
+      "metricSpend": "Harcama",
+      "metricImpressions": "Gösterim",
+      "metricClicks": "Tıklama",
+      "metricRoas": "ROAS",
+      "metricCtr": "CTR"
+    },
+    "campaignTable": {
+      "title": "Aktif kampanyalar",
+      "subtitle": "Tüm platformlar · canlı senkron",
+      "emptyTitle": "Kampanya bulunamadı",
+      "emptySubtitle": "Bağlı reklam hesaplarından senkronlanan kampanyalar burada görünür",
+      "colCampaign": "Kampanya",
+      "colPlatform": "Platform",
+      "colSpend": "Harcama",
+      "colImpressions": "Gösterim",
+      "colClicks": "Tıklama",
+      "colConv": "Dön.",
+      "colRoas": "ROAS",
+      "colStatus": "Durum",
+      "statusActive": "Aktif",
+      "statusPaused": "Duraklatıldı",
+      "statusCompleted": "Tamamlandı"
+    },
+    "spendChart": {
+      "title": "Harcama trendi",
+      "subtitleSuffix": " · tüm platformlar",
+      "subtitleSuffixSingle": " · {channel}",
+      "rangeDaily": "Son 7 gün",
+      "rangeWeekly": "Son 12 hafta",
+      "rangeMonthly": "Son 12 ay",
+      "rangeFallback": "Son 14 gün",
+      "emptyHint": "Harcama eğrisi, reklam hesapları bağlandıktan ve günlük senkron tamamlandıktan sonra burada çizilir.",
+      "noSpendInRange": "Bu aralıkta kayıtlı harcama yok. Yeni bağladıysanız senkronu bekleyin; değilse kampanya tarihlerini veya para birimini kontrol edin.",
+      "platformLabel": {
+        "meta": "Meta",
+        "google": "Google",
+        "tiktok": "TikTok"
+      }
+    },
+    "connectedAccounts": {
+      "title": "Bağlı reklam hesapları · SSOT",
+      "accountFallback": "Hesap",
+      "syncedPrefix": "senkron:",
+      "relJustNow": "şimdi",
+      "relMinutes": "{n} dk önce",
+      "relHours": "{n} sa önce",
+      "relDays": "{n} gün önce",
+      "disconnectTitle": "Hesapları bağla",
+      "disconnectDescription": "Aktif reklam hesabı yok. Meta, Google veya TikTok için OAuth ile akışı başlatın.",
+      "connectAria": {
+        "meta": "Meta Ads bağla",
+        "google": "Google Ads bağla",
+        "tiktok": "TikTok Ads bağla"
+      },
+      "reauthAria": {
+        "meta": "Meta yetkisini yenile",
+        "google": "Google yetkisini yenile",
+        "tiktok": "TikTok yetkisini yenile"
+      }
+    }
+  },
+  "PremiumMessages": {
+    "actionError": "Sistemimiz şu an bu veriyi işliyor. Lütfen birkaç dakika sonra tekrar deneyin. Sorun sürerse ekibinizle iletişime geçin.",
+    "adminActionError": "İşlem şu an tamamlanamadı. Lütfen tekrar deneyin veya destek ile görüşün.",
+    "integrationReconnectHint": "Bağlantıyı tazelememiz gerekiyor. Entegrasyonlar’dan platformu yeniden yetkilendirin.",
+    "integrationOauthRefresh": "Bağlantıyı tazelememiz gerekiyor. Entegrasyonlar bölümünden ilgili platformu yeniden yetkilendirin; ardından senkronu tekrar deneyin.",
+    "integrationDecrypt": "Güvenli kimlik bilgileri okunamadı. Entegrasyonlar’dan hesabı kaldırıp yeniden bağlamayı deneyin. Sorun sürerse destek ile iletişime geçin.",
+    "integrationRateLimit": "Platform geçici olarak istekleri sınırladı. Birkaç dakika sonra senkronu tekrar deneyin.",
+    "integrationMetaApi": "Meta API şu an yanıt vermedi. Bir süre sonra Entegrasyonlar’dan yeniden senkronize edin; sorun sürerse bağlantıyı tazeleyin.",
+    "integrationGoogleAdsApi": "Google Ads API geçici olarak veri döndürmedi. Bağlantıyı kontrol edip birkaç dakika sonra tekrar deneyin.",
+    "integrationTiktokApi": "TikTok API şu an yanıt vermedi. Bağlantıyı tazeleyip senkronu yeniden deneyin.",
+    "integrationGsc": "Arama Konsolu verisi alınamadı. Google bağlantınızı ve site doğrulamasını kontrol edip tekrar deneyin.",
+    "integrationNetwork": "Ağ bağlantısı kesildi. İnternetinizi kontrol edip kısa bir süre sonra tekrar deneyin."
+  },
+  "SEO_GEO": {},
+  "Pages": {
+    "notFound": {
+      "title": "Sayfa bulunamadı",
+      "description": "Bu alt alan veya sayfa mevcut değil ya da erişiminiz olmayabilir.",
+      "backDashboard": "Panele dön"
+    },
+    "unauthorized": {
+      "title": "Erişim reddedildi",
+      "description": "Bu kaynağa erişim yetkiniz yok. Bir hata olduğunu düşünüyorsanız yöneticinize bildirin.",
+      "backDashboard": "Panele dön"
+    },
+    "errorRoot": {
+      "title": "Bir şeyler ters gitti",
+      "description": "Beklenmeyen bir hata oluştu. Mühendislik ekibimiz bilgilendirildi.",
+      "refPrefix": "Ref:",
+      "goBack": "Geri",
+      "tryAgain": "Yeniden dene"
+    },
+    "errorTenant": {
+      "title": "Bu bölüm yüklenemedi",
+      "fallbackDetail": "Bağlantı veya veri kaynağı kullanılamıyor olabilir. Bir süre sonra tekrar deneyin.",
+      "retry": "Yeniden dene"
+    },
+    "profile": {
+      "settingsTitle": "Profil ayarları",
+      "settingsSubtitle": "Hesabınızı ve tercihlerinizi yönetin"
+    },
+    "calendar": {
+      "title": "Operasyon takvimi",
+      "subtitle": "<brand>{tenant}</brand> için kilometre taşları, görüşmeler ve sosyal gönderiler",
+      "itemCount": "{count, plural, one {# öğe} other {# öğe}}"
+    }
+  },
+  "UI": {
+    "dialogClose": "Kapat",
+    "dialogFooterClose": "Kapat"
+  },
+  "Admin": {
+    "nav": {
+      "controlCenter": "Kontrol Merkezi",
+      "opsCenter": "Operasyon Merkezi",
+      "tenants": "Tenantlar",
+      "roleArchitect": "Rol Mimarı",
+      "subdomains": "Alt alan adları",
+      "uploads": "Yüklemeler"
+    },
+    "sidebarTitle": "Admin",
+    "sidebarSubtitle": "God Mode",
+    "headerLive": "CANLI",
+    "headerTitle": "Madmonos Kontrol Merkezi",
+    "platformSettings": "Platform Ayarları",
+    "footerAccess": "Admin Erişimi",
+    "language": "Dil",
+    "controlCenter": {
+      "eyebrow": "Madmonos · Süper Admin",
+      "heroTitle": "Hoş geldin, Madmonos",
+      "aiBadge": "AI · DeepSeek",
+      "aiHealthPrefix": "AI sistem sağlığı:",
+      "summary": "Bugün {activeTenants} tenant aktif, {recentSyncs24h} yeni senkron tamamlandı, sistem performansı {perfPercent}.",
+      "tenantOverview": "Tenant özeti",
+      "activeShort": "aktif",
+      "inactiveShort": "pasif",
+      "manageCustomers": "Müşterileri yönet",
+      "systemVolume": "Sistem hacmi",
+      "spendSubtitle": "Son 30 gün reklam harcaması ·",
+      "managedAssets": "{count} yönetilen varlık",
+      "campaignRows": "{count} kampanya kaydı · Mühendislik kapasitesi görünür",
+      "syncStatus": "Senkron durumu",
+      "healthOk": "Sağlıklı",
+      "healthWarn": "Gecikme",
+      "healthBad": "Dikkat",
+      "roleCardTitle": "Rol mimarı",
+      "roleCardLead": "Rol hiyerarşisi ve izin matrisi — sürtünmesiz yönetim.",
+      "roleCardSub": "Yeni rol, politika ve Brand Mono erişim katmanları.",
+      "openRoleBuilder": "Rol oluşturucuyu aç",
+      "dockAria": "Admin hızlı aksiyonlar",
+      "dockNewTenant": "Yeni tenant",
+      "dockGlobalNotif": "Global bildirim",
+      "dockLogs": "Sistem logları",
+      "dockRoleBuilder": "Rol oluşturucu",
+      "platformMeta": "Meta",
+      "platformGoogle": "Google",
+      "platformTiktok": "TikTok"
+    },
+    "opsCenter": {
+      "eyebrow": "Ops merkezi · Görev merkezi",
+      "heroTitle": "Tenant operasyonları tek ekranda",
+      "heroSubtitle": "Darboğazları, onayları ve vault sağlığını takip edin. Gözat ile ilgili tenant’a kimlik taklidi yaparak geçin — sürtünmesiz Madmonos kontrolü.",
+      "activeTasks": "Aktif görevler",
+      "openTasksSuffix": "{count} açık",
+      "emptyStableTitle": "Tüm sistem stabil, Madmonos güvende",
+      "emptyStableSubtitle": "Açık görev kuyruğu boş. Brand Vault uyarıları ve kreatif köprüleri anlık olarak burada belirecek.",
+      "taskMissingVault": "Eksik veri",
+      "taskPendingApproval": "Onay bekliyor",
+      "taskRevision": "Revize talebi",
+      "taskApproved": "Onay geldi",
+      "taskOps": "Operasyon",
+      "priorityCritical": "Kritik",
+      "priorityHigh": "Yüksek",
+      "priorityMedium": "Orta",
+      "priorityLow": "Düşük",
+      "liveScan": "Canlı tarama",
+      "recentApprovals": "Son onaylar",
+      "noApprovalsYet": "Henüz onay kaydı yok.",
+      "goCreative": "Kreative git",
+      "healthCheck": "Sağlık kontrolü",
+      "perfScore": "Performans skoru",
+      "activeTenantsLabel": "Aktif tenant",
+      "sync24h": "24s senkron"
+    },
+    "tenantsPage": {
+      "statTotal": "Toplam tenant",
+      "statActive": "Aktif",
+      "statEnterprise": "Enterprise",
+      "statGrowth": "Growth"
+    },
+    "subdomainsPage": {
+      "statTotal": "Toplam alt alan",
+      "statCustom": "Özel alan adları",
+      "statSsl": "SSL aktif"
+    },
+    "uploadsPage": {
+      "statStorage": "Kullanılan depolama",
+      "statFilesMonth": "Bu ay dosya",
+      "statTenantsFiles": "Dosyası olan tenantlar",
+      "recentTitle": "Son yüklemeler",
+      "recentSubtitle": "Tüm tenant hesaplarında",
+      "demoTime2h": "2 saat önce",
+      "demoTime5h": "5 saat önce",
+      "demoTime1d": "1 gün önce",
+      "demoTime2d": "2 gün önce",
+      "demoTime3d": "3 gün önce"
+    },
+    "rolesPage": {
+      "title": "Rol mimarı",
+      "description": "Global rolleri ve izin matrisini yönetin; tenant bazlı override ile çekirdek hiyerarşiyi güvenli sınırlar içinde özelleştirin. super_admin kilitlidir; tenant_admin için management.users korunur."
+    },
+    "tenantTable": {
+      "heading": "Tüm markalar",
+      "subheading": "{count} tenant · God Mode",
+      "searchPlaceholder": "Ara: marka, slug…",
+      "colBrand": "Marka",
+      "colSubdomain": "Alt alan",
+      "colPlan": "Plan",
+      "colUsers": "Kullanıcı",
+      "colCampaigns": "Kampanya",
+      "colAssets": "Varlık",
+      "colStatus": "Durum",
+      "colLastActivity": "Son aktivite",
+      "statusActive": "Aktif",
+      "statusInactive": "Pasif",
+      "impersonate": "Müşteri gözüyle gör",
+      "menuEdit": "Tenant düzenle",
+      "menuDeactivate": "Pasifleştir",
+      "menuActivate": "Aktifleştir"
+    },
+    "subdomainRegistry": {
+      "title": "Alt alan kaydı",
+      "subtitle": "Nginx yönlendirme ve SSL sertifika durumu",
+      "alias": "Takma ad:",
+      "ssl": "SSL",
+      "live": "Canlı",
+      "inactive": "Pasif"
+    },
+    "tasks": {
+      "notifySender": "Madmonos Ops Merkezi",
+      "creativePendingTitle": "Kreatif onay bekliyor: {title}",
+      "creativePendingBody": "Müşteri veya ekip onayı için Creative Studio’da aksiyon gerekli.",
+      "creativePendingNotifySingle": "{tenant}: yeni kreatif onay bekliyor — {title}",
+      "creativePendingNotifyMulti": "{tenant}: {count} yeni kreatif onay bekliyor",
+      "creativeRevisionTitle": "Revize talebi: {title}",
+      "creativeRevisionBody": "Müşteri revizyon istedi; Creative Studio’da inceleme ve yanıt gerekli.",
+      "creativeRevisionNotify": "{tenant}: revize talebi — {title}",
+      "actionBrowse": "Gözat",
+      "actionGoCreative": "Kreative git",
+      "actionOpenRevision": "Revizeyi aç",
+      "approvedNotify": "{tenant}: kreatif onaylandı — {title}",
+      "tenantFallback": "Tenant",
+      "vaultMissingTitle": "Brand Vault / bilgi tabanı eksik",
+      "vaultMissingBodyBoth": "Bu tenant için brand_assets ve brand_knowledge_chunks henüz boş. GEO ve MonoAI için vault doldurulmalı.",
+      "vaultMissingBodyAssets": "brand_assets kaydı yok — vault içeriği eklenmeli.",
+      "vaultMissingBodyChunks": "brand_knowledge_chunks boş — indeksleme / chunk pipeline kontrol edilmeli."
+    }
+  },
+  "AI_Chat": {},
+  "Auth": {
+    "brandTitle": "madmonos",
+    "tagline": "AI-Öncelikli Pazarlama Ajansı",
+    "signInSubtitle": "Marka panonuza giriş yapın",
+    "email": "E-posta",
+    "password": "Şifre",
+    "placeholderEmail": "senin@marka.com",
+    "placeholderPassword": "••••••••",
+    "submit": "Panele gir",
+    "invalidCredentials": "Geçersiz bilgiler. Lütfen tekrar deneyin.",
+    "footer": "Madmonos Mühendislik Kapasitesi ile güçlendirilmiştir™"
+  },
+  "Features": {
+    "Gamification": {
+      "toastNewAchievement": "🏆 Yeni Başarı!",
+      "leaderboardEmptyTitle": "Henüz sıralama yok",
+      "leaderboardEmptySubtitle": "Aktivite biriktikçe burada görünecek",
+      "leaderboardHeading": "Sıralama",
+      "leaderboardByXp": "XP'e göre",
+      "youBadge": "Sen",
+      "badgesCount": "{count} rozet",
+      "levelShort": "Lv.{level}",
+      "weeklyDigestTitle": "Haftalık Özet",
+      "weeklyDigestSubtitle": "Bu hafta yapılanlar",
+      "weeklyDigestEmpty": "Bu hafta henüz aktivite yok",
+      "weeklyStatApproved": "Onaylanan",
+      "weeklyStatRevision": "Revizyon",
+      "weeklyStatAi": "AI Mesaj",
+      "weeklyStatActiveDays": "Aktif Gün",
+      "weeklyStatNewBadge": "Yeni Rozet",
+      "trendFirstWeek": "✦ İlk hafta",
+      "trendUnchanged": "Değişmedi",
+      "goalImpressions": "Görüntülenme",
+      "goalClicks": "Tıklama",
+      "goalSpend": "Harcama",
+      "brandHealthTitle": "Brand Health",
+      "scoreBandExcellent": "Mükemmel",
+      "scoreBandGood": "İyi",
+      "scoreBandMedium": "Orta",
+      "scoreBandWeak": "Zayıf",
+      "scoreOutOf": "/ 100",
+      "brandHealthFooterHint": "Eksik kalemleri tamamlayarak skoru ve rozetleri aç",
+      "pointsSuffix": "+{points}p",
+      "streakDayShort": "gün",
+      "streakDailyLabel": "günlük seri",
+      "streakLongest": "En uzun: {count} gün",
+      "xpLabel": "XP",
+      "xpProgressCompact": "Lv.{level} · {title}",
+      "xpProgressFull": "Level {level} · {title}",
+      "xpToNext": "Sonraki seviyeye <highlight>{xp} XP</highlight> kaldı",
+      "anonymousMember": "Üye",
+      "levelTitles": {
+        "1": "Yeni Üye",
+        "2": "Aktif Kullanıcı",
+        "3": "Uzman",
+        "4": "Usta",
+        "5": "Elite",
+        "6": "Efsane"
+      },
+      "milestones": {
+        "logo": "Logo",
+        "brand-book": "Marka rehberi (PDF)",
+        "color-palette": "Şirket renkleri",
+        "font": "Fontlar"
+      },
+      "achievements": {
+        "first_login": {
+          "title": "İlk Adım",
+          "desc": "Dashboarda ilk kez giriş yaptın"
+        },
+        "first_upload": {
+          "title": "İlk Yükleme",
+          "desc": "İlk kreatifini yükledin"
+        },
+        "first_approval": {
+          "title": "İlk Onay",
+          "desc": "İlk kreatifini onayladın"
+        },
+        "first_revision": {
+          "title": "Detaycı",
+          "desc": "İlk revizyon talebini gönderdin"
+        },
+        "quick_approver": {
+          "title": "Hızlı Onaylayıcı",
+          "desc": "24 saat içinde kreatif onayladın"
+        },
+        "approval_10": {
+          "title": "Onay Ustası",
+          "desc": "10 kreatif onayladın"
+        },
+        "streak_3": {
+          "title": "Seri Başlıyor",
+          "desc": "3 gün üst üste aktif oldun"
+        },
+        "streak_7": {
+          "title": "Haftalık Seri",
+          "desc": "7 gün üst üste aktif oldun"
+        },
+        "streak_30": {
+          "title": "Aylık Efsane",
+          "desc": "30 gün üst üste aktif oldun"
+        },
+        "ai_explorer": {
+          "title": "AI Kaşifi",
+          "desc": "Mono AI'ı ilk kez kullandın"
+        },
+        "ai_power_user": {
+          "title": "AI Uzmanı",
+          "desc": "50 Mono AI mesajı gönderdin"
+        },
+        "first_pdf": {
+          "title": "Rapor Ustası",
+          "desc": "İlk PDF raporu oluşturdun"
+        },
+        "brand_milestone_logo": {
+          "title": "Marka Logosu",
+          "desc": "Logo dosyanı Brand Vault'a ekledin"
+        },
+        "brand_milestone_guidelines": {
+          "title": "Marka Rehberi",
+          "desc": "PDF marka rehberini yükledin"
+        },
+        "brand_milestone_palette": {
+          "title": "Renk Paleti",
+          "desc": "Şirket renk paletini ekledin"
+        },
+        "brand_milestone_fonts": {
+          "title": "Tipografi",
+          "desc": "Font dosyalarını ekledin"
+        },
+        "brand_builder_50": {
+          "title": "Marka İnşacısı",
+          "desc": "Brand Vault'u %50 tamamladın"
+        },
+        "brand_builder_100": {
+          "title": "Marka Efsanesi",
+          "desc": "Brand Vault'u %100 tamamladın"
+        },
+        "calendar_pro": {
+          "title": "Takvim Uzmanı",
+          "desc": "10+ takvim etkinliği oluşturdun"
+        },
+        "reach_100k": {
+          "title": "100K Görünüm",
+          "desc": "100K impression'a ulaştın"
+        }
+      }
+    },
+    "Creative": {
+      "statusApproved": "Onaylandı",
+      "statusPending": "İncelemede",
+      "statusRevision": "Revizyon Gerekli",
+      "filterAll": "Tümü",
+      "filterPending": "Bekleyen",
+      "filterApproved": "Onaylı",
+      "filterRevision": "Revizyon",
+      "scheduleAllDates": "Tüm tarihler",
+      "scheduleUnscheduled": "Tanımsız",
+      "scheduleMonth": "Ay",
+      "emptyTitle": "Henüz kreatif yok",
+      "emptySubtitle": "Yukarıdaki panelden ilk dosyanı yükle",
+      "filteredEmptyTitle": "Filtrelere uygun kreatif yok",
+      "filteredEmptySubtitle": "Başka bir ay seçin, tüm tarihleri dahil edin veya durum filtresini değiştirin.",
+      "noSchedule": "Plan yok",
+      "mediaFallback": "Medya",
+      "inspect": "İncele",
+      "reviewAria": "{title} — {status}",
+      "uploadPanelTitle": "Kreatif yükle",
+      "uploadDropTitle": "Dosyayı buraya bırakın veya tıklayarak seçin",
+      "uploadDropHint": "Dosya seçiminden sonra yüklemeden önce sosyal gönderi detayları açılır.",
+      "modalTitle": "Sosyal gönderi olarak yükle",
+      "modalDescription": "Bu akış Ops Takvimindeki Sosyal Gönderi ekleme adımlarını yansıtır.",
+      "selectedFile": "Seçilen dosya",
+      "labelPostTitle": "Gönderi başlığı *",
+      "placeholderPostTitle": "Instagram Reels · Ürün lansmanı",
+      "labelPlatform": "Platform *",
+      "labelCaption": "Açıklama",
+      "placeholderCaption": "Gönderi metni ve etiketler…",
+      "labelScheduleDate": "Planlanan tarih *",
+      "labelScheduleTime": "Planlanan saat",
+      "cancel": "İptal",
+      "upload": "Yükle",
+      "uploadErrorPresign": "Yükleme bağlantısı alınamadı",
+      "uploadErrorS3": "Dosya yükleme başarısız ({status})",
+      "uploadErrorSave": "Kreatif kaydedilemedi",
+      "uploadErrorGeneric": "Yükleme başarısız",
+      "platformMeta": "Meta",
+      "platformGoogle": "Google",
+      "platformTiktok": "TikTok",
+      "platformInstagram": "Instagram",
+      "platformLinkedin": "LinkedIn",
+      "platformX": "X (Twitter)",
+      "revisionThread": {
+        "videoFull": "Tüm video",
+        "videoTimeRange": "Belirli süre",
+        "videoAudio": "Ses / müzik",
+        "videoText": "Altyazı / metin",
+        "videoColor": "Renk / ton",
+        "imageGeneral": "Genel",
+        "imageColorTone": "Renk & ton",
+        "imageTextTypography": "Metin & tipografi",
+        "imageComposition": "Kompozisyon",
+        "imageBackground": "Arka plan",
+        "imageSubject": "Ana obje",
+        "refsHeading": "Referans örnekler",
+        "refsOptional": "(opsiyonel, en fazla 3)",
+        "refDescPlaceholder": "Örn. bu örnekteki renk geçişi gibi olsun…",
+        "refAdd": "Referans ekle",
+        "revisionTypeLabel": "Revizyon tipi",
+        "aspectNotePlaceholder": "Bu başlık için net talimatınızı yazın… (boş bırakılırsa revizyonda gösterilmez)",
+        "generalNoteLabel": "Genel not",
+        "expandThread": "Devamını göster",
+        "collapseThread": "Daralt",
+        "emptyTitle": "Henüz revizyon yok",
+        "emptySubtitle": "Aşağıdan not ekleyebilir veya onaylayabilirsiniz.",
+        "dangerZoneTitle": "Platform · Kalıcı silme",
+        "dangerZoneBody": "Kreatif veritabanından ve S3 deposundan kaldırılır; geri alınamaz.",
+        "deleteCreativeCta": "Kreatifi sil",
+        "placeholderVideoComment": "Revizyon notunu buraya yaz…",
+        "placeholderImageComment": "Genel not (opsiyonel) — tüm görsele dair; detaylar için aşağıdaki başlıkları kullanın.",
+        "sectionVideoDetails": "Video detayları",
+        "sectionImageDetails": "Görsel detayları",
+        "timeRangeLabel": "Süre aralığı",
+        "timeRangeFormatHint": "(SS:DD)",
+        "imageDetailsHint": "Başlık seçin; her biri ayrı kaydedilir. Boş bırakılanlar gönderilmez ve revizyonda görünmez.",
+        "aspectNoteCaption": "Bu başlık altındaki notunuz",
+        "assetPreview": "Önizleme",
+        "revisionThreadHeading": "Revizyon akışı",
+        "openFullAsset": "Tam dosyayı aç",
+        "submitRevision": "Revizyon gönder",
+        "approve": "Onayla",
+        "approveConfirmTitle": "Onaylamak istediğinizden emin misiniz?",
+        "approveConfirmBody": "Bu kreatifi onayladığınızda, yükleme sırasında girilen tarih/saatte Ops Takvimi'ne sosyal paylaşım olarak eklenecektir.",
+        "cancel": "İptal",
+        "approveConfirmSubmit": "Evet, onayla",
+        "deleteConfirmTitle": "Kreatifi kalıcı olarak sil?",
+        "deleteConfirmBody": "Bu işlem kaydı ve S3'teki dosyayı kaldırır; revizyon geçmişi silinir. Geri alınamaz.",
+        "deleteConfirmSubmit": "Evet, sil",
+        "ariaHideDetails": "Revizyon detaylarını gizle",
+        "ariaShowDetails": "Revizyon detaylarını göster"
+      }
+    },
+    "CreativePage": {
+      "statPending": "İncelemede",
+      "statApproved": "Onaylandı",
+      "statRevision": "Revizyon gerekli",
+      "assetsHeading": "Kreatif dosyalar"
+    },
+    "BrandVaultPage": {
+      "heroTitle": "Brand Vault",
+      "heroSubtitle": "{tenant} için güvenli marka varlıkları",
+      "encrypted": "Şifreli depolama",
+      "firstUpload": "İlk yükleme:",
+      "lastUpdate": "Son güncelleme:",
+      "statTotal": "Toplam dosya",
+      "statPublic": "Herkese açık",
+      "statPrivate": "Özel",
+      "filesHeading": "Marka dosyaları"
+    },
+    "BrandVault": {
+      "uploadHeading": "Marka dosyaları yükle",
+      "uploadKindSr": "Dosya türü",
+      "uploadKindHint": "Görselleri şirket renkleri olarak işaretlemek için seçin; aksi halde otomatik logo tipi kullanılır.",
+      "uploaderLabel": "Dosyaları buraya bırakın veya tıklayın",
+      "uploaderHint": "Logo (SVG/PNG), marka rehberi (PDF), fontlar — en fazla 50 MB",
+      "typeAuto": "Otomatik (dosyaya göre)",
+      "typeLogo": "Logo",
+      "typeBrandBook": "Marka rehberi (PDF)",
+      "typePalette": "Şirket renkleri / palet",
+      "typeFont": "Font",
+      "typeOther": "Diğer",
+      "tabAll": "Tümü",
+      "typeLabelLogo": "Logo",
+      "typeLabelBrandBook": "Marka rehberi",
+      "typeLabelFont": "Font",
+      "typeLabelPalette": "Renkler",
+      "typeLabelOther": "Diğer",
+      "emptyTitle": "Brand Vault boş",
+      "emptySubtitle": "Logo, marka rehberi, font ve renk paletlerini yukarıdan yükleyin",
+      "filteredEmpty": "Bu kategoride dosya yok"
+    },
+    "StrategyPage": {
+      "sectionStrategy": "Stratejik istihbarat",
+      "sectionMarket": "Pazar içgörüsü",
+      "sectionGeo": "Üretken motor optimizasyonu",
+      "sectionRoadmap": "Teknik yol haritası"
+    },
+    "Chat": {
+      "placeholder": "Ekibine yaz…",
+      "fallbackYou": "Sen",
+      "teamChatTitle": "Ekip sohbeti",
+      "workspaceSubtitle": "{tenant} çalışma alanı",
+      "live": "Canlı",
+      "connecting": "Bağlanıyor…",
+      "emptyTitle": "Henüz mesaj yok",
+      "emptySubtitle": "Aşağıdan sohbeti başlatın",
+      "footerHint": "Göndermek için Enter · Yeni satır için Shift+Enter · Mesajlar Madmonos ekibinize görünür"
+    },
+    "Notifications": {
+      "luxTitle": "Lux Bildirim Merkezi",
+      "heading": "Stratejik içgörüler",
+      "subtitleUnread": "Madmonos proaktif katmanı — {count} okunmamış bildirim",
+      "markAllRead": "Tümünü okundu işaretle",
+      "emptyTitle": "Henüz bildirim yok",
+      "emptySubtitle": "Yeni içgörüler anlık olarak burada belirir.",
+      "realtimeConnected": "Realtime bağlı",
+      "reconnecting": "Yeniden bağlanıyor…",
+      "teamChat": "Ekip sohbeti →",
+      "ariaCloseBackdrop": "Bildirim panelini kapat",
+      "ariaDragClose": "Paneli sürükleyerek kapat",
+      "ariaBell": "Bildirim merkezi",
+      "categoryAiStrategic": "AI Stratejik",
+      "categoryAiStrategicSub": "DeepSeek · proaktif içgörü",
+      "categoryOperational": "Operasyonel",
+      "categoryOperationalSub": "Süreç ve onay",
+      "categorySystem": "Sistem",
+      "categorySystemSub": "Senkron ve altyapı",
+      "actionGo": "Git",
+      "actionStrategy": "Stratejiye git",
+      "actionCreative": "Kreatifi incele",
+      "actionPerformance": "Performans"
+    },
+    "MonoAi": {
+      "inputPlaceholder": "AI Stratejistine sor, PDF üret, web'de ara…",
+      "headerTitle": "Mono AI",
+      "headerSubtitle": "monoAI v1 · PDF · Web araması · Varlık araması",
+      "clearHistory": "Temizle",
+      "confirmClear": "Tüm konuşma geçmişi silinsin mi?",
+      "strategistFor": "{tenant} için AI Stratejisti",
+      "poweredBy": "monoAI v1 · Uzun süreli bellek açık",
+      "starter0": "Reklam performansımızı analiz et ve optimizasyon öner",
+      "starter1": "ChatGPT ve Perplexity’de GEO görünürlüğümü nasıl artırırım?",
+      "starter2": "30 günlük içerik stratejisi özetini PDF rapor olarak üret",
+      "starter3": "2026’da Meta Ads algoritmasındaki son değişiklikleri web’de ara",
+      "toolRunning": {
+        "generate_pdf": "PDF oluşturuluyor",
+        "web_fetch": "Sayfa okunuyor",
+        "web_search": "Web aranıyor",
+        "search_assets": "Dosyalar aranıyor"
+      },
+      "toolPill": {
+        "generate_pdf": "PDF",
+        "web_fetch": "Sayfa",
+        "web_search": "Arama",
+        "search_assets": "Dosyalar"
+      }
+    },
+    "Profile": {
+      "fullNamePlaceholder": "Ad soyad",
+      "passwordPlaceholder": "••••••••",
+      "profileInfoHeading": "Profil bilgisi",
+      "fullName": "Ad soyad",
+      "email": "E-posta",
+      "emailHint": "E-posta buradan değiştirilemez",
+      "saveChanges": "Değişiklikleri kaydet",
+      "changePasswordHeading": "Şifreyi değiştir",
+      "currentPassword": "Mevcut şifre",
+      "newPassword": "Yeni şifre",
+      "confirmPassword": "Yeni şifre (tekrar)",
+      "updatePassword": "Şifreyi güncelle",
+      "toastProfileOk": "Profil güncellendi",
+      "toastProfileFail": "Güncelleme başarısız",
+      "toastPwOk": "Şifre değiştirildi",
+      "toastPwFail": "Güncelleme başarısız",
+      "toastPwMismatch": "Yeni şifreler eşleşmiyor",
+      "toastPwShort": "Şifre en az 8 karakter olmalı",
+      "planStarter": "Starter",
+      "planGrowth": "Büyüme",
+      "planEnterprise": "Kurumsal"
+    },
+    "DashboardPage": {
+      "yourProfile": "Senin Profil",
+      "dailyStreak": "günlük seri",
+      "badgesEarned": "{earned} / {total} rozet kazanıldı",
+      "earnedBadgesHeading": "Kazanılan Rozetler",
+      "performanceOverview": "Performans Özeti",
+      "executiveTrendHeading": "Yönetici özeti",
+      "leaderboardHeading": "Sıralama",
+      "recentActivity": "Son Aktivite",
+      "welcomeFallback": "Merhaba"
+    },
+    "Strategy": {
+      "skeletonLoading": "Yükleniyor",
+      "skeletonVisibility": "Arama görünürlüğü kartları hazırlanıyor…",
+      "skeletonTraffic": "Trafik silüeti…",
+      "skeletonRatio": "Oran eskizi…",
+      "skeletonRank": "Sıra merdiveni…"
+    },
+    "Calendar": {
+      "weekday0": "Paz",
+      "weekday1": "Pzt",
+      "weekday2": "Sal",
+      "weekday3": "Çar",
+      "weekday4": "Per",
+      "weekday5": "Cum",
+      "weekday6": "Cmt",
+      "month0": "Ocak",
+      "month1": "Şubat",
+      "month2": "Mart",
+      "month3": "Nisan",
+      "month4": "Mayıs",
+      "month5": "Haziran",
+      "month6": "Temmuz",
+      "month7": "Ağustos",
+      "month8": "Eylül",
+      "month9": "Ekim",
+      "month10": "Kasım",
+      "month11": "Aralık",
+      "add": "Ekle",
+      "legendTitle": "Gösterge",
+      "legendStrategyCall": "Strateji görüşmesi",
+      "legendSocialPost": "Sosyal gönderi",
+      "legendMilestone": "Kilometre taşı",
+      "upcomingTitle": "Yaklaşan",
+      "upcomingEmpty": "Planlanmış bir şey yok",
+      "selectedHeading": "{month} {day} — {count, plural, one {# öğe} other {# öğe}}",
+      "typeMilestone": "Kilometre taşı",
+      "typeStrategyCall": "Strateji görüşmesi",
+      "typeSocialPost": "Sosyal gönderi",
+      "detailPlatform": "Platform",
+      "detailCaption": "Açıklama",
+      "detailCreativeAsset": "Kreatif varlık",
+      "viewCreativeFallback": "Kreatifi görüntüle",
+      "openCreativeHint": "Creative Studio’da açmak için tıklayın",
+      "detailNotes": "Notlar",
+      "joinMeeting": "Toplantıya katıl",
+      "durationMin": "{n} dk",
+      "modalTitle": "Takvim etkinliği ekle",
+      "modalStrategyCall": "Strateji görüşmesi",
+      "modalSocialPost": "Sosyal gönderi",
+      "labelTitle": "Başlık *",
+      "labelNotes": "Notlar",
+      "phStrategyTitle": "Aylık strateji görüşmesi",
+      "phSocialTitle": "Instagram Reels — Ürün lansmanı",
+      "phNotes": "İsteğe bağlı açıklama…",
+      "labelDate": "Tarih *",
+      "labelTime": "Saat",
+      "labelDurationMin": "Süre (dk)",
+      "labelMeetingUrl": "Toplantı URL’si",
+      "phMeetingUrl": "https://meet.google.com/...",
+      "labelPlatform": "Platform",
+      "labelCaption": "Açıklama metni",
+      "phCaption": "Gönderi metni ve etiketler…",
+      "labelCreativeOptional": "Kreatif varlık (isteğe bağlı)",
+      "noCreativeLinked": "— Bağlı kreatif yok —",
+      "cancel": "İptal",
+      "createEvent": "Etkinlik oluştur",
+      "errorTitleDate": "Başlık ve tarih zorunlu",
+      "errorCreateFailed": "Etkinlik oluşturulamadı",
+      "msCompleted": "Tamamlandı",
+      "msInProgress": "Devam ediyor",
+      "msUpcoming": "Yakında"
+    },
+    "Team": {
+      "title": "Ekip yönetimi",
+      "subtitle": "Davet gönderin, rolleri yönetin ve erişimi kontrol edin. İşlemler <perm>management.users</perm> izni ile korunur.",
+      "inviteHeading": "E-posta ile davet",
+      "emailPlaceholder": "ornek@sirket.com",
+      "inviteSubmit": "Davet et",
+      "membersHeading": "Mevcut üyeler",
+      "membersCount": "{count} kişi",
+      "revokeAria": "Erişimi kaldır",
+      "errNoAssignableRole": "Atanabilir rol yok.",
+      "toastInviteOk": "Davet gönderildi. E-postadaki bağlantıyla kayıt tamamlanır.",
+      "toastInviteFail": "Davet başarısız.",
+      "toastRoleFail": "Rol güncellenemedi.",
+      "confirmRevoke": "Bu kullanıcının erişimini kaldırmak istediğinize emin misiniz?",
+      "toastRevokeFail": "Kaldırılamadı."
+    },
+    "RoleArchitect": {
+      "tabGlobal": "Global roller",
+      "tabTenant": "Tenant üzerine yazım",
+      "rolesReorder": "Roller · sürükle sırala",
+      "tenantRolesHeading": "Tenant özel roller",
+      "newRole": "Yeni rol",
+      "slugPlaceholder": "slug (örn. junior_strategist)",
+      "descPlaceholder": "Açıklama (isteğe bağlı)",
+      "createSubmit": "Oluştur",
+      "matrixHeading": "İzin matrisi",
+      "selectRole": "Rol seçin",
+      "locked": "Kilitli",
+      "tenantLabel": "Tenant",
+      "globalRoleLabel": "Rol (global)",
+      "tenantDenyHeading": "Tenant’ta izni reddet",
+      "tenantDenySub": "Global matriste açık olan izinler bu tenant için kapatılabilir (super_admin hariç).",
+      "globalOff": "Global kapalı",
+      "effectiveYes": "Etkin: evet",
+      "effectiveNo": "Etkin: hayır (override)",
+      "deny": "Reddet",
+      "scopeGlobalOption": "Global rol",
+      "tenantScopedOption": "{tenant}: {name}",
+      "errSave": "Kaydedilemedi",
+      "errOverride": "Override kaydedilemedi",
+      "errCreate": "Oluşturulamadı",
+      "errDelete": "Silinemedi",
+      "confirmDeleteRole": "Bu rolü silmek istediğinize emin misiniz?"
+    },
+    "StrategyTechnical": {
+      "seoGeo": {
+        "searchVisibilityHeading": "Arama ve görünürlük",
+        "coldImpressionsTitle": "Gösterimler",
+        "coldImpressionsCaption": "Google Search Console senkronu sonrası arama gösterimleri burada görünür.",
+        "coldVisitsTitle": "Oturumlar / tıklamalar",
+        "coldVisitsCaption": "Sayfa ve sorgu trafiği bağlandığında otomatik dolar.",
+        "coldCtrTitle": "CTR",
+        "coldCtrCaption": "Tıklama oranı; içerik ve snippet mühendisliği ile şekillenir.",
+        "coldPositionTitle": "Ortalama sıra",
+        "coldPositionCaption": "Sorgu bazlı ortalama konum GSC verisiyle hesaplanır.",
+        "metricImpressions": "Toplam gösterim",
+        "metricVisits": "Oturumlar",
+        "metricCtr": "CTR",
+        "metricAvgPosition": "Ort. sıra",
+        "geoSubtitleFallback": "DeepSeek GEO motorundan simüle görünürlük · cron veya pipeline ile yenilenir",
+        "geoGapHeading": "GEO boşluk analizi",
+        "actionPlanHeading": "Aksiyon planı",
+        "geoInactiveBody": "GEO zekâsı, Search Console veri senkronu ve DeepSeek raporu (cron veya manuel) sonrası aktifleşir.",
+        "serviceVisibilityHeading": "Servis tabanlı görünürlük",
+        "serviceVisibilitySub": "GEO · AI atıfları ve izlenen anahtar kelimeler",
+        "avgGeoRankHeading": "Ort. GEO sırası",
+        "keywordsAcrossEngines": "{count} anahtar kelime · motorlar arası",
+        "errorSignalsHeading": "Hata sinyalleri",
+        "technicalLogsHint": "technical_logs · son 30 gün",
+        "cwvEmptyTitle": "Core Web Vitals",
+        "cwvEmptyBody": "Teknik SEO günlüğü veya PageSpeed simülasyonu geldiğinde LCP, FID ve CLS halkaları burada canlanır. Veri beklenirken mühendislik ekibi snapshot hazırlıyor olabilir.",
+        "seoLogInsightHeading": "SEO günlüğü içgörüsü"
+      },
+      "geoKeyword": {
+        "emptyTitle": "GEO anahtar kelime istihbaratı",
+        "emptyBody": "Google OAuth ile Search Console senkronu yapın, ardından GEO simülatörünü (cron veya pipeline) tetikleyerek sorgu bazlı DeepSeek görünürlük skorlarını ve aksiyon planlarını doldurun.",
+        "tableTitle": "GEO anahtar kelime performansı",
+        "tableSubtitle": "DeepSeek · simüle LLM görünürlüğü ve GSC bağlamı",
+        "colQuery": "Sorgu",
+        "colAiScore": "AI skoru",
+        "colGscImps": "GSC gösterim",
+        "colSteps": "Adımlar"
+      },
+      "geoRank": {
+        "emptyTitle": "Henüz GEO raporu yok",
+        "emptySub": "ChatGPT, Perplexity, Google ve Bing anahtar kelime takibi burada görünür",
+        "aiCitations": "AI atıfları",
+        "ofGeoKeywords": "{cited} / {total} GEO anahtar kelimesi",
+        "rankedGeo": "Sıralanan (GEO)",
+        "gscSynced": "Senkronize GSC sorguları: {count}",
+        "tableHeading": "GEO ve organik arama",
+        "tableSub": "GEO motorları + Google Search Console (son senkron)",
+        "gscBadge": "GSC",
+        "clicksImpsCtr": "{clicks} tıklama · {imps} gösterim · CTR %{ctr}",
+        "avgPos": "ort. sıra",
+        "rankLabel": "sıra"
+      },
+      "cwv": {
+        "title": "Core Web Vitals",
+        "subtitle": "Mühendislik sağlığı · son SEO anlık görüntüsünden tek doğru kaynak"
+      }
+    }
+  },
+  "Shared": {
+    "dataDisconnected": {
+      "defaultTitle": "Veri akışı duraklatıldı",
+      "defaultDescription": "Reklam hesaplarına bağlantı yenilenemedi veya veri henüz ulaşmadı. Bağlantınızı yenileyerek akışı tekrar başlatabilirsiniz.",
+      "reconnectLabel": "Yeniden bağlan"
+    },
+    "fileUploader": {
+      "defaultLabel": "Dosyaları buraya bırakın veya tıklayarak seçin",
+      "defaultHint": "Görsel, video, PDF — en fazla {maxFiles} dosya",
+      "ariaUpload": "Dosya yükle",
+      "errPresign": "Yükleme bağlantısı alınamadı",
+      "errUploadFailed": "Yükleme başarısız",
+      "errS3": "S3 yükleme başarısız",
+      "uploadedCount": "{count} dosya S3’e yüklendi ✓"
+    },
+    "relativeTime": {
+      "justNow": "şimdi",
+      "minutes": "{n} dk önce",
+      "hours": "{n} sa önce",
+      "days": "{n} gün önce"
+    }
+  },
+  "Layout": {
+    "impersonationBadge": "God Mode · Kimlik taklidi",
+    "impersonationBody": "Şu an {tenant} müşterisi gözüyle işlem yapıyorsunuz.",
+    "exitImpersonation": "Çıkış yap",
+    "mobileSheetDragClose": "{title} — sürükleyerek kapat"
+  }
+}

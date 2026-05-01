@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import type { UserStreak } from '../types';
 
 interface StreakCounterProps {
@@ -9,6 +10,7 @@ interface StreakCounterProps {
 }
 
 export function StreakCounter({ streak, compact = false }: StreakCounterProps) {
+  const t = useTranslations('Features.Gamification');
   const current = streak.currentStreak;
 
   const flame =
@@ -28,7 +30,7 @@ export function StreakCounter({ streak, compact = false }: StreakCounterProps) {
       <div className="flex items-center gap-1.5">
         <span className="text-base leading-none">{flame}</span>
         <span className={`text-xs font-bold tabular-nums ${color}`}>{current}</span>
-        <span className="text-[10px] text-white/25">gün</span>
+        <span className="text-[10px] text-white/25">{t('streakDayShort')}</span>
       </div>
     );
   }
@@ -43,12 +45,12 @@ export function StreakCounter({ streak, compact = false }: StreakCounterProps) {
         {flame}
       </motion.span>
       <div className="min-w-0">
-        <div className="flex items-baseline gap-1">
+        <div className="flex items-baseline gap-1 flex-wrap">
           <span className={`text-xl font-black tabular-nums ${color}`}>{current}</span>
-          <span className="text-xs text-white/40">günlük seri</span>
+          <span className="text-xs text-white/40">{t('streakDailyLabel')}</span>
         </div>
         <p className="text-[10px] text-white/25">
-          En uzun: {streak.longestStreak} gün
+          {t('streakLongest', { count: streak.longestStreak })}
         </p>
       </div>
     </div>

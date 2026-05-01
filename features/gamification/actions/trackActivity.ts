@@ -2,6 +2,7 @@
 
 import { auth } from '@/lib/auth/config';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { computeBrandHealthScore } from '@/features/brand-vault/lib/brandMilestones';
 import { ACHIEVEMENT_MAP } from '../lib/definitions';
 import type { GamificationEvent } from '../types';
 import type { SessionUser } from '@/types/user';
@@ -176,8 +177,28 @@ async function checkAchievements(
     }
 
     case 'brand_asset_uploaded': {
-      // Check brand health score
-      const score = (ctx.brandHealthScore as number) ?? 0;
+      const { data: rows } = await supabase
+        .from('brand_assets')
+        .select('type')
+        .eq('tenant_id', tenantId);
+
+      const list = rows ?? [];
+      const types = new Set(list.map((r) => r.type));
+      const score = computeBrandHealthScore(types, list.length);
+
+      if (types.has('logo') && !(await has('brand_milestone_logo'))) {
+        await award('brand_milestone_logo');
+      }
+      if (types.has('brand-book') && !(await has('brand_milestone_guidelines'))) {
+        await award('brand_milestone_guidelines');
+      }
+      if (types.has('color-palette') && !(await has('brand_milestone_palette'))) {
+        await award('brand_milestone_palette');
+      }
+      if (types.has('font') && !(await has('brand_milestone_fonts'))) {
+        await award('brand_milestone_fonts');
+      }
+
       if (score >= 50  && !(await has('brand_builder_50')))  await award('brand_builder_50');
       if (score >= 100 && !(await has('brand_builder_100'))) await award('brand_builder_100');
       break;

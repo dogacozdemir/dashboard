@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
+import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
+import type { SessionUser } from '@/types/user';
 
 const PUBLIC_PATHS = ['/login', '/api/auth', '/_next', '/favicon.ico', '/not-found', '/unauthorized'];
 
@@ -51,10 +53,25 @@ function sanitizeCallbackUrl(raw: string | null, requestUrl: string): string {
   }
 }
 
-export default async function middleware(request: NextRequest) {
+/** Next.js 16+ request proxy (replaces deprecated middleware). No `export const config` here — matcher logic is inlined. */
+export default async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (
+    pathname.startsWith('/_next/static') ||
+    pathname.startsWith('/_next/image') ||
+    pathname === '/favicon.ico' ||
+    /\.(?:svg|png|jpg|jpeg|gif|webp)$/i.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
   const host = request.headers.get('host') ?? '';
   const subdomain = parseSubdomain(host);
-  const pathname = request.nextUrl.pathname;
+
+  // Tenant hosts must not serve `/` as the admin shell route — only `admin.*` uses `(admin)/page.tsx` at `/`.
+  if (pathname === '/' && subdomain !== 'admin') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-tenant-slug', subdomain);
@@ -83,17 +100,21 @@ export default async function middleware(request: NextRequest) {
 
   // Admin subdomain guard
   if (subdomain === 'admin') {
-    const role = (session.user as { role?: string }).role;
-    if (role !== 'admin') {
+    const role = (session.user as SessionUser).role;
+    if (role !== 'super_admin') {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 
   // Inject tenant context headers for RSCs
   // session.user can be undefined if AUTH_SECRET is missing or JWT is malformed
-  const sessionUser = (session?.user ?? {}) as { tenantId?: string; tenantSlug?: string; role?: string };
-  // Local dev has no real subdomain. Use session tenant slug instead of "localhost".
-  if (isLocalDevHost(subdomain) && sessionUser.tenantSlug) {
+  const sessionUser = (session?.user ?? {}) as Partial<SessionUser>;
+  const impersonateSlug = request.cookies.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim() ?? '';
+
+  if (subdomain !== 'admin' && sessionUser.role === 'super_admin' && impersonateSlug) {
+    requestHeaders.set('x-tenant-slug', impersonateSlug);
+  } else if (isLocalDevHost(subdomain) && sessionUser.tenantSlug) {
+    // Local dev has no real subdomain. Use session tenant slug instead of "localhost".
     requestHeaders.set('x-tenant-slug', sessionUser.tenantSlug);
   }
   requestHeaders.set('x-company-id', sessionUser.tenantId ?? '');
@@ -101,9 +122,3 @@ export default async function middleware(request: NextRequest) {
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
-
-export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-};

@@ -1,5 +1,6 @@
 'use server';
 
+import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { auth } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
@@ -24,7 +25,7 @@ export async function updateProfile(data: {
 
   if (error) {
     console.error('[updateProfile]', error.message);
-    return { success: false, error: error.message };
+    return { success: false, error: await getPremiumActionError() };
   }
 
   return { success: true };
@@ -48,7 +49,7 @@ export async function updatePassword(
   if (authError) return { success: false, error: 'Current password is incorrect' };
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: await getPremiumActionError() };
 
   return { success: true };
 }

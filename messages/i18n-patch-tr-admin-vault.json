@@ -1,0 +1,10 @@
+{
+  "Admin": {
+    "tasks": {
+      "vaultMissingTitle": "Brand Vault / bilgi tabanı eksik",
+      "vaultMissingBodyBoth": "Bu tenant için brand_assets ve brand_knowledge_chunks henüz boş. GEO ve MonoAI için vault doldurulmalı.",
+      "vaultMissingBodyAssets": "brand_assets kaydı yok — vault içeriği eklenmeli.",
+      "vaultMissingBodyChunks": "brand_knowledge_chunks boş — indeksleme / chunk pipeline kontrol edilmeli."
+    }
+  }
+}

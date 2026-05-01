@@ -2,109 +2,103 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   BarChart3,
   Clapperboard,
   Brain,
-  CalendarDays,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 /**
- * Native-style bottom tab bar — visible only on mobile (md:hidden).
- * Mirrors the most-used 5 destinations without requiring a drawer.
- * Uses spring-animated active pill + scale feedback on press.
+ * Floating bottom dock — md:hidden. Pill glass bar with gold active glow.
+ * Icon-forward: labels are screen-reader only for clarity across locales.
  */
-
 const NAV_ITEMS = [
-  { href: '/dashboard',   label: 'Overview',   icon: LayoutDashboard },
-  { href: '/performance', label: 'Stats',       icon: BarChart3 },
-  { href: '/creative',    label: 'Creative',    icon: Clapperboard },
-  { href: '/mono-ai',     label: 'Mono AI',     icon: Brain },
-  { href: '/calendar',    label: 'Calendar',    icon: CalendarDays },
-];
+  { href: '/dashboard', labelKey: 'home' as const, icon: LayoutDashboard },
+  { href: '/performance', labelKey: 'performance' as const, icon: BarChart3 },
+  { href: '/creative', labelKey: 'creative' as const, icon: Clapperboard },
+  { href: '/mono-ai', labelKey: 'mono' as const, icon: Brain },
+  { href: '/chat', labelKey: 'chat' as const, icon: MessageSquare },
+] as const;
+
+const tapSpring = { type: 'spring' as const, stiffness: 520, damping: 28 };
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const t = useTranslations('Dashboard.mobileNav');
 
   return (
     <nav
       className={cn(
-        'md:hidden fixed bottom-0 left-0 right-0 z-50',
-        'flex items-center justify-around',
-        'px-2 pb-safe',
-        'border-t border-white/[0.07]',
-        'bg-[#0A0A15]/90 backdrop-blur-2xl',
+        'md:hidden pointer-events-none fixed left-1/2 -translate-x-1/2 z-50',
+        'w-[min(100%-1.25rem,420px)]',
       )}
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
-      aria-label="Main navigation"
+      style={{
+        bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+      }}
+      aria-label={t('mainNavAria')}
     >
-      {NAV_ITEMS.map((item) => {
-        const isActive =
-          pathname === item.href || pathname.startsWith(item.href + '/');
-        const Icon = item.icon;
+      <div
+        className={cn(
+          'pointer-events-auto flex items-center justify-between gap-0.5',
+          'rounded-full border border-white/10',
+          'bg-[#0c070c]/55 backdrop-blur-3xl',
+          'shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]',
+          'px-2 py-2',
+        )}
+        style={{
+          WebkitBackdropFilter: 'blur(64px) saturate(200%)',
+          backdropFilter: 'blur(64px) saturate(200%)',
+        }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + '/');
+          const Icon = item.icon;
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="relative flex flex-col items-center justify-center flex-1 py-2 min-h-[52px] press-scale"
-            aria-current={isActive ? 'page' : undefined}
-          >
-            {/* Active background pill */}
-            <AnimatePresence>
-              {isActive && (
-                <motion.span
-                  layoutId="bottom-nav-active"
-                  className="absolute inset-x-1 top-1 bottom-1 rounded-2xl bg-indigo-500/15 border border-indigo-500/25"
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.85 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Icon */}
-            <motion.div
-              animate={isActive ? { scale: 1.12, y: -1 } : { scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="relative z-10"
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="relative flex flex-1 flex-col items-center justify-center min-w-0 py-1.5 rounded-full press-scale"
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={t(item.labelKey)}
             >
-              <Icon
-                className={cn(
-                  'w-5 h-5 transition-colors duration-200',
-                  isActive ? 'text-indigo-400' : 'text-white/35',
-                )}
-                strokeWidth={isActive ? 2.2 : 1.8}
-              />
-              {/* Live dot for active state */}
-              {isActive && (
-                <motion.span
-                  layoutId="bottom-nav-dot"
-                  className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-indigo-400"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
-            </motion.div>
-
-            {/* Label */}
-            <span
-              className={cn(
-                'relative z-10 mt-0.5 text-[10px] font-medium transition-colors duration-200 leading-none',
-                isActive ? 'text-indigo-300' : 'text-white/30',
-              )}
-            >
-              {item.label}
-            </span>
-          </Link>
-        );
-      })}
+              <motion.div
+                whileTap={{ scale: 0.95 }}
+                transition={tapSpring}
+                className="relative flex flex-col items-center gap-0.5"
+              >
+                {isActive ? (
+                  <span className="absolute -inset-x-1 -inset-y-1 rounded-full bg-[#bea042]/12" />
+                ) : null}
+                <span
+                  className={cn(
+                    'relative z-10 flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200',
+                    isActive ? 'text-[#bea042]' : 'text-white/40',
+                  )}
+                  style={
+                    isActive
+                      ? {
+                          filter: 'drop-shadow(0 0 10px rgba(190, 160, 66, 0.85))',
+                          boxShadow:
+                            '0 0 20px rgba(190, 160, 66, 0.35), inset 0 0 12px rgba(190, 160, 66, 0.12)',
+                        }
+                      : undefined
+                  }
+                >
+                  <Icon className="w-[1.25rem] h-[1.25rem]" strokeWidth={isActive ? 2.25 : 1.85} />
+                </span>
+                <span className="sr-only">{t(item.labelKey)}</span>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

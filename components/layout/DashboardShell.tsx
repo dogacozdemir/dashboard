@@ -5,34 +5,34 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import type { Tenant } from '@/types/tenant';
 import type { SessionUser } from '@/types/user';
 import type { UserGamificationData } from '@/features/gamification/types';
 import { CelebrationOverlay } from '@/features/gamification/components/CelebrationOverlay';
-
-interface NotifItem {
-  id: string;
-  message: string;
-  type: 'message' | 'alert' | 'approval' | 'system';
-  senderName: string;
-  isRead: boolean;
-  createdAt: string;
-}
+import type { LuxNotificationItem } from '@/features/notifications/types';
+import { CommandCenter } from '@/app/components/layout/CommandCenter';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface DashboardShellProps {
   tenant:          Tenant;
   user:            SessionUser;
   title:           string;
   subtitle?:       string;
-  initialNotifs?:  NotifItem[];
+  initialNotifs?:  LuxNotificationItem[];
   gamification?:   UserGamificationData | null;
+  /** Super-admin customer view (impersonation cookie). */
+  impersonation?:  { tenantName: string; exitHref: string } | null;
+  canManageTeam?:  boolean;
+  canUseNotifications?: boolean;
   children:        React.ReactNode;
 }
 
-const pageVariants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit:    { opacity: 0, y: -6 },
+const pageTransition = {
+  type: 'spring' as const,
+  stiffness: 260,
+  damping: 26,
+  mass: 1,
 };
 
 export function DashboardShell({
@@ -42,37 +42,62 @@ export function DashboardShell({
   subtitle,
   initialNotifs = [],
   gamification,
+  impersonation = null,
+  canManageTeam = false,
+  canUseNotifications = false,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
+  const mobileNav = useMediaQuery('(max-width: 767px)');
+  const pageVariants = mobileNav
+    ? {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -16 },
+      }
+    : {
+        initial: { opacity: 0, y: 16 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+      };
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-[#07070E]">
+    <div className="relative flex h-screen overflow-hidden bg-[#0c070c]">
 
-      {/* ── Aurora background ── */}
+      {/* ── Aurora background — light sources inside the void ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden>
-        <div className="aurora-orb-1 absolute -top-40 -left-32 w-[560px] h-[560px] rounded-full bg-indigo-600/[0.07] blur-[100px]" />
-        <div className="aurora-orb-2 absolute -bottom-48 -right-24 w-[480px] h-[480px] rounded-full bg-cyan-500/[0.06] blur-[120px]" />
-        <div className="aurora-orb-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] h-[360px] rounded-full bg-violet-600/[0.05] blur-[90px]" />
+        {/* Amethyst light source — top-left */}
+        <div className="aurora-orb-1 absolute -top-60 -left-40 w-[700px] h-[700px] rounded-full bg-purple-600/[0.08] blur-[130px]" />
+        {/* Gold light source — bottom-right */}
+        <div className="aurora-orb-2 absolute -bottom-56 -right-32 w-[600px] h-[600px] rounded-full bg-amber-700/[0.08] blur-[140px]" />
+        {/* Soft center bloom */}
+        <div className="aurora-orb-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-purple-900/[0.05] blur-[120px]" />
       </div>
 
       {/* ── Celebration overlay (confetti + achievement toasts) ── */}
       <CelebrationOverlay />
 
-      {/* ── Desktop sidebar ── */}
-      <div className="relative z-10 hidden md:flex">
-        <Sidebar tenant={tenant} gamification={gamification} />
+      {/* ── Desktop sidebar — floats with padding ── */}
+      <div className="relative z-10 hidden md:flex p-4">
+        <Sidebar tenant={tenant} gamification={gamification} canManageTeam={canManageTeam} />
       </div>
 
       {/* ── Main column ── */}
-      <div className="relative z-10 flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div
+        className="relative z-10 flex min-w-0 flex-1 flex-col gap-2 overflow-hidden px-safe pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+      >
         <TopBar
           user={user}
           companyId={tenant.id}
           title={title}
           subtitle={subtitle}
           initialNotifs={initialNotifs}
+          canUseNotifications={canUseNotifications}
         />
+
+        {impersonation && (
+          <ImpersonationBanner tenantName={impersonation.tenantName} exitHref={impersonation.exitHref} />
+        )}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
@@ -81,9 +106,8 @@ export function DashboardShell({
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            /* pb-20 md:pb-6: leave space for the mobile bottom nav */
-            className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 md:px-6 md:py-6 pb-20 md:pb-6"
+            transition={pageTransition}
+            className="dashboard-scroll-region flex-1 overflow-y-auto scrollbar-thin px-4 py-4 md:px-6 md:py-4 pb-mobile-dock md:pb-6"
           >
             {children}
           </motion.main>
@@ -92,6 +116,8 @@ export function DashboardShell({
 
       {/* ── Mobile bottom navigation (hidden on md+) ── */}
       <MobileBottomNav />
+
+      <CommandCenter companyId={tenant.id} user={user} />
     </div>
   );
 }

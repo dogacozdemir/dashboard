@@ -1,24 +1,48 @@
+import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
-import { fetchGeoReports, fetchRoadmap, fetchMarketInsight } from '@/features/strategy-technical/actions/fetchStrategy';
+import { fetchRoadmap, fetchMarketInsight, fetchSeoGeoDashboard } from '@/features/strategy-technical/actions/fetchStrategy';
 import { GEORankCard } from '@/features/strategy-technical/components/GEORankCard';
 import { RoadmapTimeline } from '@/features/strategy-technical/components/RoadmapTimeline';
 import { MarketInsightCard, MarketInsightEmpty } from '@/features/strategy-technical/components/MarketInsightCard';
+import { SeoGeoMetricsPanel } from '@/features/strategy-technical/components/SeoGeoMetricsPanel';
+import { AiStrategyInsightCard } from '@/features/strategy-technical/components/AiStrategyInsightCard';
+import { StrategySeoSkeleton } from '@/features/strategy-technical/components/StrategySeoSkeleton';
 
-export default async function StrategyPage() {
+export default function StrategyPage() {
+  return (
+    <Suspense fallback={<StrategySeoSkeleton />}>
+      <StrategyPageInner />
+    </Suspense>
+  );
+}
+
+async function StrategyPageInner() {
   const { companyId, tenant } = await requireTenantContext();
+  const t = await getTranslations('Features.StrategyPage');
 
-  const [reports, roadmap, insight] = await Promise.all([
-    fetchGeoReports(companyId),
+  const [roadmap, insight, seoGeo] = await Promise.all([
     fetchRoadmap(companyId),
     fetchMarketInsight(companyId, tenant.name),
+    fetchSeoGeoDashboard(companyId),
   ]);
 
+  const rankCardReports = seoGeo.geoReports.filter((r) => r.metricSource !== 'geo_ai');
+
   return (
-    <div className="space-y-6">
-      {/* Market Insight */}
+    <div className="space-y-8">
+      {seoGeo.geoStrategy && (
+        <div>
+          <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
+            {t('sectionStrategy')}
+          </h2>
+          <AiStrategyInsightCard strategy={seoGeo.geoStrategy} />
+        </div>
+      )}
+
       <div>
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
-          Market Insight
+          {t('sectionMarket')}
         </h2>
         {insight ? (
           <MarketInsightCard insight={insight} generatedFor={tenant.name} />
@@ -27,26 +51,18 @@ export default async function StrategyPage() {
         )}
       </div>
 
-      {/* GEO Rankings */}
+      <SeoGeoMetricsPanel data={seoGeo} />
+
       <div>
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
-          Generative Engine Optimization
+          {t('sectionGeo')}
         </h2>
-        <GEORankCard reports={reports} />
+        <GEORankCard reports={rankCardReports} />
       </div>
 
-      {/* SEO Rankings */}
       <div>
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
-          Search Engine Optimization
-        </h2>
-        <GEORankCard reports={reports} />
-      </div>
-
-      {/* Technical Roadmap */}
-      <div>
-        <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
-          Technical Roadmap
+          {t('sectionRoadmap')}
         </h2>
         <RoadmapTimeline items={roadmap} />
       </div>

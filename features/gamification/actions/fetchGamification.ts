@@ -1,7 +1,9 @@
 'use server';
 
 import { auth } from '@/lib/auth/config';
+import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { computeBrandHealthScore } from '@/features/brand-vault/lib/brandMilestones';
 import { ACHIEVEMENT_MAP, getLevel } from '../lib/definitions';
 import type {
   UserStreak, EarnedAchievement, UserGamificationData,
@@ -18,8 +20,7 @@ export async function fetchUserGamification(): Promise<UserGamificationData | nu
 
     const user      = session.user as SessionUser;
     const userId    = user.id;
-    const tenantId  = user.tenantId;
-    if (!userId) return null;
+    if (!userId || !user.tenantId) return null;
 
     const supabase = await createSupabaseServerClient();
 
@@ -66,6 +67,7 @@ export async function fetchUserGamification(): Promise<UserGamificationData | nu
 // ─── Weekly digest ────────────────────────────────────────────────────────────
 
 export async function fetchWeeklyDigest(tenantId: string): Promise<WeeklyDigestData> {
+  const validatedId = await requireTenantAction(tenantId);
   const empty: WeeklyDigestData = {
     approvalsThisWeek: 0, approvalsLastWeek: 0,
     revisionsThisWeek: 0, aiMessagesThisWeek: 0,
@@ -87,31 +89,31 @@ export async function fetchWeeklyDigest(tenantId: string): Promise<WeeklyDigestD
       supabase
         .from('creative_assets')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', validatedId)
         .eq('status', 'approved')
         .gte('created_at', thisMonday.toISOString()),
       supabase
         .from('creative_assets')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', validatedId)
         .eq('status', 'approved')
         .gte('created_at', lastMonday.toISOString())
         .lt('created_at', thisMonday.toISOString()),
       supabase
         .from('revisions')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', validatedId)
         .gte('created_at', thisMonday.toISOString()),
       supabase
         .from('ai_chat_history')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', validatedId)
         .eq('role', 'user')
         .gte('created_at', thisMonday.toISOString()),
       supabase
         .from('user_achievements')
         .select('id', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', validatedId)
         .gte('earned_at', thisMonday.toISOString()),
     ]);
 
@@ -119,7 +121,7 @@ export async function fetchWeeklyDigest(tenantId: string): Promise<WeeklyDigestD
     const { data: streakRows } = await supabase
       .from('user_streaks')
       .select('last_active_date')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', validatedId);
 
     const activeDays = new Set(
       (streakRows ?? [])
@@ -144,6 +146,7 @@ export async function fetchWeeklyDigest(tenantId: string): Promise<WeeklyDigestD
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 
 export async function fetchLeaderboard(tenantId: string): Promise<LeaderboardEntry[]> {
+  const validatedId = await requireTenantAction(tenantId);
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -152,15 +155,15 @@ export async function fetchLeaderboard(tenantId: string): Promise<LeaderboardEnt
       supabase
         .from('users')
         .select('id, email, full_name')
-        .eq('tenant_id', tenantId),
+        .eq('tenant_id', validatedId),
       supabase
         .from('user_streaks')
         .select('user_id, current_streak')
-        .eq('tenant_id', tenantId),
+        .eq('tenant_id', validatedId),
       supabase
         .from('user_achievements')
         .select('user_id, achievement_key')
-        .eq('tenant_id', tenantId),
+        .eq('tenant_id', validatedId),
     ]);
 
     const users     = usersRes.data    ?? [];
@@ -181,7 +184,7 @@ export async function fetchLeaderboard(tenantId: string): Promise<LeaderboardEnt
       const xp = xpMap.get(u.id) ?? 0;
       return {
         userId:        u.id,
-        displayName:   u.full_name ?? u.email?.split('@')[0] ?? 'User',
+        displayName:   u.full_name ?? u.email?.split('@')[0] ?? '',
         currentStreak: streakMap.get(u.id) ?? 0,
         totalXP:       xp,
         badgeCount:    badgeMap.get(u.id) ?? 0,
@@ -200,23 +203,18 @@ export async function fetchLeaderboard(tenantId: string): Promise<LeaderboardEnt
 // ─── Brand health score ───────────────────────────────────────────────────────
 
 export async function fetchBrandHealthScore(tenantId: string): Promise<number> {
+  const validatedId = await requireTenantAction(tenantId);
   try {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from('brand_assets')
       .select('type')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', validatedId);
 
     if (!data || data.length === 0) return 0;
 
     const types = new Set(data.map((a) => a.type));
-    let score = 0;
-    if (types.has('logo'))           score += 25;
-    if (types.has('brand-book'))     score += 25;
-    if (types.has('color-palette'))  score += 20;
-    if (types.has('font'))           score += 20;
-    if (data.length >= 3)            score += 10; // general richness bonus
-    return Math.min(score, 100);
+    return computeBrandHealthScore(types, data.length);
   } catch {
     return 0;
   }

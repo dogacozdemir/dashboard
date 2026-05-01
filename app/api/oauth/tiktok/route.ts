@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const state: OAuthState = {
     tenantId: user.tenantId,
-    returnTo: '/performance',
+    returnTo: '/dashboard?magic=1',
     csrf:     randomBytes(16).toString('hex'),
   };
 

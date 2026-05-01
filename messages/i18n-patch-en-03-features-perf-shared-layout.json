@@ -1,0 +1,148 @@
+{
+  "Features": {
+    "Team": {
+      "title": "Team management",
+      "subtitle": "Send invites, manage roles, and control access. Actions are protected by the management.users permission.",
+      "inviteHeading": "Invite by email",
+      "emailPlaceholder": "you@company.com",
+      "inviteSubmit": "Invite",
+      "membersHeading": "Current members",
+      "membersCount": "{count} people",
+      "revokeAria": "Remove access",
+      "errNoAssignableRole": "No assignable role.",
+      "toastInviteOk": "Invitation sent. Registration completes via the email link.",
+      "toastInviteFail": "Invitation failed.",
+      "toastRoleFail": "Could not update role.",
+      "confirmRevoke": "Remove this user’s access?",
+      "toastRevokeFail": "Could not remove."
+    },
+    "RoleArchitect": {
+      "tabGlobal": "Global roles",
+      "tabTenant": "Tenant override",
+      "rolesReorder": "Roles · drag to reorder",
+      "tenantRolesHeading": "Tenant-specific roles",
+      "newRole": "New role",
+      "slugPlaceholder": "slug (e.g. junior_strategist)",
+      "descPlaceholder": "Description (optional)",
+      "createSubmit": "Create",
+      "matrixHeading": "Permission matrix",
+      "selectRole": "Select a role",
+      "locked": "Locked",
+      "tenantLabel": "Tenant",
+      "globalRoleLabel": "Role (global)",
+      "tenantDenyHeading": "Deny permission for tenant",
+      "tenantDenySub": "Permissions enabled globally can be turned off for this tenant (except super_admin).",
+      "globalOff": "Globally off",
+      "effectiveYes": "Effective: yes",
+      "effectiveNo": "Effective: no (override)",
+      "deny": "Deny",
+      "errSave": "Could not save",
+      "errOverride": "Could not save override",
+      "errCreate": "Could not create",
+      "errDelete": "Could not delete",
+      "confirmDeleteRole": "Delete this role?"
+    },
+    "StrategyTechnical": {
+      "seoGeo": {
+        "searchVisibilityHeading": "Search & visibility",
+        "coldImpressionsTitle": "Impressions",
+        "coldImpressionsCaption": "Search impressions appear here after Google Search Console sync.",
+        "coldVisitsTitle": "Sessions / clicks",
+        "coldVisitsCaption": "Page and query traffic fills automatically once connected.",
+        "coldCtrTitle": "CTR",
+        "coldCtrCaption": "Click-through rate shaped by content and snippet engineering.",
+        "coldPositionTitle": "Average position",
+        "coldPositionCaption": "Query-level average position computed from GSC data.",
+        "metricImpressions": "Total impressions",
+        "metricVisits": "Visits",
+        "metricCtr": "CTR",
+        "metricAvgPosition": "Avg. position",
+        "geoSubtitleFallback": "Simulated visibility from DeepSeek GEO engine · refresh via cron or pipeline",
+        "geoGapHeading": "GEO gap analysis",
+        "actionPlanHeading": "Action plan",
+        "geoInactiveBody": "GEO intelligence activates after Search Console sync and DeepSeek report generation (cron or manual).",
+        "serviceVisibilityHeading": "Service-based visibility",
+        "serviceVisibilitySub": "GEO · AI citations vs tracked keywords",
+        "avgGeoRankHeading": "Avg. GEO rank",
+        "keywordsAcrossEngines": "{count} keywords across engines",
+        "errorSignalsHeading": "Error signals",
+        "technicalLogsHint": "technical_logs · last 30 days",
+        "cwvEmptyTitle": "Core Web Vitals",
+        "cwvEmptyBody": "When technical SEO logs or PageSpeed simulation arrive, LCP, FID, and CLS rings come alive here. Engineering may be preparing the snapshot while data is pending.",
+        "seoLogInsightHeading": "SEO log insight"
+      },
+      "geoKeyword": {
+        "emptyTitle": "GEO keyword intelligence",
+        "emptyBody": "Run Google OAuth with Search Console, then trigger the GEO simulator (cron or pipeline) to populate DeepSeek visibility scores and action plans per query.",
+        "tableTitle": "GEO keyword performance",
+        "tableSubtitle": "DeepSeek · simulated LLM visibility vs GSC context",
+        "colQuery": "Query",
+        "colAiScore": "AI score",
+        "colGscImps": "GSC imps",
+        "colSteps": "Steps"
+      },
+      "geoRank": {
+        "emptyTitle": "No GEO reports yet",
+        "emptySub": "Keyword tracking across ChatGPT, Perplexity, Google, and Bing will appear here",
+        "aiCitations": "AI citations",
+        "ofGeoKeywords": "{cited} of {total} GEO keywords",
+        "rankedGeo": "Ranked (GEO)",
+        "gscSynced": "GSC queries synced: {count}",
+        "tableHeading": "GEO & organic search",
+        "tableSub": "GEO engines + Google Search Console (last sync)",
+        "gscBadge": "GSC",
+        "clicksImpsCtr": "{clicks} clicks · {imps} imps · CTR {ctr}%",
+        "avgPos": "avg pos",
+        "rankLabel": "rank"
+      },
+      "cwv": {
+        "title": "Core Web Vitals",
+        "subtitle": "Engineering health · SSOT from latest SEO snapshot"
+      }
+    }
+  },
+  "Performance": {
+    "spendChart": {
+      "title": "Ad spend trend",
+      "subtitleSuffix": " · all platforms",
+      "rangeDaily": "Last 7 days",
+      "rangeWeekly": "Last 12 weeks",
+      "rangeMonthly": "Last 12 months",
+      "rangeFallback": "Last 14 days",
+      "emptyHint": "The spend curve renders after ad accounts connect and daily sync completes."
+    },
+    "connectedAccounts": {
+      "title": "Connected ad accounts · SSOT",
+      "accountFallback": "Account",
+      "syncedPrefix": "synced",
+      "relJustNow": "just now",
+      "relMinutes": "{n}m ago",
+      "relHours": "{n}h ago",
+      "relDays": "{n}d ago",
+      "disconnectTitle": "Connect accounts",
+      "disconnectDescription": "No active ad account found. Refresh OAuth for Meta, Google, or TikTok to start data flow."
+    }
+  },
+  "Shared": {
+    "dataDisconnected": {
+      "defaultTitle": "Data stream paused",
+      "defaultDescription": "Ad account connection could not be refreshed or data has not arrived yet. Reconnect to restart the stream.",
+      "reconnectLabel": "Reconnect"
+    },
+    "fileUploader": {
+      "defaultLabel": "Drop files here or click to upload",
+      "defaultHint": "Images, videos, PDFs — up to {maxFiles} files",
+      "ariaUpload": "Upload files",
+      "errPresign": "Failed to get upload URL",
+      "errUploadFailed": "Upload failed",
+      "errS3": "S3 upload failed",
+      "uploadedCount": "{count} file(s) uploaded to S3 ✓"
+    }
+  },
+  "Layout": {
+    "impersonationBadge": "God Mode · Impersonation",
+    "impersonationBody": "You are acting as customer {tenant}.",
+    "exitImpersonation": "Exit",
+    "mobileSheetDragClose": "{title} — drag to close"
+  }
+}

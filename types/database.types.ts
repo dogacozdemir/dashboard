@@ -14,6 +14,9 @@ export interface Database {
           primary_color: string | null;
           is_active: boolean;
           created_at: string;
+          industry: string | null;
+          dashboard_goal: 'sales' | 'awareness' | 'cost' | null;
+          magic_onboarding_completed_at: string | null;
         };
         Insert: Omit<Database['public']['Tables']['tenants']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['tenants']['Insert']>;
@@ -24,8 +27,11 @@ export interface Database {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
-          role: 'admin' | 'client' | 'viewer';
+          role: 'super_admin' | 'tenant_admin' | 'tenant_user';
           tenant_id: string;
+          role_id: string | null;
+          /** Dashboard locale */
+          locale: 'tr' | 'en';
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at'>;
@@ -92,10 +98,25 @@ export interface Database {
           keyword: string;
           rank_data: Json;
           engine: 'google' | 'bing' | 'perplexity' | 'chatgpt';
+          metric_source: 'geo_rank' | 'gsc_query';
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['geo_reports']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['geo_reports']['Insert']>;
+      };
+      gsc_page_analytics: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          page_url: string;
+          clicks: number;
+          impressions: number;
+          ctr: number;
+          position: number;
+          synced_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['gsc_page_analytics']['Row'], 'id'>;
+        Update: Partial<Database['public']['Tables']['gsc_page_analytics']['Insert']>;
       };
     };
   };

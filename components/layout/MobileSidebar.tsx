@@ -17,19 +17,20 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import type { Tenant } from '@/types/tenant';
 
-const navItems = [
-  { href: '/dashboard',   label: 'Overview',        icon: LayoutDashboard },
-  { href: '/performance', label: 'Performance Hub',  icon: BarChart3 },
-  { href: '/creative',    label: 'Creative Studio',  icon: Clapperboard },
-  { href: '/strategy',    label: 'SEO & GEO',   icon: Globe },
-  { href: '/brand-vault', label: 'Brand Vault',      icon: Shield },
-  { href: '/chat',        label: 'Chat',             icon: MessageSquare },
-  { href: '/mono-ai',     label: 'Mono AI',          icon: Brain },
-  { href: '/calendar',    label: 'Ops Calendar',     icon: CalendarDays },
-];
+const NAV_ITEMS = [
+  { href: '/dashboard', labelKey: 'overview', icon: LayoutDashboard },
+  { href: '/performance', labelKey: 'performanceHub', icon: BarChart3 },
+  { href: '/creative', labelKey: 'creativeStudio', icon: Clapperboard },
+  { href: '/strategy', labelKey: 'seoGeo', icon: Globe },
+  { href: '/brand-vault', labelKey: 'brandVault', icon: Shield },
+  { href: '/chat', labelKey: 'chat', icon: MessageSquare },
+  { href: '/mono-ai', labelKey: 'monoAi', icon: Brain },
+  { href: '/calendar', labelKey: 'opsCalendar', icon: CalendarDays },
+] as const;
 
 interface MobileSidebarProps {
   tenant: Tenant;
@@ -38,13 +39,16 @@ interface MobileSidebarProps {
 export function MobileSidebar({ tenant }: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const tSidebar = useTranslations('Dashboard.sidebar');
+  const tDrawer = useTranslations('Dashboard.mobileDrawer');
 
   return (
     <>
       {/* Hamburger trigger */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        aria-label="Open navigation"
+        aria-label={tDrawer('openAria')}
         className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/50 hover:text-white/80 hover:bg-white/[0.07] transition-colors"
       >
         <Menu className="w-4 h-4" />
@@ -81,12 +85,13 @@ export function MobileSidebar({ tenant }: MobileSidebarProps) {
                   </div>
                   <div>
                     <span className="font-bold text-sm gradient-text-indigo">madmonos</span>
-                    <p className="text-[10px] text-white/30 uppercase tracking-widest">AI-First Agency</p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest">{tSidebar('tagline')}</p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setOpen(false)}
-                  aria-label="Close navigation"
+                  aria-label={tDrawer('closeAria')}
                   className="text-white/30 hover:text-white/60 transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -95,13 +100,13 @@ export function MobileSidebar({ tenant }: MobileSidebarProps) {
 
               {/* Tenant badge */}
               <div className="mx-4 mt-3 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-0.5">Brand</p>
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-0.5">{tSidebar('brandLabel')}</p>
                 <p className="text-xs font-medium text-white/80">{tenant.name}</p>
               </div>
 
               {/* Nav */}
               <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                {navItems.map((item) => {
+                {NAV_ITEMS.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                   const Icon = item.icon;
                   return (
@@ -119,7 +124,7 @@ export function MobileSidebar({ tenant }: MobileSidebarProps) {
                         )}
                       >
                         <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-indigo-400')} />
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="text-sm font-medium">{tSidebar(item.labelKey)}</span>
                       </div>
                     </Link>
                   );

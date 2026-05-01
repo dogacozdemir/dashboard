@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { fetchRecentActivity } from '../actions/fetchMetrics';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { BarChart3, Clapperboard, Globe, Shield, Activity } from 'lucide-react';
@@ -14,18 +15,19 @@ const typeConfig: Record<ActivityItem['type'], { icon: React.ComponentType<{ cla
 
 export async function RecentActivity({ companyId }: { companyId: string }) {
   const activity = await fetchRecentActivity(companyId);
+  const t = await getTranslations('Performance');
 
   return (
     <GlassCard padding="none">
       <div className="px-6 py-4 border-b border-white/[0.06]">
-        <h3 className="text-sm font-semibold text-white/80">Activity Feed</h3>
+        <h3 className="text-sm font-semibold text-white/80">{t('recentActivity.title')}</h3>
       </div>
 
       {activity.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center px-6">
           <Activity className="w-8 h-8 text-white/10" />
-          <p className="text-sm text-white/30">No activity yet</p>
-          <p className="text-xs text-white/20">Actions across Creative Studio, Performance Hub and Strategy will appear here</p>
+          <p className="text-sm text-white/30">{t('recentActivity.empty')}</p>
+          <p className="text-xs text-white/20 max-w-sm">{t('recentActivity.emptyHint')}</p>
         </div>
       ) : (
         <div className="divide-y divide-white/[0.04]">

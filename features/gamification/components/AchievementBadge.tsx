@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { formatRelativeTime } from '@/lib/utils/format';
 import type { EarnedAchievement, AchievementDef } from '../types';
 
@@ -38,6 +39,9 @@ interface AchievementBadgeProps {
 export function AchievementBadge({
   achievement, earned = true, earnedAt, size = 'md', index = 0,
 }: AchievementBadgeProps) {
+  const t = useTranslations('Features.Gamification');
+  const title = t(`achievements.${achievement.key}.title` as Parameters<typeof t>[0]);
+  const desc  = t(`achievements.${achievement.key}.desc` as Parameters<typeof t>[0]);
   const colors = BG_MAP[achievement.color]  ?? BG_MAP.indigo;
   const xpCol  = XP_COLOR[achievement.color] ?? XP_COLOR.indigo;
 
@@ -47,7 +51,7 @@ export function AchievementBadge({
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: earned ? 1 : 0.3, scale: 1 }}
         transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
-        title={`${achievement.title}: ${achievement.desc}`}
+        title={`${title}: ${desc}`}
         className={`
           relative flex items-center justify-center w-10 h-10 rounded-xl
           bg-gradient-to-br border ${colors}
@@ -80,10 +84,10 @@ export function AchievementBadge({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-sm font-semibold text-white/85">{achievement.title}</span>
-          <span className={`text-[10px] font-bold ${xpCol}`}>+{achievement.xp} XP</span>
+          <span className="text-sm font-semibold text-white/85 line-clamp-2">{title}</span>
+          <span className={`text-[10px] font-bold shrink-0 ${xpCol}`}>+{achievement.xp} {t('xpLabel')}</span>
         </div>
-        <p className="text-xs text-white/40 mt-0.5 leading-relaxed">{achievement.desc}</p>
+        <p className="text-xs text-white/40 mt-0.5 leading-relaxed line-clamp-3">{desc}</p>
         {earnedAt && (
           <p className="text-[10px] text-white/20 mt-1">{formatRelativeTime(earnedAt)}</p>
         )}

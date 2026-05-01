@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { Calendar, Clapperboard, Loader2, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GlassCard } from '@/components/shared/GlassCard';
@@ -17,17 +18,23 @@ interface PendingFile {
   file: File;
 }
 
-const PLATFORM_LABELS: Record<SocialPlatform, string> = {
-  meta: 'Meta',
-  google: 'Google',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  x: 'X (Twitter)',
-};
+const PLATFORMS: SocialPlatform[] = ['meta', 'google', 'tiktok', 'instagram', 'linkedin', 'x'];
+
+function platformOptionLabel(t: (key: string) => string, p: SocialPlatform): string {
+  switch (p) {
+    case 'meta': return t('platformMeta');
+    case 'google': return t('platformGoogle');
+    case 'tiktok': return t('platformTiktok');
+    case 'instagram': return t('platformInstagram');
+    case 'linkedin': return t('platformLinkedin');
+    case 'x': return t('platformX');
+    default: return p;
+  }
+}
 
 export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPanelProps) {
   const router = useRouter();
+  const t = useTranslations('Features.Creative');
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -62,8 +69,6 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
 
   function handlePickedFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
-    // UX requirement: modal opens per selected file before upload.
-    // For now we process one file at a time; user can repeat for additional files.
     openModalWithFile(fileList[0]);
   }
 
@@ -84,8 +89,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
     });
 
     if (!presignRes.ok) {
-      const err = await presignRes.json().catch(() => ({ error: 'Failed to get upload URL' }));
-      throw new Error(err.error || 'Failed to get upload URL');
+      throw new Error('__PRESIGN__');
     }
 
     const { uploadUrl, s3Key } = (await presignRes.json()) as {
@@ -103,7 +107,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
     });
 
     if (!s3PutRes.ok) {
-      throw new Error(`S3 upload failed (${s3PutRes.status})`);
+      throw new Error(`__S3__:${s3PutRes.status}`);
     }
 
     const saveRes = await fetch('/api/assets/creative', {
@@ -127,8 +131,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
     });
 
     if (!saveRes.ok) {
-      const err = await saveRes.json().catch(() => ({ error: 'Failed to save creative asset' }));
-      throw new Error(err.error || 'Failed to save creative asset');
+      throw new Error('__SAVE__');
     }
 
     router.refresh();
@@ -142,7 +145,12 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
         setError(null);
         await uploadCreative();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Upload failed');
+        const msg = err instanceof Error ? err.message : '';
+        if (msg === '__PRESIGN__') setError(t('uploadErrorPresign'));
+        else if (msg.startsWith('__S3__:')) setError(t('uploadErrorS3', { status: msg.replace('__S3__:', '') }));
+        else if (msg === '__SAVE__') setError(t('uploadErrorSave'));
+        else if (msg) setError(msg);
+        else setError(t('uploadErrorGeneric'));
       }
     });
   }
@@ -152,7 +160,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
       <GlassCard padding="md" className="space-y-4">
         <div className="flex items-center gap-2">
           <Clapperboard className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm font-semibold text-white/80">Upload Creative Assets</h3>
+          <h3 className="text-sm font-semibold text-white/80">{t('uploadPanelTitle')}</h3>
         </div>
 
         <div
@@ -178,9 +186,9 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
               <Upload className="w-5 h-5 text-white/40" />
             </div>
             <div>
-              <p className="text-sm font-medium text-white/60">Drop creative here or click to pick file</p>
+              <p className="text-sm font-medium text-white/60">{t('uploadDropTitle')}</p>
               <p className="text-xs text-white/25 mt-1">
-                After file selection, Social Post details modal opens before upload.
+                {t('uploadDropHint')}
               </p>
             </div>
           </div>
@@ -198,9 +206,9 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
       <Dialog open={!!pendingFile} onOpenChange={(open) => !open && resetModal()}>
         <DialogContent className="max-w-lg bg-[#161625] border-white/[0.1] text-white/90">
           <DialogHeader>
-            <DialogTitle className="text-white/90">Upload Creative as Social Post</DialogTitle>
+            <DialogTitle className="text-white/90">{t('modalTitle')}</DialogTitle>
             <DialogDescription className="text-white/40">
-              This mirrors Ops Calendar → Add Event → Social Post flow.
+              {t('modalDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -210,47 +218,47 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
             className="space-y-4"
           >
             <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3">
-              <p className="text-xs text-white/35 mb-1">Selected file</p>
+              <p className="text-xs text-white/35 mb-1">{t('selectedFile')}</p>
               <p className="text-sm text-white/70 truncate">{pendingFile?.file.name}</p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-white/40">Post title *</label>
+              <label className="text-xs text-white/40">{t('labelPostTitle')}</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/90 text-sm outline-none focus:border-cyan-500/40 transition-all"
-                placeholder="Instagram Reel - Product Launch"
+                placeholder={t('placeholderPostTitle')}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-white/40">Platform *</label>
+              <label className="text-xs text-white/40">{t('labelPlatform')}</label>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as SocialPlatform)}
                 className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/90 text-sm outline-none focus:border-cyan-500/40 transition-all"
               >
-                {(Object.entries(PLATFORM_LABELS) as [SocialPlatform, string][]).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                {PLATFORMS.map((value) => (
+                  <option key={value} value={value}>{platformOptionLabel(t, value)}</option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-white/40">Caption</label>
+              <label className="text-xs text-white/40">{t('labelCaption')}</label>
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/90 text-sm outline-none focus:border-cyan-500/40 transition-all resize-none"
-                placeholder="Post caption and hashtags..."
+                placeholder={t('placeholderCaption')}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs text-white/40">Schedule date *</label>
+                <label className="text-xs text-white/40">{t('labelScheduleDate')}</label>
                 <input
                   type="date"
                   value={scheduledDate}
@@ -259,7 +267,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-white/40">Schedule time</label>
+                <label className="text-xs text-white/40">{t('labelScheduleTime')}</label>
                 <input
                   type="time"
                   value={scheduledTime}
@@ -278,18 +286,20 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
 
           <DialogFooter className="gap-2 sm:gap-2">
             <button
+              type="button"
               onClick={resetModal}
               className="px-4 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white/60 text-sm hover:bg-white/[0.09] transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
+              type="button"
               onClick={handleUploadClick}
               disabled={!canUpload || isPending}
               className="px-4 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-sm font-medium hover:bg-cyan-500/30 transition-colors disabled:opacity-40 inline-flex items-center gap-2"
             >
               {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calendar className="w-3.5 h-3.5" />}
-              Upload
+              {t('upload')}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -297,4 +307,3 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
     </>
   );
 }
-

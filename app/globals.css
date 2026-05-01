@@ -25,6 +25,9 @@
   --color-accent-success: var(--accent-success);
   --color-accent-warning: var(--accent-warning);
 
+  --color-premium-gold: var(--premium-gold);
+  --color-premium-gold-dark: var(--premium-gold-dark);
+
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
@@ -60,56 +63,62 @@
   --radius-2xl: calc(var(--radius) * 1.8);
 }
 
-/* Engineering Dark — always dark, no light mode */
+/* Tinted Glass — Midnight Amethyst void, purple light source inside */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.875rem;
+  --topbar-backdrop: blur(48px) saturate(200%);
+  --mm-glass-blur: blur(48px) saturate(200%);
 
-  /* Core surfaces */
-  --surface-deep:    #07070E;
-  --surface-base:    #0F0F1A;
-  --surface-elevated:#161625;
-  --surface-overlay: #1C1C2E;
+  /* Core surfaces — deep void with purple pigment, not purple paint */
+  --surface-deep:    #0c070c;
+  --surface-base:    #130c13;
+  --surface-elevated:#1a101a;
+  --surface-overlay: #211521;
 
-  /* Glassmorphism */
-  --glass-bg:        rgba(255, 255, 255, 0.03);
-  --glass-border:    rgba(255, 255, 255, 0.08);
+  /* Glassmorphism — tinted crystal: aurora bleeds through */
+  --glass-bg:        rgba(29, 15, 29, 0.55);
+  --glass-border:    rgba(255, 255, 255, 0.09);
 
   /* Accents */
-  --accent-indigo:       #6366F1;
-  --accent-indigo-light: #818CF8;
-  --accent-cyan:         #06B6D4;
+  --accent-indigo:       #9c70b2;
+  --accent-indigo-light: #b48dc8;
+  --accent-cyan:         #bea042;
   --accent-danger:       #F43F5E;
   --accent-success:      #10B981;
   --accent-warning:      #F59E0B;
 
-  /* Text */
-  --text-primary:   #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted:     #475569;
+  /* Premium Gold */
+  --premium-gold:      #bea042;
+  --premium-gold-dark: #a07b28;
 
-  /* Shadcn mappings — dark theme by default */
-  --background:              #07070E;
-  --foreground:              #F1F5F9;
-  --card:                    #0F0F1A;
-  --card-foreground:         #F1F5F9;
-  --popover:                 #161625;
-  --popover-foreground:      #F1F5F9;
-  --primary:                 #6366F1;
-  --primary-foreground:      #F1F5F9;
-  --secondary:               #161625;
+  /* Text */
+  --text-primary:   #F0EBF4;
+  --text-secondary: #94A3B8;
+  --text-muted:     #4B5563;
+
+  /* Shadcn mappings */
+  --background:              #0c070c;
+  --foreground:              #F0EBF4;
+  --card:                    #130c13;
+  --card-foreground:         #F0EBF4;
+  --popover:                 #1a101a;
+  --popover-foreground:      #F0EBF4;
+  --primary:                 #9c70b2;
+  --primary-foreground:      #F0EBF4;
+  --secondary:               #1a101a;
   --secondary-foreground:    #94A3B8;
-  --muted:                   #1C1C2E;
-  --muted-foreground:        #64748B;
-  --accent:                  #1C1C2E;
-  --accent-foreground:       #818CF8;
+  --muted:                   #211521;
+  --muted-foreground:        #6B7280;
+  --accent:                  #211521;
+  --accent-foreground:       #bea042;
   --destructive:             #F43F5E;
   --border:                  rgba(255, 255, 255, 0.08);
   --input:                   rgba(255, 255, 255, 0.06);
-  --ring:                    #6366F1;
+  --ring:                    #9c70b2;
 
   /* Chart tokens */
-  --chart-1: #6366F1;
-  --chart-2: #06B6D4;
+  --chart-1: #9c70b2;
+  --chart-2: #bea042;
   --chart-3: #10B981;
   --chart-4: #F59E0B;
   --chart-5: #F43F5E;
@@ -125,9 +134,22 @@
     font-family: var(--font-geist-sans), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    background-image: radial-gradient(ellipse at 15% 0%, rgba(156, 112, 178, 0.1) 0%, transparent 60%),
+                      radial-gradient(ellipse at 85% 100%, rgba(190, 160, 66, 0.06) 0%, transparent 55%);
   }
   html {
     @apply h-full;
+  }
+
+  /* SF Pro discipline — optical sizing and weight hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
+    line-height: 1.18;
+    font-weight: 600;
+  }
+  p, li, span {
+    line-height: 1.6;
   }
 }
 
@@ -178,36 +200,108 @@
   .glass {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(28px) saturate(200%);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    /* Promote compositing layer — smoother scrolling with heavy blur stacks */
+    transform: translateZ(0);
+    will-change: filter, backdrop-filter;
+    backface-visibility: hidden;
   }
+
+  /* Optional extra promotion for large glass panels (skeletons, hero cards). */
+  .gpu-glass-promote {
+    transform: translateZ(0);
+    will-change: filter, backdrop-filter;
+    backface-visibility: hidden;
+  }
+
+  /* Lighter compositing on dense dashboards + accessibility (less GPU cost). */
+  @media (prefers-reduced-motion: reduce) {
+    .glass {
+      backdrop-filter: blur(12px) saturate(130%);
+      -webkit-backdrop-filter: blur(12px) saturate(130%);
+      will-change: auto;
+    }
+    .gpu-glass-promote {
+      will-change: auto;
+    }
+    .gpu-heavy-blur-layer {
+      will-change: auto;
+    }
+  }
+
+  /* Directional rim light — light source from top-left (specular highlight) */
+  .glass::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.22) 0%,
+      rgba(190,160,66,0.25) 35%,
+      rgba(156,112,178,0.2) 65%,
+      transparent 95%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Grain texture — kristal doku, plastik değil */
+  .glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+    opacity: 0.022;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .glass-hover {
-    transition: border-color 0.25s ease, background-color 0.25s ease,
-                box-shadow 0.25s ease, transform 0.2s ease;
+    transition: border-color 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                background-color 0.3s ease,
+                box-shadow 0.3s ease,
+                transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   .glass-hover:hover {
-    background: rgba(255, 255, 255, 0.055);
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.12), inset 0 1px 0 rgba(255,255,255,0.07);
-    transform: translateY(-1px);
+    background: rgba(156, 112, 178, 0.07);
+    border-color: rgba(190, 160, 66, 0.28);
+    box-shadow: 0 8px 40px rgba(156, 112, 178, 0.12), 0 0 20px rgba(190, 160, 66, 0.07),
+                inset 0 1px 0 rgba(255,255,255,0.12), inset 1px 0 0 rgba(255,255,255,0.06),
+                inset 0 -1px 0 rgba(0,0,0,0.1), inset -1px 0 0 rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+  }
+
+  /* Unified Cockpit: heavier blur + consistent rim on dashboard / performance */
+  .cockpit-liquid-scope .glass {
+    border-radius: 2rem !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(64px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(64px) saturate(200%) !important;
   }
 
   /* ── Glows ────────────────────────────────────────────────────────────── */
-  .glow-indigo  { box-shadow: 0 0 28px rgba(99, 102, 241, 0.18); }
-  .glow-cyan    { box-shadow: 0 0 28px rgba(6, 182, 212, 0.18); }
-  .glow-violet  { box-shadow: 0 0 28px rgba(139, 92, 246, 0.18); }
-  .glow-inset   { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .glow-indigo  { box-shadow: 0 0 32px rgba(156, 112, 178, 0.25); }
+  .glow-cyan    { box-shadow: 0 0 32px rgba(190, 160, 66, 0.2); }
+  .glow-violet  { box-shadow: 0 0 32px rgba(180, 141, 200, 0.22); }
+
+  /* Directional inset rim — yukarıdan ve soldan gelen ışık illüzyonu */
+  .glow-inset {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 1px 0 0 rgba(255, 255, 255, 0.07),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+      inset -1px 0 0 rgba(0, 0, 0, 0.05);
+  }
 
   /* ── Aurora orbs (used in DashboardShell) ─────────────────────────────── */
-  .aurora-orb-1 {
-    animation: aurora-drift-1 22s ease-in-out infinite;
-  }
-  .aurora-orb-2 {
-    animation: aurora-drift-2 28s ease-in-out infinite;
-  }
-  .aurora-orb-3 {
-    animation: aurora-drift-3 18s ease-in-out infinite;
-  }
+  .aurora-orb-1 { animation: aurora-drift-1 22s ease-in-out infinite; }
+  .aurora-orb-2 { animation: aurora-drift-2 28s ease-in-out infinite; }
+  .aurora-orb-3 { animation: aurora-drift-3 18s ease-in-out infinite; }
 
   /* ── Floating ────────────────────────────────────────────────────────── */
   .animate-float     { animation: float-y 3.5s ease-in-out infinite; }
@@ -215,7 +309,7 @@
 
   /* ── Shimmer text / borders ──────────────────────────────────────────── */
   .gradient-text-indigo {
-    background: linear-gradient(135deg, #6366F1 0%, #818CF8 40%, #06B6D4 70%, #6366F1 100%);
+    background: linear-gradient(135deg, #e3d0ea 0%, #9c70b2 35%, #bea042 65%, #e3d0ea 100%);
     background-size: 200% auto;
     animation: gradient-shift 4s linear infinite;
     -webkit-background-clip: text;
@@ -223,7 +317,7 @@
     background-clip: text;
   }
   .gradient-text-static {
-    background: linear-gradient(135deg, #6366F1, #818CF8, #06B6D4);
+    background: linear-gradient(135deg, #e3d0ea, #9c70b2, #bea042);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -244,7 +338,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.5) 0%, rgba(6,182,212,0.3) 50%, rgba(139,92,246,0.3) 100%);
+    background: linear-gradient(135deg, rgba(156,112,178,0.55) 0%, rgba(190,160,66,0.4) 50%, rgba(180,141,200,0.35) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -258,7 +352,7 @@
     position: absolute;
     inset: -2px;
     border-radius: inherit;
-    border: 1.5px solid rgba(99, 102, 241, 0.6);
+    border: 1.5px solid rgba(190, 160, 66, 0.65);
     animation: pulse-ring-out 2s ease-out infinite;
   }
 
@@ -271,22 +365,101 @@
   /* ── Scrollbars ──────────────────────────────────────────────────────── */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(99,102,241,0.2) transparent;
+    scrollbar-color: rgba(156,112,178,0.25) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(99,102,241,0.25);
+    background: rgba(156,112,178,0.3);
     border-radius: 2px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(99,102,241,0.45);
+    background: rgba(190,160,66,0.5);
   }
+
+  /* Skip layout/paint for off-screen dashboard chunks while scrolling */
+  .dashboard-scroll-region {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 1200px;
+  }
+
+  /* Inline stacks that use blur(48px)+saturate(200%) — pair with style prop in TSX if needed */
+  .gpu-heavy-blur-layer {
+    transform: translateZ(0);
+    will-change: filter, backdrop-filter;
+    backface-visibility: hidden;
+  }
+
+  /* ── Metallic Gold — anodize metal, not flat paint ───────────────────── */
+  .gold-metallic {
+    background: linear-gradient(to bottom, #d4b44c 0%, #bea042 45%, #a07b28 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gold-icon {
+    color: #bea042;
+    filter: drop-shadow(0 0 6px rgba(190, 160, 66, 0.28));
+  }
+  .gold-border {
+    border-color: rgba(190, 160, 66, 0.35) !important;
+    box-shadow: 0 0 12px rgba(190, 160, 66, 0.12), inset 0 1px 0 rgba(190, 160, 66, 0.15);
+  }
+
+  /* ── Bento Card — Apple hardware aesthetic ────────────────────────────── */
+  .bento-card { border-radius: 2rem; }
+
+  /* ── Typography depth — opacity hierarchy ─────────────────────────────── */
+  .text-depth-1  { color: rgba(255, 255, 255, 1.00); }
+  .text-depth-2  { color: rgba(255, 255, 255, 0.70); }
+  .text-depth-3  { color: rgba(255, 255, 255, 0.40); }
 
   /* ── Mobile safe-area padding (for devices with notch/home indicator) ── */
   .pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .pt-safe  { padding-top:    env(safe-area-inset-top, 0px); }
+  .pl-safe  { padding-left:   max(0.75rem, env(safe-area-inset-left, 0px)); }
+  .pr-safe  { padding-right:  max(0.75rem, env(safe-area-inset-right, 0px)); }
+  .px-safe  {
+    padding-left:  max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
   .mb-safe  { margin-bottom:  env(safe-area-inset-bottom, 0px); }
+
+  /* Main scroll: clear floating dock + home indicator */
+  .pb-mobile-dock {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 768px) {
+    .pb-mobile-dock {
+      padding-bottom: 1.5rem;
+    }
+  }
+
+  /* Softer backdrop on phones — keeps liquid glass without melting the GPU */
+  @media (max-width: 640px) {
+    :root {
+      --topbar-backdrop: blur(28px) saturate(185%);
+      --mm-glass-blur: blur(28px) saturate(185%);
+    }
+  }
+  @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+    :root {
+      --topbar-backdrop: blur(20px) saturate(155%);
+      --mm-glass-blur: blur(20px) saturate(155%);
+    }
+  }
+
+  .madmonos-chat-shell {
+    backdrop-filter: var(--mm-glass-blur);
+    -webkit-backdrop-filter: var(--mm-glass-blur);
+  }
+
+  .madmonos-composer-glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: var(--mm-glass-blur);
+    -webkit-backdrop-filter: var(--mm-glass-blur);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
 
   /* ── Noise overlay ───────────────────────────────────────────────────── */
   .noise-overlay { position: relative; }

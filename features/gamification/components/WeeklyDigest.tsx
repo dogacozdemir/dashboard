@@ -1,61 +1,33 @@
+'use client';
+
 import { CheckCircle2, RotateCcw, Zap, MessageSquare, Calendar, Trophy } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { WeeklyDigestData } from '../types';
 
 interface WeeklyDigestProps {
   data: WeeklyDigestData;
 }
 
-function TrendBadge({ current, previous }: { current: number; previous: number }) {
+function TrendBadge({
+  current,
+  previous,
+}: {
+  current: number;
+  previous: number;
+}) {
+  const t = useTranslations('Features.Gamification');
   if (previous === 0 && current === 0) return null;
   if (previous === 0) return (
-    <span className="text-[10px] font-bold text-emerald-400">✦ İlk hafta</span>
+    <span className="text-[10px] font-bold text-emerald-400">{t('trendFirstWeek')}</span>
   );
   const pct = Math.round(((current - previous) / previous) * 100);
-  if (pct === 0) return <span className="text-[10px] text-white/25">Değişmedi</span>;
+  if (pct === 0) return <span className="text-[10px] text-white/25">{t('trendUnchanged')}</span>;
   return (
     <span className={`text-[10px] font-bold ${pct > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
       {pct > 0 ? '↑' : '↓'} %{Math.abs(pct)}
     </span>
   );
 }
-
-const STATS = (d: WeeklyDigestData) => [
-  {
-    icon:  CheckCircle2,
-    color: 'emerald',
-    label: 'Onaylanan',
-    value: d.approvalsThisWeek,
-    trend: <TrendBadge current={d.approvalsThisWeek} previous={d.approvalsLastWeek} />,
-  },
-  {
-    icon:  RotateCcw,
-    color: 'amber',
-    label: 'Revizyon',
-    value: d.revisionsThisWeek,
-    trend: null,
-  },
-  {
-    icon:  MessageSquare,
-    color: 'violet',
-    label: 'AI Mesaj',
-    value: d.aiMessagesThisWeek,
-    trend: null,
-  },
-  {
-    icon:  Calendar,
-    color: 'cyan',
-    label: 'Aktif Gün',
-    value: d.activeDaysThisWeek,
-    trend: null,
-  },
-  {
-    icon:  Trophy,
-    color: 'amber',
-    label: 'Yeni Rozet',
-    value: d.newAchievements,
-    trend: null,
-  },
-];
 
 const ICON_BG: Record<string, string> = {
   emerald: 'bg-emerald-500/15 text-emerald-400',
@@ -65,7 +37,46 @@ const ICON_BG: Record<string, string> = {
 };
 
 export function WeeklyDigest({ data }: WeeklyDigestProps) {
-  const stats = STATS(data);
+  const t = useTranslations('Features.Gamification');
+
+  const stats = [
+    {
+      icon:  CheckCircle2,
+      color: 'emerald',
+      labelKey: 'weeklyStatApproved' as const,
+      value: data.approvalsThisWeek,
+      trend: <TrendBadge current={data.approvalsThisWeek} previous={data.approvalsLastWeek} />,
+    },
+    {
+      icon:  RotateCcw,
+      color: 'amber',
+      labelKey: 'weeklyStatRevision' as const,
+      value: data.revisionsThisWeek,
+      trend: null,
+    },
+    {
+      icon:  MessageSquare,
+      color: 'violet',
+      labelKey: 'weeklyStatAi' as const,
+      value: data.aiMessagesThisWeek,
+      trend: null,
+    },
+    {
+      icon:  Calendar,
+      color: 'cyan',
+      labelKey: 'weeklyStatActiveDays' as const,
+      value: data.activeDaysThisWeek,
+      trend: null,
+    },
+    {
+      icon:  Trophy,
+      color: 'amber',
+      labelKey: 'weeklyStatNewBadge' as const,
+      value: data.newAchievements,
+      trend: null,
+    },
+  ];
+
   const hasActivity = stats.some((s) => s.value > 0);
 
   return (
@@ -75,14 +86,14 @@ export function WeeklyDigest({ data }: WeeklyDigestProps) {
           <Zap className="w-3.5 h-3.5 text-indigo-400" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-white/80">Haftalık Özet</h3>
-          <p className="text-[10px] text-white/30">Bu hafta yapılanlar</p>
+          <h3 className="text-sm font-semibold text-white/80">{t('weeklyDigestTitle')}</h3>
+          <p className="text-[10px] text-white/30">{t('weeklyDigestSubtitle')}</p>
         </div>
       </div>
 
       {!hasActivity ? (
         <p className="text-xs text-white/30 text-center py-4">
-          Bu hafta henüz aktivite yok
+          {t('weeklyDigestEmpty')}
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 lg:grid-cols-5">
@@ -90,7 +101,7 @@ export function WeeklyDigest({ data }: WeeklyDigestProps) {
             const Icon = s.icon;
             return (
               <div
-                key={s.label}
+                key={s.labelKey}
                 className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-3 space-y-1.5"
               >
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${ICON_BG[s.color]}`}>
@@ -100,7 +111,7 @@ export function WeeklyDigest({ data }: WeeklyDigestProps) {
                   {s.value}
                 </p>
                 <div className="space-y-0.5">
-                  <p className="text-[10px] text-white/35">{s.label}</p>
+                  <p className="text-[10px] text-white/35 line-clamp-2">{t(s.labelKey)}</p>
                   {s.trend}
                 </div>
               </div>

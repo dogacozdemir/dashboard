@@ -4,11 +4,13 @@ import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Send, Loader2, Trash2, Zap, AlertCircle,
-  FileText, Globe, Search, FolderSearch,
+  FileText, Globe, Search, FolderSearch, Sparkles,
 } from 'lucide-react';
 import { sendAiMessage, clearAiHistory } from '../actions/aiChatActions';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { useVisualViewportInset } from '@/hooks/useVisualViewportInset';
+import { useTranslations } from 'next-intl';
 import type { AiMessage } from '../types';
 
 interface AiChatInterfaceProps {
@@ -17,122 +19,110 @@ interface AiChatInterfaceProps {
   initialHistory: AiMessage[];
 }
 
-const STARTER_PROMPTS = [
-  'Analyze our current ad performance and suggest optimizations',
-  'How can we improve our GEO visibility in ChatGPT and Perplexity?',
-  'Create a 30-day content strategy brief as a PDF report',
-  'Search web for latest Meta Ads algorithm changes in 2026',
-];
+type ToolHintKey = 'generate_pdf' | 'web_fetch' | 'web_search' | 'search_assets';
 
-// Tool name → display label + icon
-const TOOL_META: Record<string, { label: string; Icon: React.ElementType }> = {
-  generate_pdf:  { label: 'Generating PDF',    Icon: FileText    },
-  web_fetch:     { label: 'Reading page',      Icon: Globe       },
-  web_search:    { label: 'Searching web',     Icon: Search      },
-  search_assets: { label: 'Searching assets',  Icon: FolderSearch },
+const STARTER_KEYS = ['starter0', 'starter1', 'starter2', 'starter3'] as const;
+
+const TOOL_ICONS: Record<ToolHintKey, React.ElementType> = {
+  generate_pdf:  FileText,
+  web_fetch:     Globe,
+  web_search:    Search,
+  search_assets: FolderSearch,
 };
 
-// ─── SIMPLE MARKDOWN-LINK RENDERER ───────────────────────────────────────────
-// Renders [text](url) as <a>, bare https://… as <a>, and **bold** as <strong>.
-// Everything else is plain text.
+const bubbleSpring = { type: 'spring' as const, stiffness: 280, damping: 26, mass: 0.9 };
 
-interface Segment {
-  type: 'text' | 'link' | 'bold';
-  text:  string;
-  href?: string;
-}
+/* ── Markdown-link renderer ── */
+interface Segment { type: 'text' | 'link' | 'bold'; text: string; href?: string; }
 
 function parseMessage(content: string): Segment[] {
   const segments: Segment[] = [];
-  // Combined regex: markdown link, bare URL, bold
   const RE = /(\[([^\]]+)\]\((https?:\/\/[^)]+)\))|(https?:\/\/[^\s<>"]+)|(\*\*([^*]+)\*\*)/g;
-
-  let last = 0;
-  let match: RegExpExecArray | null;
+  let last = 0, match: RegExpExecArray | null;
 
   while ((match = RE.exec(content)) !== null) {
-    if (match.index > last) {
-      segments.push({ type: 'text', text: content.slice(last, match.index) });
-    }
-
-    if (match[1]) {
-      // Markdown link [text](url)
-      segments.push({ type: 'link', text: match[2], href: match[3] });
-    } else if (match[4]) {
-      // Bare URL
-      segments.push({ type: 'link', text: match[4], href: match[4] });
-    } else if (match[5]) {
-      // **bold**
-      segments.push({ type: 'bold', text: match[6] });
-    }
-
+    if (match.index > last) segments.push({ type: 'text', text: content.slice(last, match.index) });
+    if (match[1])      segments.push({ type: 'link', text: match[2], href: match[3] });
+    else if (match[4]) segments.push({ type: 'link', text: match[4], href: match[4] });
+    else if (match[5]) segments.push({ type: 'bold', text: match[6] });
     last = match.index + match[0].length;
   }
-
-  if (last < content.length) {
-    segments.push({ type: 'text', text: content.slice(last) });
-  }
-
+  if (last < content.length) segments.push({ type: 'text', text: content.slice(last) });
   return segments;
 }
 
 function MessageContent({ content }: { content: string }) {
   const segments = parseMessage(content);
-
   return (
     <span className="whitespace-pre-wrap">
       {segments.map((seg, i) => {
-        if (seg.type === 'link') {
-          return (
-            <a
-              key={i}
-              href={seg.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300 break-all"
-            >
-              {seg.text}
-            </a>
-          );
-        }
-        if (seg.type === 'bold') {
-          return <strong key={i} className="font-semibold text-white/90">{seg.text}</strong>;
-        }
+        if (seg.type === 'link') return (
+          <a key={i} href={seg.href} target="_blank" rel="noopener noreferrer"
+            className="text-[#b48dc8] underline underline-offset-2 hover:text-[#e3d0ea] break-all transition-colors">
+            {seg.text}
+          </a>
+        );
+        if (seg.type === 'bold') return <strong key={i} className="font-semibold text-white/95">{seg.text}</strong>;
         return <span key={i}>{seg.text}</span>;
       })}
     </span>
   );
 }
 
-// ─── THINKING INDICATOR ───────────────────────────────────────────────────────
-
-function ThinkingIndicator({ toolHint }: { toolHint: string | null }) {
-  const meta = toolHint ? TOOL_META[toolHint] : null;
+/* ── Thinking indicator — glow pulse ── */
+function ThinkingIndicator({
+  toolHint,
+  runningLabel,
+}: {
+  toolHint: string | null;
+  /** Pre-resolved ICU label for active tool */
+  runningLabel: string | null;
+}) {
+  const IconCmp = toolHint && toolHint in TOOL_ICONS
+    ? TOOL_ICONS[toolHint as ToolHintKey]
+    : null;
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex gap-3"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={bubbleSpring}
+      className="flex gap-2.5"
     >
-      <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0">
-        <Brain className="w-3.5 h-3.5 text-indigo-400" />
-      </div>
-      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-indigo-500/[0.08] border border-indigo-500/15">
-        {meta ? (
+      {/* AI avatar with breathing glow */}
+      <motion.div
+        className="w-7 h-7 rounded-xl shrink-0 mt-0.5 flex items-center justify-center"
+        style={{ background: 'linear-gradient(135deg, #9c70b2, #562c52)' }}
+        animate={{
+          boxShadow: [
+            '0 0 0px rgba(156,112,178,0)',
+            '0 0 20px rgba(156,112,178,0.7)',
+            '0 0 0px rgba(156,112,178,0)',
+          ],
+        }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <Brain className="w-3.5 h-3.5 text-white" />
+      </motion.div>
+
+      <div
+        className="px-4 py-3 rounded-2xl rounded-tl-[6px] border border-white/[0.10]"
+        style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)' }}
+      >
+        {IconCmp ? (
           <div className="flex items-center gap-2">
-            <meta.Icon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <span className="text-xs text-indigo-400">{meta.label}…</span>
-            <Loader2 className="w-3 h-3 text-indigo-400 animate-spin" />
+            <IconCmp className="w-3.5 h-3.5 text-[#9c70b2] shrink-0" />
+            <span className="text-xs text-[#b48dc8]">{runningLabel ?? ''}</span>
+            <Loader2 className="w-3 h-3 text-[#9c70b2] animate-spin" />
           </div>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {[0, 1, 2].map((i) => (
               <motion.span
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-indigo-400"
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                className="w-1.5 h-1.5 rounded-full bg-[#9c70b2]"
+                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.15, 0.8] }}
+                transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.22, ease: 'easeInOut' }}
               />
             ))}
           </div>
@@ -142,24 +132,35 @@ function ThinkingIndicator({ toolHint }: { toolHint: string | null }) {
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-
+/* ── Main component ── */
 export function AiChatInterface({ companyId, tenantName, initialHistory }: AiChatInterfaceProps) {
+  const t = useTranslations('Features.MonoAi');
   const [messages,   setMessages]   = useState<AiMessage[]>(initialHistory);
   const [input,      setInput]      = useState('');
   const [error,      setError]      = useState<string | null>(null);
   const [toolHint,   setToolHint]   = useState<string | null>(null);
   const [isThinking, startTransition] = useTransition();
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef   = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const vvInset = useVisualViewportInset();
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const id = requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
   }, [messages, isThinking]);
 
-  // Reset toolHint when idle
   useEffect(() => {
     if (!isThinking) setToolHint(null);
   }, [isThinking]);
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }, []);
 
   const handleSend = useCallback((text?: string) => {
     const content = (text ?? input).trim();
@@ -168,110 +169,166 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
     setInput('');
     setError(null);
     setToolHint(null);
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     const tempUser: AiMessage = {
-      id:        `u-${Date.now()}`,
-      role:      'user',
-      content,
-      createdAt: new Date().toISOString(),
+      id: `u-${Date.now()}`, role: 'user', content, createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, tempUser]);
 
-    // Detect likely tool from user message (heuristic for indicator UX)
-    if (/pdf|report|document|brief|generate/i.test(content))   setToolHint('generate_pdf');
-    else if (/search|latest|news|current|2026/i.test(content)) setToolHint('web_search');
-    else if (/fetch|read.*url|http/i.test(content))            setToolHint('web_fetch');
+    if (/pdf|report|document|brief|generate/i.test(content))    setToolHint('generate_pdf');
+    else if (/search|latest|news|current|2026/i.test(content))  setToolHint('web_search');
+    else if (/fetch|read.*url|http/i.test(content))             setToolHint('web_fetch');
     else if (/asset|creative|brand|file|upload/i.test(content)) setToolHint('search_assets');
 
     startTransition(async () => {
       const result = await sendAiMessage(companyId, content, tenantName);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      const aiMsg: AiMessage = {
-        id:        `a-${Date.now()}`,
-        role:      'assistant',
-        content:   result.reply,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      if (result.error) { setError(result.error); return; }
+      setMessages((prev) => [...prev, {
+        id: `a-${Date.now()}`, role: 'assistant', content: result.reply, createdAt: new Date().toISOString(),
+      }]);
     });
   }, [input, isThinking, companyId, tenantName]);
 
   function handleClear() {
-    if (!confirm('Clear entire conversation history?')) return;
-    startTransition(async () => {
-      await clearAiHistory(companyId);
-      setMessages([]);
-    });
+    if (!confirm(t('confirmClear'))) return;
+    startTransition(async () => { await clearAiHistory(companyId); setMessages([]); });
   }
 
+  const hasInput = input.trim().length > 0;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] max-h-[800px]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-            <Brain className="w-3.5 h-3.5 text-indigo-400" />
+    <div className="flex flex-col h-full min-h-0 relative">
+
+      {/* ── Aurora orbs — soft motion behind messages ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden>
+        <motion.div
+          className="absolute -top-24 -left-16 w-[400px] h-[400px] rounded-full blur-[100px]"
+          style={{ background: 'rgba(156,112,178,0.06)' }}
+          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute -bottom-24 -right-16 w-[360px] h-[360px] rounded-full blur-[90px]"
+          style={{ background: 'rgba(190,160,66,0.05)' }}
+          animate={{ x: [0, -25, 0], y: [0, 20, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* ── Header ── */}
+      <div className="shrink-0 relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-white/[0.07]">
+        <div className="flex items-center gap-2.5">
+          <motion.div
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, #9c70b2, #562c52)' }}
+            animate={{ boxShadow: ['0 0 8px rgba(156,112,178,0.2)', '0 0 18px rgba(156,112,178,0.45)', '0 0 8px rgba(156,112,178,0.2)'] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <Brain className="w-3.5 h-3.5 text-white" />
+          </motion.div>
+          <div>
+            <p className="text-xs font-semibold text-white/80 leading-none">{t('headerTitle')}</p>
+            <p className="text-[10px] text-white/30 mt-0.5">
+              {t('headerSubtitle')}
+            </p>
           </div>
-          <span className="text-xs font-semibold text-white/70">monoAI v1</span>
-          <span className="text-[10px] text-white/25">
-            · PDF · Web Search · Asset Search · Long-term Memory
-          </span>
         </div>
         {messages.length > 0 && (
           <button
             onClick={handleClear}
-            className="flex items-center gap-1 text-[10px] text-white/25 hover:text-red-400 transition-colors"
+            className="flex items-center gap-1 text-[10px] text-white/20 hover:text-red-400/80 transition-colors"
           >
             <Trash2 className="w-3 h-3" />
-            Clear
+            {t('clearHistory')}
           </button>
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 scrollbar-thin">
+      {/* ── Messages ── */}
+      <div
+        className="relative z-10 flex-1 min-h-0 space-y-3 overflow-y-auto px-4 py-5 md:px-5"
+        style={{
+          scrollbarWidth: 'none',
+          paddingBottom: vvInset > 0 ? `${Math.min(vvInset, 280) + 8}px` : undefined,
+        }}
+      >
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-6 text-center py-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/10 flex items-center justify-center">
-              <Brain className="w-6 h-6 text-indigo-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white/70">
-                AI Strategist for {tenantName}
+          <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={bubbleSpring}
+            >
+              <motion.div
+                className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto"
+                style={{ background: 'linear-gradient(135deg, rgba(156,112,178,0.25), rgba(86,44,82,0.2))' }}
+                animate={{ boxShadow: ['0 0 20px rgba(156,112,178,0.15)', '0 0 40px rgba(156,112,178,0.35)', '0 0 20px rgba(156,112,178,0.15)'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <Brain className="w-7 h-7 text-[#9c70b2]" />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...bubbleSpring, delay: 0.1 }}
+            >
+              <p className="text-sm font-semibold text-white/65 tracking-tight">
+                {t('strategistFor', { tenant: tenantName })}
               </p>
-              <p className="text-xs text-white/30 mt-1">
-                Powered by monoAI v1 · PDF generation · Web research · Asset search
+              <p className="text-xs text-white/28 mt-1">
+                {t('poweredBy')}
               </p>
-            </div>
+            </motion.div>
 
             {/* Capability pills */}
-            <div className="flex flex-wrap justify-center gap-2">
-              {Object.entries(TOOL_META).map(([, { label, Icon }]) => (
+            <motion.div
+              className="flex flex-wrap justify-center gap-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              {(Object.keys(TOOL_ICONS) as ToolHintKey[]).map((toolKey) => {
+                const Icon = TOOL_ICONS[toolKey];
+                const label = t(`toolPill.${toolKey}`);
+                return (
                 <div
-                  key={label}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] text-white/35"
+                  key={toolKey}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] text-[10px] text-white/35"
+                  style={{ background: 'rgba(255,255,255,0.03)' }}
                 >
                   <Icon className="w-3 h-3" />
-                  {label.replace('ing', '')}
+                  {label}
                 </div>
-              ))}
-            </div>
+              ); })}
+            </motion.div>
 
-            {/* Starter prompts */}
-            <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-              {STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
+            {/* Starter prompts — bento grid */}
+            <motion.div
+              className="grid grid-cols-2 gap-2 w-full max-w-sm"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...bubbleSpring, delay: 0.25 }}
+            >
+              {STARTER_KEYS.map((key) => {
+                const prompt = t(key);
+                return (
+                <motion.button
+                  key={key}
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={bubbleSpring}
                   onClick={() => handleSend(prompt)}
-                  className="px-3 py-2.5 text-[11px] text-white/50 bg-white/[0.04] border border-white/[0.06] rounded-xl hover:bg-white/[0.07] hover:text-white/70 transition-colors text-left leading-relaxed"
+                  className="px-3 py-3 text-[11px] text-white/45 border border-white/[0.07] rounded-2xl text-left leading-relaxed transition-colors line-clamp-4"
+                  style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)' }}
                 >
+                  <Sparkles className="w-2.5 h-2.5 text-[#bea042]/40 mb-1.5" />
                   {prompt}
-                </button>
-              ))}
-            </div>
+                </motion.button>
+              ); })}
+            </motion.div>
           </div>
         ) : (
           <>
@@ -279,33 +336,54 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
+                  initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={bubbleSpring}
+                  className={cn('flex gap-2.5', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
                 >
                   {/* Avatar */}
-                  <div className={cn(
-                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
-                    msg.role === 'assistant'
-                      ? 'bg-indigo-500/20 border border-indigo-500/20'
-                      : 'bg-white/[0.08] border border-white/[0.08]',
-                  )}>
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                    style={{
+                      background: msg.role === 'assistant'
+                        ? 'linear-gradient(135deg, #9c70b2, #562c52)'
+                        : 'linear-gradient(135deg, rgba(190,160,66,0.3), rgba(160,123,40,0.2))',
+                      border: msg.role === 'assistant' ? 'none' : '1px solid rgba(190,160,66,0.2)',
+                    }}
+                  >
                     {msg.role === 'assistant'
-                      ? <Brain className="w-3.5 h-3.5 text-indigo-400" />
-                      : <Zap   className="w-3.5 h-3.5 text-white/50"  />}
+                      ? <Brain className="w-3.5 h-3.5 text-white" />
+                      : <Zap   className="w-3.5 h-3.5 text-[#bea042]" />
+                    }
                   </div>
 
                   {/* Bubble */}
-                  <div className={cn('max-w-[80%] space-y-1', msg.role === 'user' && 'items-end flex flex-col')}>
-                    <div className={cn(
-                      'px-4 py-3 rounded-2xl text-sm leading-relaxed',
-                      msg.role === 'assistant'
-                        ? 'bg-indigo-500/[0.08] border border-indigo-500/15 text-white/80 rounded-tl-md'
-                        : 'bg-white/[0.07] border border-white/[0.08] text-white/80 rounded-tr-md',
-                    )}>
-                      <MessageContent content={msg.content} />
-                    </div>
-                    <span className="text-[10px] text-white/20 px-1">
+                  <div
+                    className={cn(
+                      'flex max-w-[min(92%,36rem)] flex-col gap-0.5 md:max-w-[80%]',
+                      msg.role === 'user' ? 'items-end' : 'items-start',
+                    )}
+                  >
+                    {msg.role === 'user' ? (
+                      <div
+                        className="rounded-2xl rounded-tr-[6px] px-4 py-3 text-sm leading-relaxed text-white"
+                        style={{
+                          background: 'linear-gradient(135deg, #9c70b2 0%, #6d3b68 60%, #562c52 100%)',
+                          boxShadow:
+                            '0 4px 20px rgba(156,112,178,0.25), inset -4px 0 18px -6px rgba(190,160,66,0.42)',
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    ) : (
+                      <div
+                        className="px-4 py-3 rounded-2xl rounded-tl-[6px] border border-white/[0.10] text-sm leading-relaxed text-white/82"
+                        style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)' }}
+                      >
+                        <MessageContent content={msg.content} />
+                      </div>
+                    )}
+                    <span className="text-[9px] text-white/20 px-1">
                       {formatRelativeTime(msg.createdAt)}
                     </span>
                   </div>
@@ -313,8 +391,17 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
               ))}
             </AnimatePresence>
 
-            {/* Thinking / tool indicator */}
-            {isThinking && <ThinkingIndicator toolHint={toolHint} />}
+            {/* Thinking */}
+            {isThinking && (
+              <ThinkingIndicator
+                toolHint={toolHint}
+                runningLabel={
+                  toolHint && (toolHint as ToolHintKey) in TOOL_ICONS
+                    ? `${t(`toolRunning.${toolHint as ToolHintKey}`)}…`
+                    : null
+                }
+              />
+            )}
           </>
         )}
 
@@ -323,7 +410,9 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"
+            transition={bubbleSpring}
+            className="flex items-start gap-2.5 px-4 py-3 rounded-2xl border border-red-500/20 text-red-400/80 text-xs"
+            style={{ background: 'rgba(244,63,94,0.08)' }}
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <p className="leading-relaxed">{error}</p>
@@ -333,33 +422,53 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-5 py-4 border-t border-white/[0.06]">
-        <div className="flex gap-3 items-end">
+      {/* ── Input Dock (visualViewport-aware) ── */}
+      <div
+        className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:px-4 md:pb-4"
+        style={{
+          transform: vvInset > 0 ? `translateY(-${vvInset}px)` : undefined,
+          transition: 'transform 0.2s ease-out',
+        }}
+      >
+        <div
+          className={cn(
+            'madmonos-composer-glass flex items-end gap-2.5 border border-white/[0.10] px-3 py-2.5 transition-all md:gap-3 md:rounded-3xl md:px-4 md:py-3',
+            'rounded-full max-md:pl-4 max-md:pr-2 max-md:py-2',
+          )}
+        >
           <textarea
+            ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => { setInput(e.target.value); autoResize(); }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
             }}
-            placeholder="Ask your AI Strategist, generate a PDF report, search the web…"
+            placeholder={t('inputPlaceholder')}
             rows={1}
             disabled={isThinking}
-            className="flex-1 px-4 py-3 rounded-2xl bg-white/[0.05] border border-white/[0.08] text-white/90 placeholder-white/20 text-sm outline-none focus:border-indigo-500/40 resize-none transition-all leading-relaxed disabled:opacity-50"
-            style={{ minHeight: 44, maxHeight: 120 }}
+            className="flex-1 bg-transparent text-white/90 placeholder-white/22 text-sm outline-none resize-none leading-relaxed disabled:opacity-50"
+            style={{ minHeight: 22, maxHeight: 120 }}
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            transition={bubbleSpring}
             onClick={() => handleSend()}
-            disabled={isThinking || !input.trim()}
-            className="flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/30 transition-colors disabled:opacity-40 shrink-0"
+            disabled={isThinking || !hasInput}
+            className={cn(
+              'flex items-center justify-center w-8 h-8 rounded-2xl transition-all duration-300 shrink-0',
+              hasInput && !isThinking
+                ? 'shadow-[0_0_16px_rgba(190,160,66,0.35)]'
+                : 'bg-white/[0.06] border border-white/[0.06]',
+            )}
+            style={hasInput && !isThinking ? {
+              background: 'linear-gradient(135deg, #d4b44c 0%, #bea042 50%, #a07b28 100%)',
+            } : undefined}
           >
             {isThinking
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send    className="w-4 h-4"              />}
-          </button>
+              ? <Loader2 className="w-3.5 h-3.5 text-white/40 animate-spin" />
+              : <Send className={cn('w-3.5 h-3.5', hasInput ? 'text-black' : 'text-white/20')} />
+            }
+          </motion.button>
         </div>
       </div>
     </div>

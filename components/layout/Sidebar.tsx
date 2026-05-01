@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
   CalendarDays,
   Brain,
   Sparkles,
+  UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { Tenant } from '@/types/tenant';
@@ -25,54 +27,85 @@ import { XPProgress } from '@/features/gamification/components/XPProgress';
 import { StreakCounter } from '@/features/gamification/components/StreakCounter';
 
 interface NavItem {
-  href:   string;
-  label:  string;
-  icon:   React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  badge?: string;
+  href: string;
+  labelKey:
+    | 'overview'
+    | 'performanceHub'
+    | 'creativeStudio'
+    | 'seoGeo'
+    | 'brandVault'
+    | 'chat'
+    | 'monoAi'
+    | 'opsCalendar';
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  badgeKey?: 'badgeLive' | 'badgeAi';
   color?: string;
 }
 
-const navItems: NavItem[] = [
-  { href: '/dashboard',   label: 'Overview',        icon: LayoutDashboard },
-  { href: '/performance', label: 'Performance Hub',  icon: BarChart3,      badge: 'Live',  color: 'cyan' },
-  { href: '/creative',    label: 'Creative Studio',  icon: Clapperboard,                   color: 'violet' },
-  { href: '/strategy',    label: 'SEO & GEO',        icon: Globe,                          color: 'emerald' },
-  { href: '/brand-vault', label: 'Brand Vault',       icon: Shield },
-  { href: '/chat',        label: 'Chat',              icon: MessageSquare },
-  { href: '/mono-ai',     label: 'Mono AI',           icon: Brain,          badge: 'AI',   color: 'indigo' },
-  { href: '/calendar',    label: 'Ops Calendar',      icon: CalendarDays },
+const NAV_DEF: NavItem[] = [
+  { href: '/dashboard', labelKey: 'overview', icon: LayoutDashboard },
+  {
+    href: '/performance',
+    labelKey: 'performanceHub',
+    icon: BarChart3,
+    badgeKey: 'badgeLive',
+    color: 'cyan',
+  },
+  { href: '/creative', labelKey: 'creativeStudio', icon: Clapperboard, color: 'violet' },
+  { href: '/strategy', labelKey: 'seoGeo', icon: Globe, color: 'emerald' },
+  { href: '/brand-vault', labelKey: 'brandVault', icon: Shield },
+  { href: '/chat', labelKey: 'chat', icon: MessageSquare },
+  {
+    href: '/mono-ai',
+    labelKey: 'monoAi',
+    icon: Brain,
+    badgeKey: 'badgeAi',
+    color: 'indigo',
+  },
+  { href: '/calendar', labelKey: 'opsCalendar', icon: CalendarDays },
 ];
 
 interface SidebarProps {
-  tenant:         Tenant;
-  gamification?:  UserGamificationData | null;
+  tenant:          Tenant;
+  gamification?:   UserGamificationData | null;
+  canManageTeam?: boolean;
 }
 
-export function Sidebar({ tenant, gamification }: SidebarProps) {
+export function Sidebar({ tenant, gamification, canManageTeam = false }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations('Dashboard.sidebar');
 
   return (
     <motion.aside
-      animate={{ width: collapsed ? 72 : 244 }}
-      transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-      className="relative flex flex-col h-screen border-r border-white/[0.06] bg-[#0B0B16] shrink-0 overflow-hidden"
+      animate={{ width: collapsed ? 72 : 264 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 20, mass: 1 }}
+      className="gpu-heavy-blur-layer relative flex flex-col h-full rounded-3xl border border-white/[0.10] shrink-0 overflow-hidden"
+      style={{
+        background: 'rgba(29, 15, 29, 0.45)',
+        backdropFilter: 'blur(48px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+        boxShadow: '0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 20px 60px rgba(0,0,0,0.4)',
+      }}
     >
-      {/* Top gradient shine */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+      {/* Purple tint overlay */}
+      <div className="absolute inset-0 rounded-3xl bg-[#1d0f1d]/20 pointer-events-none" />
+
+      {/* Top rim light — specular highlight */}
+      <div className="absolute top-0 left-0 right-0 h-px rounded-t-3xl bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
       {/* ── Logo ── */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.07] relative z-10">
         {/* Logo mark with pulse ring */}
         <div className="relative shrink-0">
           <motion.div
             whileHover={{ scale: 1.08, rotate: 5 }}
             transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-            className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-400 to-cyan-500 shadow-lg shadow-indigo-500/30"
+            className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-br from-[#9c70b2] via-[#b48dc8] to-[#bea042] shadow-lg shadow-[#9c70b2]/30"
           >
             <Zap className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
           </motion.div>
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-[#0B0B16] animate-float-slow" />
+          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#bea042] border-2 border-[#0e080e] animate-float-slow" />
         </div>
 
         <AnimatePresence>
@@ -87,8 +120,8 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
               <span className="font-bold text-sm tracking-tight gradient-text-indigo whitespace-nowrap">
                 madmonos
               </span>
-              <p className="text-[10px] text-white/25 uppercase tracking-widest whitespace-nowrap mt-0.5">
-                AI-First Agency
+              <p className="text-[10px] text-white/25 uppercase tracking-widest mt-0.5 truncate">
+                {t('tagline')}
               </p>
             </motion.div>
           )}
@@ -103,12 +136,12 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className="mx-3 mt-3 px-3 py-2.5 rounded-xl gradient-border bg-white/[0.025]"
+            className="relative z-10 mx-3 mt-3 px-3 py-2.5 rounded-xl gradient-border bg-white/[0.025]"
           >
             <div className="flex items-center gap-2">
               <Sparkles className="w-3 h-3 text-indigo-400/60 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] text-white/25 uppercase tracking-widest leading-none mb-0.5">Brand</p>
+                <p className="text-[10px] text-white/25 uppercase tracking-widest leading-none mb-0.5">{t('brandLabel')}</p>
                 <p className="text-xs font-semibold text-white/80 truncate">{tenant.name}</p>
               </div>
             </div>
@@ -117,8 +150,8 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
       </AnimatePresence>
 
       {/* ── Nav ── */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
-        {navItems.map((item, idx) => {
+      <nav className="relative z-10 flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+        {NAV_DEF.map((item, idx) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
 
@@ -126,38 +159,54 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
             <Link key={item.href} href={item.href}>
               <motion.div
                 className={cn(
-                  'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors group cursor-pointer',
+                  'relative flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors group cursor-pointer',
                   isActive
-                    ? 'text-indigo-300'
-                    : 'text-white/35 hover:text-white/75 hover:bg-white/[0.04]',
+                    ? 'text-[#e3d0ea]'
+                    : 'text-white/35 hover:text-white/75',
                 )}
                 whileHover={{ x: collapsed ? 0 : 3 }}
                 whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.13 }}
-                style={{ transitionDelay: `${idx * 12}ms` }}
+                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                style={{ transitionDelay: `${idx * 8}ms` }}
               >
-                {/* Active pill — animated via layoutId */}
+                {/* Active pill */}
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-xl"
+                    className="absolute inset-0 rounded-2xl"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(6,182,212,0.08) 100%)',
-                      border:     '1px solid rgba(99,102,241,0.28)',
-                      boxShadow:  'inset 0 1px 0 rgba(255,255,255,0.06)',
+                      background: 'linear-gradient(135deg, rgba(156,112,178,0.22) 0%, rgba(190,160,66,0.12) 100%)',
+                      border:     '1px solid rgba(190,160,66,0.28)',
+                      boxShadow:  '0 0 24px rgba(156,112,178,0.12), inset 0 1px 0 rgba(255,255,255,0.08)',
                     }}
-                    transition={{ type: 'spring', bounce: 0.18, duration: 0.45 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20, mass: 1 }}
                   />
                 )}
 
-                {/* Icon */}
-                <Icon
-                  className={cn(
-                    'w-4 h-4 shrink-0 relative z-10 transition-colors duration-200',
-                    isActive ? 'text-indigo-400' : 'group-hover:text-white/70',
+                {/* Hover pill — gradient glow */}
+                <div className={cn(
+                  'absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200',
+                  !isActive && 'bg-gradient-to-r from-[#9c70b2]/15 to-[#bea042]/8',
+                )} />
+
+                {/* Icon wrapper with breathing glow-dot */}
+                <div className="relative shrink-0 z-10">
+                  <Icon
+                    className={cn(
+                      'w-4 h-4 transition-colors duration-200',
+                      isActive ? 'text-[#bea042]' : 'group-hover:text-white/70',
+                    )}
+                    strokeWidth={isActive ? 2.2 : 1.8}
+                  />
+                  {isActive && (
+                    <motion.span
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full bg-[#9c70b2]"
+                      style={{ boxShadow: '0 0 8px rgba(156,112,178,0.9)' }}
+                      animate={{ opacity: [0.5, 1, 0.5], scale: [0.85, 1.2, 0.85] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                    />
                   )}
-                  strokeWidth={isActive ? 2.2 : 1.8}
-                />
+                </div>
 
                 {/* Label */}
                 <AnimatePresence>
@@ -167,24 +216,24 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.18 }}
-                      className="relative z-10 text-sm font-medium whitespace-nowrap flex-1 leading-none"
+                      className="relative z-10 text-sm font-medium min-w-0 flex-1 leading-tight text-left truncate"
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </motion.span>
                   )}
                 </AnimatePresence>
 
                 {/* Badge */}
-                {!collapsed && item.badge && (
+                {!collapsed && item.badgeKey && (
                   <span
                     className={cn(
                       'relative z-10 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0',
-                      item.badge === 'Live'
-                        ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25'
-                        : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/25',
+                      item.badgeKey === 'badgeLive'
+                        ? 'bg-[#bea042]/15 text-[#bea042] border border-[#bea042]/30'
+                        : 'bg-[#9c70b2]/15 text-[#b48dc8] border border-[#9c70b2]/30',
                     )}
                   >
-                    {item.badge}
+                    {t(item.badgeKey)}
                   </span>
                 )}
               </motion.div>
@@ -192,6 +241,51 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
           );
         })}
       </nav>
+
+      {canManageTeam && (
+        <div className="relative z-10 px-2 pb-2 space-y-1">
+          {!collapsed && (
+            <p className="px-3 text-[9px] font-semibold text-white/22 uppercase tracking-[0.14em]">
+              {t('workspace')}
+            </p>
+          )}
+          <Link href="/settings/team">
+            <motion.div
+              className={cn(
+                'relative flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors group cursor-pointer',
+                pathname.startsWith('/settings')
+                  ? 'text-[#e3d0ea]'
+                  : 'text-white/35 hover:text-white/75',
+              )}
+              whileHover={{ x: collapsed ? 0 : 3 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            >
+              {pathname.startsWith('/settings') && (
+                <motion.div
+                  layoutId="sidebar-active-settings"
+                  className="absolute inset-0 rounded-2xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(156,112,178,0.18) 0%, rgba(190,160,66,0.1) 100%)',
+                    border: '1px solid rgba(190,160,66,0.22)',
+                  }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20, mass: 1 }}
+                />
+              )}
+              <UsersRound
+                className={cn(
+                  'relative z-10 w-4 h-4 shrink-0',
+                  pathname.startsWith('/settings') ? 'text-[#bea042]' : 'group-hover:text-white/70',
+                )}
+                strokeWidth={pathname.startsWith('/settings') ? 2.2 : 1.8}
+              />
+              {!collapsed && (
+                <span className="relative z-10 text-sm font-medium truncate min-w-0">{t('team')}</span>
+              )}
+            </motion.div>
+          </Link>
+        </div>
+      )}
 
       {/* ── Gamification HUD ── */}
       <AnimatePresence>
@@ -201,7 +295,7 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2 }}
-            className="mx-3 mb-2 space-y-2"
+            className="relative z-10 mx-3 mb-2 space-y-2"
           >
             <StreakCounter streak={gamification.streak} compact />
             <XPProgress totalXP={gamification.totalXP} level={gamification.level} compact />
@@ -225,17 +319,17 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
       </AnimatePresence>
 
       {/* ── Collapse toggle ── */}
-      <div className="border-t border-white/[0.05] px-2 py-3">
+      <div className="relative z-10 border-t border-white/[0.07] px-2 py-3">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setCollapsed((prev) => !prev)}
           className={cn(
-            'flex items-center justify-center rounded-xl h-9 bg-white/[0.03] border border-white/[0.06]',
-            'text-white/30 hover:text-white/70 hover:bg-white/[0.07] transition-colors',
+            'flex items-center justify-center rounded-2xl h-9 bg-white/[0.04] border border-white/[0.07]',
+            'text-white/30 hover:text-[#bea042]/70 hover:bg-white/[0.07] transition-colors',
             collapsed ? 'w-full' : 'w-full',
           )}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? t('expandSidebar') : t('collapseSidebar')}
         >
           {collapsed ? (
             <ChevronRight className="w-3.5 h-3.5" />
@@ -246,7 +340,7 @@ export function Sidebar({ tenant, gamification }: SidebarProps) {
               animate={{ opacity: 1 }}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              <span className="text-xs">Collapse</span>
+              <span className="text-xs truncate">{t('collapse')}</span>
             </motion.div>
           )}
         </motion.button>

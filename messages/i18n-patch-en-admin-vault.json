@@ -1,0 +1,10 @@
+{
+  "Admin": {
+    "tasks": {
+      "vaultMissingTitle": "Brand Vault / knowledge base incomplete",
+      "vaultMissingBodyBoth": "brand_assets and brand_knowledge_chunks are empty for this tenant. Populate the vault for GEO and Mono AI.",
+      "vaultMissingBodyAssets": "No brand_assets rows — add vault content.",
+      "vaultMissingBodyChunks": "brand_knowledge_chunks is empty — check indexing / chunk pipeline."
+    }
+  }
+}

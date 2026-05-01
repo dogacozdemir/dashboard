@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Trophy, Flame, Zap } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { getLevel } from '../lib/definitions';
 import type { LeaderboardEntry } from '../types';
 
@@ -26,11 +27,14 @@ const LEVEL_COLORS: Record<number, string> = {
 };
 
 export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
+  const t = useTranslations('Features.Gamification');
+  const locale = useLocale();
+
   if (entries.length === 0) {
     return (
       <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 text-center">
-        <p className="text-sm text-white/30">Henüz sıralama yok</p>
-        <p className="text-xs text-white/20 mt-1">Aktivite biriktikçe burada görünecek</p>
+        <p className="text-sm text-white/30">{t('leaderboardEmptyTitle')}</p>
+        <p className="text-xs text-white/20 mt-1">{t('leaderboardEmptySubtitle')}</p>
       </div>
     );
   }
@@ -42,8 +46,8 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-white/80">Sıralama</h3>
-          <p className="text-[10px] text-white/30">XP&apos;e göre</p>
+          <h3 className="text-sm font-semibold text-white/80">{t('leaderboardHeading')}</h3>
+          <p className="text-[10px] text-white/30">{t('leaderboardByXp')}</p>
         </div>
       </div>
 
@@ -53,6 +57,8 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
           const isMe       = entry.userId === currentUserId;
           const lvl        = getLevel(entry.totalXP);
           const lvlColor   = LEVEL_COLORS[lvl.level] ?? LEVEL_COLORS[1];
+          const levelTitle = t(`levelTitles.${lvl.level}` as Parameters<typeof t>[0]);
+          const display    = entry.displayName.trim() || t('anonymousMember');
 
           return (
             <motion.div
@@ -64,7 +70,6 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
                 isMe ? 'bg-indigo-500/[0.08]' : 'hover:bg-white/[0.02]'
               }`}
             >
-              {/* Rank */}
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 ${
                 rankStyle ? `border ${rankStyle.bg}` : 'bg-white/[0.04] border border-white/[0.05]'
               }`}>
@@ -73,28 +78,26 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
                 )}
               </div>
 
-              {/* Name */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-sm font-semibold truncate ${isMe ? 'text-indigo-300' : 'text-white/75'}`}>
-                    {entry.displayName}
+                  <span className={`text-sm font-semibold truncate max-w-[140px] sm:max-w-[200px] ${isMe ? 'text-indigo-300' : 'text-white/75'}`}>
+                    {display}
                   </span>
                   {isMe && (
-                    <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/15 px-1.5 py-0.5 rounded-full">
-                      Sen
+                    <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">
+                      {t('youBadge')}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-[10px] font-semibold ${lvlColor}`}>
-                    Lv.{lvl.level} {lvl.title}
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className={`text-[10px] font-semibold ${lvlColor} line-clamp-1`}>
+                    {t('levelShort', { level: lvl.level })} {levelTitle}
                   </span>
                   <span className="text-[10px] text-white/20">·</span>
-                  <span className="text-[10px] text-white/30">{entry.badgeCount} rozet</span>
+                  <span className="text-[10px] text-white/30">{t('badgesCount', { count: entry.badgeCount })}</span>
                 </div>
               </div>
 
-              {/* Streak */}
               {entry.currentStreak > 0 && (
                 <div className="flex items-center gap-1 shrink-0">
                   <Flame className="w-3 h-3 text-orange-400" />
@@ -104,15 +107,14 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
                 </div>
               )}
 
-              {/* XP */}
               <div className="text-right shrink-0">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 justify-end">
                   <Zap className="w-3 h-3 text-amber-400" />
                   <span className="text-sm font-black tabular-nums text-white/80">
-                    {entry.totalXP.toLocaleString('tr-TR')}
+                    {entry.totalXP.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}
                   </span>
                 </div>
-                <span className="text-[9px] text-white/25">XP</span>
+                <span className="text-[9px] text-white/25">{t('xpLabel')}</span>
               </div>
             </motion.div>
           );

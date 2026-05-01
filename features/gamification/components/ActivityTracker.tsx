@@ -18,7 +18,7 @@ export function ActivityTracker() {
         const def = ACHIEVEMENT_MAP.get(key);
         if (!def) return;
         setTimeout(() => {
-          triggerAchievementToast({ icon: def.icon, title: def.title, desc: def.desc, xp: def.xp });
+          triggerAchievementToast({ icon: def.icon, achievementKey: key, xp: def.xp });
         }, i * 800);
       });
     });

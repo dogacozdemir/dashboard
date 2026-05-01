@@ -1,58 +1,221 @@
-import Link from 'next/link';
-import { fetchAggregateMetrics } from '../actions/fetchMetrics';
+import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
+import {
+  fetchAggregateMetrics,
+  fetchConnectedAdAccounts,
+} from '../actions/fetchMetrics';
 import { MetricCard } from './MetricCard';
-import { DollarSign, TrendingUp, MousePointer, Eye, Percent, Target, Plug } from 'lucide-react';
-import { GlassCard } from '@/components/shared/GlassCard';
+import {
+  DollarSign,
+  TrendingUp,
+  MousePointer,
+  Eye,
+  Percent,
+  Target,
+  Banknote,
+} from 'lucide-react';
+import { DataDisconnectedCard } from '@/components/shared/DataDisconnectedCard';
+import {
+  BentoBlueprintSlot,
+  BlueprintBars,
+  BlueprintSparkTrend,
+} from '@/components/shared/BentoBlueprintEmpty';
 import type { TimeRange } from '../actions/fetchMetrics';
+import type { DashboardGoal } from '@/types/tenant';
+import type { CockpitPlatform } from '../lib/cockpit-platform';
+import { AdPlatformDock } from './AdPlatformDock';
+
+export type MetricId =
+  | 'spend'
+  | 'revenue'
+  | 'roas'
+  | 'cpa'
+  | 'clicks'
+  | 'ctr'
+  | 'impressions'
+  | 'conversionRate';
 
 interface OverviewMetricsProps {
   companyId: string;
   range?: TimeRange;
+  /** Magic Onboarding: reorder metrics and spotlight the top KPI. */
+  dashboardGoal?: DashboardGoal | null;
+  /** Command Center: extra spotlight on a metric id (e.g. roas, spend). */
+  spotlightMetric?: MetricId | null;
+  /** Unified Cockpit URL filter — scopes aggregates to one paid channel or organic SEO. */
+  cockpitPlatform?: CockpitPlatform;
 }
 
-const PLATFORMS = [
-  { label: 'Meta Ads',    href: '/api/oauth/meta',    color: 'bg-blue-500/10 border-blue-500/20 text-blue-300 hover:bg-blue-500/20' },
-  { label: 'Google Ads',  href: '/api/oauth/google',  color: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20' },
-  { label: 'TikTok Ads',  href: '/api/oauth/tiktok',  color: 'bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20' },
+const DEFAULT_ORDER: MetricId[] = [
+  'spend',
+  'revenue',
+  'roas',
+  'cpa',
+  'clicks',
+  'ctr',
+  'impressions',
+  'conversionRate',
 ];
 
-export async function OverviewMetrics({ companyId, range = 'monthly' }: OverviewMetricsProps) {
-  const agg = await fetchAggregateMetrics(companyId, range);
+const GOAL_ORDER: Record<DashboardGoal, MetricId[]> = {
+  sales: ['roas', 'revenue', 'cpa', 'conversionRate', 'clicks', 'ctr', 'spend', 'impressions'],
+  awareness: ['impressions', 'ctr', 'clicks', 'spend', 'revenue', 'roas', 'cpa', 'conversionRate'],
+  cost: ['cpa', 'spend', 'roas', 'ctr', 'clicks', 'impressions', 'revenue', 'conversionRate'],
+};
 
-  if (!agg.hasData) {
+export async function OverviewMetrics({
+  companyId,
+  range = 'monthly',
+  dashboardGoal = null,
+  spotlightMetric = null,
+  cockpitPlatform = 'all',
+}: OverviewMetricsProps) {
+  const t = await getTranslations('Performance');
+  const [agg, connected] = await Promise.all([
+    fetchAggregateMetrics(companyId, range, cockpitPlatform),
+    fetchConnectedAdAccounts(companyId),
+  ]);
+
+  const order = dashboardGoal ? GOAL_ORDER[dashboardGoal] : DEFAULT_ORDER;
+
+  const cards: Record<
+    MetricId,
+    {
+      label: string;
+      metric: (typeof agg)['spend'];
+      prefix?: string;
+      suffix?: string;
+      decimals: number;
+      icon: ReactNode;
+      trendSemantics: 'growth' | 'cost' | 'efficiency';
+    }
+  > = {
+    spend: {
+      label: t('metrics.totalSpend'),
+      metric: agg.spend,
+      prefix: '$',
+      decimals: 0,
+      icon: <DollarSign className="w-4 h-4" />,
+      trendSemantics: 'growth',
+    },
+    revenue: {
+      label: t('metrics.revenue'),
+      metric: agg.revenue,
+      prefix: '$',
+      decimals: 0,
+      icon: <Banknote className="w-4 h-4" />,
+      trendSemantics: 'growth',
+    },
+    roas: {
+      label: t('metrics.avgRoas'),
+      metric: agg.roas,
+      suffix: 'x',
+      decimals: 2,
+      icon: <TrendingUp className="w-4 h-4" />,
+      trendSemantics: 'efficiency',
+    },
+    cpa: {
+      label: t('metrics.cpa'),
+      metric: agg.cpa,
+      prefix: '$',
+      decimals: 2,
+      icon: <Target className="w-4 h-4" />,
+      trendSemantics: 'cost',
+    },
+    clicks: {
+      label: t('metrics.clicks'),
+      metric: agg.clicks,
+      decimals: 0,
+      icon: <MousePointer className="w-4 h-4" />,
+      trendSemantics: 'growth',
+    },
+    ctr: {
+      label: t('metrics.ctr'),
+      metric: agg.ctr,
+      suffix: '%',
+      decimals: 2,
+      icon: <Percent className="w-4 h-4" />,
+      trendSemantics: 'efficiency',
+    },
+    impressions: {
+      label: t('metrics.impressions'),
+      metric: agg.impressions,
+      decimals: 0,
+      icon: <Eye className="w-4 h-4" />,
+      trendSemantics: 'growth',
+    },
+    conversionRate: {
+      label: t('metrics.conversionRate'),
+      metric: agg.conversionRate,
+      suffix: '%',
+      decimals: 2,
+      icon: <Percent className="w-4 h-4" />,
+      trendSemantics: 'efficiency',
+    },
+  };
+
+  const metricGrid = (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {order.map((id, i) => {
+        const c = cards[id];
+        const spotlight =
+          Boolean(spotlightMetric && id === spotlightMetric) ||
+          Boolean(!spotlightMetric && dashboardGoal && i === 0);
+
+        return (
+          <MetricCard
+            key={id}
+            label={c.label}
+            metric={c.metric}
+            prefix={c.prefix}
+            suffix={c.suffix}
+            decimals={c.decimals}
+            icon={c.icon}
+            index={i}
+            spotlight={spotlight}
+            trendSemantics={c.trendSemantics}
+          />
+        );
+      })}
+    </div>
+  );
+
+  if (!agg.hasData && connected.length === 0) {
     return (
-      <GlassCard padding="lg" className="flex flex-col items-center justify-center gap-5 py-10 text-center border border-dashed border-white/10">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
-          <Plug className="w-5 h-5 text-indigo-400" />
+      <div className="space-y-4">
+        <DataDisconnectedCard
+          title={t('connectedAccounts.disconnectTitle')}
+          description={t('disconnected.zeroAccountsDescription')}
+          actions={<AdPlatformDock accounts={[]} />}
+        />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 opacity-90">
+          <BentoBlueprintSlot title={t('blueprint.spendCurveTitle')} caption={t('blueprint.spendCurveCaption')}>
+            <BlueprintSparkTrend />
+          </BentoBlueprintSlot>
+          <BentoBlueprintSlot title={t('blueprint.revenueRoasTitle')} caption={t('blueprint.revenueRoasCaption')}>
+            <BlueprintBars />
+          </BentoBlueprintSlot>
+          <BentoBlueprintSlot title={t('blueprint.clickEfficiencyTitle')} caption={t('blueprint.clickEfficiencyCaption')}>
+            <BlueprintSparkTrend />
+          </BentoBlueprintSlot>
+          <BentoBlueprintSlot title={t('blueprint.campaignIntensityTitle')} caption={t('blueprint.campaignIntensityCaption')}>
+            <BlueprintBars />
+          </BentoBlueprintSlot>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-white/70">No performance data yet</p>
-          <p className="text-xs text-white/30 mt-1">Connect your ad accounts to start seeing live metrics</p>
-        </div>
-        <div className="flex gap-2 flex-wrap justify-center">
-          {PLATFORMS.map((p) => (
-            <Link
-              key={p.label}
-              href={p.href}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-colors ${p.color}`}
-            >
-              Connect {p.label}
-            </Link>
-          ))}
-        </div>
-      </GlassCard>
+      </div>
     );
   }
 
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <MetricCard label="Total Spend"      metric={agg.spend}          prefix="$"  decimals={0} icon={<DollarSign  className="w-4 h-4" />} index={0} />
-      <MetricCard label="Impressions"      metric={agg.impressions}               decimals={0} icon={<Eye         className="w-4 h-4" />} index={1} />
-      <MetricCard label="Conversions"      metric={agg.conversions}               decimals={0} icon={<MousePointer className="w-4 h-4" />} index={2} />
-      <MetricCard label="Avg. ROAS"        metric={agg.roas}           suffix="x"  decimals={2} icon={<TrendingUp  className="w-4 h-4" />} index={3} />
-      <MetricCard label="CPA"              metric={agg.cpa}            prefix="$"  decimals={2} icon={<Target      className="w-4 h-4" />} index={4} invertTrend />
-      <MetricCard label="Conversion Rate"  metric={agg.conversionRate} suffix="%"  decimals={2} icon={<Percent     className="w-4 h-4" />} index={5} />
-      <MetricCard label="Clicks"           metric={agg.clicks}                    decimals={0} icon={<MousePointer className="w-4 h-4" />} index={6} />
-    </div>
-  );
+  if (!agg.hasData && connected.length > 0) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+          <p className="text-[11px] text-white/55 leading-relaxed">{t('syncPendingBanner')}</p>
+        </div>
+        {metricGrid}
+      </div>
+    );
+  }
+
+  return metricGrid;
 }
