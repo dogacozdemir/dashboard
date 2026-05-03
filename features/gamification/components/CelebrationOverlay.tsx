@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 
-// ─── Particle ─────────────────────────────────────────────────────────────────
+// ─── Confetti particles ───────────────────────────────────────────────────────
 
 const COLORS = [
   '#6366f1', '#06b6d4', '#10b981', '#f59e0b',
@@ -39,6 +39,28 @@ function makeParticles(count = 50): Particle[] {
   }));
 }
 
+// ─── Golden dust (level up) ───────────────────────────────────────────────────
+
+interface GoldParticle {
+  id:       number;
+  leftPct:  number;
+  delay:    number;
+  duration: number;
+  size:     number;
+  drift:    number;
+}
+
+function makeGoldDust(count = 88): GoldParticle[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id:       i,
+    leftPct:  Math.random() * 100,
+    delay:    Math.random() * 0.55,
+    duration: 2.1 + Math.random() * 1.6,
+    size:     Math.random() * 2.8 + 0.8,
+    drift:    (Math.random() - 0.5) * 28,
+  }));
+}
+
 // ─── Achievement toast ────────────────────────────────────────────────────────
 
 interface AchievementToastProps {
@@ -66,27 +88,80 @@ function AchievementToast({ icon, achievementKey, xp, onDone }: AchievementToast
       transition={{ type: 'spring', damping: 20, stiffness: 300 }}
       className="fixed bottom-24 right-4 z-[999] md:bottom-6 md:right-6 max-w-xs w-full"
     >
-      <div className="bg-[#16162a] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/20 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-violet-500/20 flex items-center justify-center text-xl shrink-0">
+      <div
+        className="relative overflow-hidden rounded-[2rem] border border-white/10 p-4 shadow-2xl flex items-start gap-3 backdrop-blur-3xl"
+        style={{
+          background: 'rgba(22, 22, 42, 0.55)',
+          boxShadow: '0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 20px 50px rgba(0,0,0,0.45), 0 0 40px rgba(99,102,241,0.15)',
+        }}
+      >
+        <div className="pointer-events-none absolute -inset-6 rounded-full bg-indigo-500/15 blur-2xl" aria-hidden />
+        <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500/35 to-violet-500/20 border border-white/10 flex items-center justify-center text-xl shrink-0 shadow-[0_0_24px_rgba(99,102,241,0.35)]">
           {icon}
         </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5">
+        <div className="relative min-w-0">
+          <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-0.5">
             {t('toastNewAchievement')}
           </p>
           <p className="text-sm font-semibold text-white/90 line-clamp-2">{title}</p>
           <p className="text-xs text-white/40 mt-0.5 line-clamp-3">{desc}</p>
         </div>
-        <div className="shrink-0 text-right">
-          <span className="text-xs font-bold text-amber-400">+{xp} {t('xpLabel')}</span>
+        <div className="relative shrink-0 text-right">
+          <span className="text-xs font-bold text-amber-300">+{xp} {t('xpLabel')}</span>
         </div>
       </div>
-      <motion.div
-        className="absolute bottom-0 left-0 h-0.5 rounded-full bg-indigo-500/60"
-        initial={{ width: '100%' }}
-        animate={{ width: '0%' }}
-        transition={{ duration: 4.3, ease: 'linear' }}
-      />
+    </motion.div>
+  );
+}
+
+// ─── Level up banner ───────────────────────────────────────────────────────────
+
+interface LevelUpToastProps {
+  from:   number;
+  to:     number;
+  onDone: () => void;
+}
+
+function LevelUpToast({ from, to, onDone }: LevelUpToastProps) {
+  const t = useTranslations('Features.Gamification');
+
+  useEffect(() => {
+    const timer = setTimeout(onDone, 4200);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.88, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.92, y: -12 }}
+      transition={{ type: 'spring', damping: 18, stiffness: 280 }}
+      className="fixed left-1/2 top-[min(28%,200px)] z-[998] w-[min(92vw,380px)] -translate-x-1/2 pointer-events-none"
+    >
+      <div
+        className="relative overflow-hidden rounded-[2rem] border border-[#bea042]/35 px-6 py-5 text-center backdrop-blur-3xl"
+        style={{
+          background: 'linear-gradient(145deg, rgba(26,15,8,0.88), rgba(18,10,22,0.82))',
+          boxShadow:
+            '0 0 0 0.5px rgba(190,160,66,0.25) inset, 0 24px 80px rgba(0,0,0,0.55), 0 0 80px rgba(190,160,66,0.2)',
+        }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-90"
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(190,160,66,0.35), transparent 55%)',
+          }}
+          aria-hidden
+        />
+        <p className="relative text-[10px] font-bold uppercase tracking-[0.35em] text-[#e8d48a]/90 mb-2">
+          {t('levelUpBadge')}
+        </p>
+        <p className="relative text-2xl font-black text-white/95 tracking-tight">
+          {t('levelUpTitle', { from, to })}
+        </p>
+        <p className="relative text-xs text-white/45 mt-2">{t('levelUpSubtitle')}</p>
+      </div>
     </motion.div>
   );
 }
@@ -99,12 +174,20 @@ export interface CelebrationDetail {
   achievement?: { icon: string; achievementKey: string; xp: number };
 }
 
+export interface LevelUpDetail {
+  from: number;
+  to:   number;
+}
+
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
 export function CelebrationOverlay() {
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [toasts,    setToasts]    = useState<Array<{ id: number; icon: string; achievementKey: string; xp: number }>>([]);
-  const toastId = useRef(0);
+  const [particles, setParticles]     = useState<Particle[]>([]);
+  const [goldDust, setGoldDust]       = useState<GoldParticle[]>([]);
+  const [toasts, setToasts]           = useState<Array<{ id: number; icon: string; achievementKey: string; xp: number }>>([]);
+  const [levelUps, setLevelUps]       = useState<Array<{ id: number; from: number; to: number }>>([]);
+  const toastId   = useRef(0);
+  const levelUpId = useRef(0);
 
   const handleCelebration = useCallback((e: Event) => {
     const detail = (e as CustomEvent<CelebrationDetail>).detail;
@@ -120,10 +203,22 @@ export function CelebrationOverlay() {
     }
   }, []);
 
+  const handleLevelUp = useCallback((e: Event) => {
+    const detail = (e as CustomEvent<LevelUpDetail>).detail;
+    setGoldDust(makeGoldDust(96));
+    setTimeout(() => setGoldDust([]), 3400);
+    const id = ++levelUpId.current;
+    setLevelUps((prev) => [...prev, { id, from: detail.from, to: detail.to }]);
+  }, []);
+
   useEffect(() => {
     window.addEventListener('mono:celebrate', handleCelebration);
-    return () => window.removeEventListener('mono:celebrate', handleCelebration);
-  }, [handleCelebration]);
+    window.addEventListener('mono:level-up', handleLevelUp);
+    return () => {
+      window.removeEventListener('mono:celebrate', handleCelebration);
+      window.removeEventListener('mono:level-up', handleLevelUp);
+    };
+  }, [handleCelebration, handleLevelUp]);
 
   return (
     <>
@@ -164,6 +259,43 @@ export function CelebrationOverlay() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {goldDust.length > 0 && (
+          <div className="fixed inset-0 z-[901] pointer-events-none overflow-hidden">
+            {goldDust.map((g) => (
+              <motion.div
+                key={g.id}
+                initial={{
+                  left:   `${g.leftPct}vw`,
+                  bottom: '-4vh',
+                  opacity: 0.95,
+                  x:      0,
+                }}
+                animate={{
+                  bottom: ['6vh', '92vh'],
+                  opacity: [0.9, 0],
+                  x:      [0, g.drift],
+                }}
+                transition={{
+                  duration: g.duration,
+                  delay:    g.delay,
+                  ease:     [0.12, 0.55, 0.2, 1],
+                }}
+                className="absolute rounded-full"
+                style={{
+                  width:           g.size,
+                  height:          g.size,
+                  background:
+                    'radial-gradient(circle at 30% 30%, #fff6d4, #bea042 45%, rgba(160,120,40,0.2) 70%)',
+                  boxShadow: '0 0 12px rgba(255,230,180,0.9), 0 0 22px rgba(190,160,66,0.45)',
+                  filter:    'blur(0.2px)',
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <AchievementToast
@@ -175,11 +307,22 @@ export function CelebrationOverlay() {
           />
         ))}
       </AnimatePresence>
+
+      <AnimatePresence mode="popLayout">
+        {levelUps.map((row) => (
+          <LevelUpToast
+            key={row.id}
+            from={row.from}
+            to={row.to}
+            onDone={() => setLevelUps((prev) => prev.filter((x) => x.id !== row.id))}
+          />
+        ))}
+      </AnimatePresence>
     </>
   );
 }
 
-// ─── Trigger helper (call from anywhere client-side) ─────────────────────────
+// ─── Trigger helpers ─────────────────────────────────────────────────────────
 
 export function triggerConfetti() {
   window.dispatchEvent(
@@ -197,6 +340,14 @@ export function triggerAchievementToast(payload: {
   window.dispatchEvent(
     new CustomEvent<CelebrationDetail>('mono:celebrate', {
       detail: { type: 'achievement', achievement: payload },
+    })
+  );
+}
+
+export function triggerLevelUp(payload: { from: number; to: number }) {
+  window.dispatchEvent(
+    new CustomEvent<LevelUpDetail>('mono:level-up', {
+      detail: payload,
     })
   );
 }

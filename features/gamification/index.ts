@@ -11,3 +11,4 @@ export * from './components/WeeklyDigest';
 export * from './components/Leaderboard';
 export * from './components/ActivityTracker';
 export * from './components/CampaignGoalBars';
+export * from './components/MasteryExperience';

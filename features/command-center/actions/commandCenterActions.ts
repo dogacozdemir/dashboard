@@ -8,6 +8,9 @@ import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 import type { SessionUser } from '@/types/user';
 import { runSyncAdPlatformForTenant } from '@/features/oauth/actions/syncPlatformData';
 import type { AdPlatform } from '@/features/oauth/types';
+import type { GamificationTrackResult } from '@/features/gamification/types';
+import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
+import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -219,11 +222,17 @@ export async function interpretNaturalLanguageCommand(
   }
 }
 
-export async function syncAllConnectedPlatformsAction(
-  companyId: string
-): Promise<{ ok: boolean; error?: string }> {
+export async function syncAllConnectedPlatformsAction(companyId: string): Promise<{
+  ok: boolean;
+  error?: string;
+  gamification?: GamificationTrackResult;
+}> {
   await requireTenantAction(companyId);
   await requirePermission('integrations.manage');
+  if (await isDemoTenant(companyId)) {
+    const gamification = await evaluateImpressionMilestone(companyId);
+    return { ok: true, gamification };
+  }
   const supabase = await createSupabaseServerClient();
   const { data: rows, error: qErr } = await supabase
     .from('ad_accounts')
@@ -241,5 +250,6 @@ export async function syncAllConnectedPlatformsAction(
     if (!r.success) console.warn('[syncAllConnected]', p, r.error);
   }
 
-  return { ok: true };
+  const gamification = await evaluateImpressionMilestone(companyId);
+  return { ok: true, gamification };
 }

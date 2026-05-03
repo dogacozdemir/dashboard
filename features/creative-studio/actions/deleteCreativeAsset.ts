@@ -12,7 +12,10 @@ export async function deleteCreativeAsset(
   companyId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session?.user) return { success: false, error: 'Unauthorized' };
+  if (!session?.user) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { success: false, error: await premiumSessionRequiredMessage() };
+  }
 
   const user = session.user as SessionUser;
   if (user.role !== 'super_admin') return { success: false, error: 'Forbidden' };

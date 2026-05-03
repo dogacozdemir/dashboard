@@ -9,6 +9,7 @@ export interface Database {
           slug: string;
           name: string;
           logo_url: string | null;
+          brand_logo_url: string | null;
           custom_domain: string | null;
           plan: 'starter' | 'growth' | 'enterprise';
           primary_color: string | null;
@@ -17,6 +18,7 @@ export interface Database {
           industry: string | null;
           dashboard_goal: 'sales' | 'awareness' | 'cost' | null;
           magic_onboarding_completed_at: string | null;
+          is_demo: boolean;
         };
         Insert: Omit<Database['public']['Tables']['tenants']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['tenants']['Insert']>;
@@ -32,9 +34,11 @@ export interface Database {
           role_id: string | null;
           /** Dashboard locale */
           locale: 'tr' | 'en';
+          /** Total gamification XP */
+          xp: number;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at'>;
+        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'xp'> & { xp?: number };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
       };
       ad_campaigns: {
@@ -117,6 +121,12 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['gsc_page_analytics']['Row'], 'id'>;
         Update: Partial<Database['public']['Tables']['gsc_page_analytics']['Insert']>;
+      };
+    };
+    Functions: {
+      tenant_total_impressions: {
+        Args: { p_tenant_id: string };
+        Returns: string | number;
       };
     };
   };

@@ -4,8 +4,11 @@ import { OverviewMetrics } from '@/features/performance-hub/components/OverviewM
 import { RecentActivity } from '@/features/performance-hub/components/RecentActivity';
 import { CockpitToolbar } from '@/features/performance-hub/components/CockpitToolbar';
 import { ExecutiveTrendSection } from '@/features/performance-hub/components/ExecutiveTrendSection';
+import { CockpitMetricsCrossfade } from '@/features/performance-hub/components/CockpitMetricsCrossfade';
 import { parseCockpitPlatform } from '@/features/performance-hub/lib/cockpit-platform';
 import { MetricCardSkeleton, ChartSkeleton } from '@/components/shared/LoadingSkeleton';
+import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
+import { DashboardImpressionMilestone } from '@/features/gamification/components/DashboardImpressionMilestone';
 import { fetchWeeklyDigest, fetchLeaderboard, fetchUserGamification } from '@/features/gamification/actions/fetchGamification';
 import { WeeklyDigest } from '@/features/gamification/components/WeeklyDigest';
 import { AchievementBadge } from '@/features/gamification/components/AchievementBadge';
@@ -54,7 +57,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       industryHint: tenant.industry ?? null,
       locale: u?.locale ?? 'tr',
     });
-    return <MonoAiWelcomeClient copy={copy} tenantName={tenant.name} />;
+    return (
+      <MonoAiWelcomeClient
+        copy={copy}
+        tenantName={tenant.name}
+        brandLogoUrl={tenant.brand_logo_url ?? null}
+      />
+    );
   }
 
   const range = (['daily', 'weekly', 'monthly'] as const).includes(params.range as never)
@@ -66,10 +75,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await auth();
   const userId = (session?.user as SessionUser | undefined)?.id;
 
-  const [digest, leaderboard, gamification] = await Promise.all([
+  const [digest, leaderboard, gamification, impressionMilestone] = await Promise.all([
     fetchWeeklyDigest(companyId),
     fetchLeaderboard(companyId),
     fetchUserGamification(),
+    evaluateImpressionMilestone(companyId),
   ]);
 
   const dashboardGoal = (tenant.dashboard_goal as DashboardGoal | undefined) ?? null;
@@ -122,29 +132,31 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">{tDash('performanceOverview')}</h2>
           <p className="text-[10px] text-white/22 mt-1 uppercase tracking-wider">{tDash('executiveTrendHeading')}</p>
         </div>
-        <CockpitToolbar currentRange={range} currentPlatform={cockpit} />
+        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
       </div>
-      <Suspense fallback={<ChartSkeleton height={240} />}>
-        <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
-      </Suspense>
-      <div className="mt-6">
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <MetricCardSkeleton key={i} />
-              ))}
-            </div>
-          }
-        >
-          <OverviewMetrics
-            companyId={companyId}
-            range={range}
-            dashboardGoal={dashboardGoal}
-            cockpitPlatform={cockpit}
-          />
+      <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
+        <Suspense fallback={<ChartSkeleton height={240} />}>
+          <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
         </Suspense>
-      </div>
+        <div className="mt-6">
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <MetricCardSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <OverviewMetrics
+              companyId={companyId}
+              range={range}
+              dashboardGoal={dashboardGoal}
+              cockpitPlatform={cockpit}
+            />
+          </Suspense>
+        </div>
+      </CockpitMetricsCrossfade>
     </div>
   );
 
@@ -169,6 +181,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <div className="cockpit-liquid-scope">
+      <DashboardImpressionMilestone result={impressionMilestone} />
       <DashboardRevealMotion sections={sections} />
     </div>
   );

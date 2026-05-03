@@ -5,10 +5,17 @@ import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { getPublicUrl } from '@/lib/storage/s3';
 import type { SessionUser } from '@/types/user';
 import { recordCreativePendingAdminTasks } from '@/features/admin/lib/adminTaskBridge';
+import { trackActivity } from '@/features/gamification/actions/trackActivity';
+import {
+  premiumDataPersistErrorMessage,
+  premiumSessionRequiredMessage,
+} from '@/lib/i18n/premium-action-errors';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: await premiumSessionRequiredMessage() }, { status: 401 });
+  }
 
   const user = session.user as SessionUser;
   const { files, companyId } = await request.json();
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[api/assets/creative]', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: await premiumDataPersistErrorMessage() }, { status: 500 });
   }
 
   if (inserted?.length) {
@@ -58,6 +65,12 @@ export async function POST(request: NextRequest) {
         title:      r.title,
       })),
     );
+  }
+
+  try {
+    await trackActivity('creative_uploaded', { batchCount: rows.length });
+  } catch (e) {
+    console.error('[trackActivity creative_uploaded]', e);
   }
 
   return NextResponse.json({ success: true, count: rows.length });

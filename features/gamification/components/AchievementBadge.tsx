@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { formatRelativeTime } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/cn';
 import type { EarnedAchievement, AchievementDef } from '../types';
 
 const BG_MAP: Record<string, string> = {
@@ -49,19 +50,31 @@ export function AchievementBadge({
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: earned ? 1 : 0.3, scale: 1 }}
+        animate={{ opacity: earned ? 1 : 0.2, scale: 1 }}
         transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
         title={`${title}: ${desc}`}
-        className={`
-          relative flex items-center justify-center w-10 h-10 rounded-xl
-          bg-gradient-to-br border ${colors}
-          ${earned ? '' : 'grayscale'}
-        `}
+        className={cn(
+          'relative flex items-center justify-center w-11 h-11 rounded-[2rem] backdrop-blur-3xl bg-gradient-to-br',
+          colors,
+          earned ? '' : 'grayscale',
+        )}
+        style={{
+          boxShadow: earned
+            ? '0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 0 22px rgba(255,255,255,0.08)'
+            : '0 0 0 0.5px rgba(255,255,255,0.05) inset',
+        }}
       >
-        <span className="text-lg leading-none">{achievement.icon}</span>
+        <span
+          className="pointer-events-none absolute inset-0 rounded-[2rem] opacity-50"
+          style={{
+            background: 'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.35), transparent 62%)',
+          }}
+          aria-hidden
+        />
+        <span className="relative text-lg leading-none">{achievement.icon}</span>
         {!earned && (
-          <div className="absolute inset-0 rounded-xl bg-black/50 flex items-center justify-center">
-            <span className="text-[10px] text-white/30">🔒</span>
+          <div className="absolute inset-0 rounded-[2rem] bg-black/45 backdrop-blur-[2px] flex items-center justify-center">
+            <span className="text-[10px] text-white/35">🔒</span>
           </div>
         )}
       </motion.div>
@@ -71,16 +84,24 @@ export function AchievementBadge({
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: earned ? 1 : 0.4, y: 0 }}
+      animate={{ opacity: earned ? 1 : 0.35, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.3 }}
-      className={`
-        flex items-start gap-3 p-3 rounded-xl
-        bg-gradient-to-br border ${colors}
-        ${!earned ? 'grayscale' : ''}
-      `}
+      className={cn(
+        'relative flex items-start gap-3 p-4 rounded-[2rem] border border-white/10 backdrop-blur-3xl overflow-hidden',
+        'bg-gradient-to-br',
+        colors,
+        !earned ? 'grayscale' : '',
+      )}
+      style={{
+        boxShadow: '0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 12px 40px rgba(0,0,0,0.28)',
+      }}
     >
-      <div className="text-2xl leading-none mt-0.5 shrink-0">
-        {earned ? achievement.icon : '🔒'}
+      <div className="relative text-2xl leading-none mt-0.5 shrink-0">
+        <span
+          className="pointer-events-none absolute -inset-3 rounded-full opacity-60 blur-lg bg-white/25"
+          aria-hidden
+        />
+        <span className="relative">{earned ? achievement.icon : '🔒'}</span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">

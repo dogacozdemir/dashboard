@@ -10,6 +10,7 @@
       "brandVault": "Brand Vault",
       "teamChat": "Team Chat",
       "monoAi": "Mono AI",
+      "masteryHall": "Mastery · Hall of Fame",
       "opsCalendar": "Ops Calendar",
       "teamManagement": "Users & Team Management",
       "profileSettings": "Profile & Settings"
@@ -27,6 +28,7 @@
       "loadingData": "Scanning data…",
       "empty": "No results · try another term",
       "footerHint": "↑ ↓ choose · Enter apply · Esc close · Permissions auto-filter",
+      "xpStat": "XP: {xp} · Lv.{level}",
       "aiHintSubtitle": "MonoAI · natural language → action",
       "commandCenterAria": "Command Center",
       "searchAria": "Search",
@@ -37,7 +39,9 @@
   },
   "Dashboard": {
     "shell": {
-      "subtitle": "Frictionless Marketing Operations"
+      "subtitle": "Frictionless Marketing Operations",
+      "showroomBadge": "Showroom mode — simulated data",
+      "showroomLine": "Premium cockpit preview. Metrics are illustrative for Madmonos Lux Cosmetics."
     },
     "sidebar": {
       "overview": "Overview",
@@ -47,6 +51,7 @@
       "brandVault": "Brand Vault",
       "chat": "Chat",
       "monoAi": "Mono AI",
+      "masteryHall": "Mastery",
       "opsCalendar": "Ops Calendar",
       "badgeLive": "Live",
       "badgeAi": "AI",
@@ -64,7 +69,8 @@
       "creative": "Studio",
       "mono": "Mono",
       "chat": "Chat",
-      "mainNavAria": "Main navigation"
+      "mainNavAria": "Main navigation",
+      "stackMastery": "XP · badges · level"
     },
     "mobileDrawer": {
       "openAria": "Open navigation",
@@ -98,6 +104,11 @@
       "toolbarHint": {
         "srFilters": "Time range and channel scope filters"
       },
+      "monoReport": {
+        "export": "Export mono Report",
+        "busy": "Building PDF…",
+        "sr": "Download executive mono Report as PDF"
+      },
       "platform": {
         "all": "All",
         "meta": "Meta",
@@ -117,6 +128,17 @@
         "sectionTitle": "SEO & Search Console matrix",
         "sectionSubtitle": "Organic visibility from Google Search Console and on-site experience signals — descriptive metrics only. No campaign recommendations.",
         "empty": "Connect Google and complete a GSC sync to populate this matrix.",
+        "emptyConnected": "Your Google link is live. We are ingesting Search Console query rows — the matrix will fill as soon as the first snapshot lands.",
+        "badgeGscSyncing": "Search data syncing",
+        "badgePositionCalibrating": "Rank signal calibrating",
+        "badgeCtrAwaiting": "CTR unlocks with impressions",
+        "badgeIndexingPipeline": "Indexing intelligence in pipeline",
+        "indexingFootnote": "URL-level indexing exports are not wired yet — this cell stays in premium standby until the feed connects.",
+        "badgeCwvAwaiting": "Experience snapshot warming",
+        "cwvFootnote": "Core Web Vitals hydrate from our PageSpeed-style telemetry — first paint arrives shortly after workspace activity.",
+        "cwvSubWhenMissing": "CLS and FID appear with the same snapshot as LCP.",
+        "cwvSubLine": "CLS {cls} · FID {fid} ms",
+        "valuePending": "pending",
         "impressionsTitle": "Impressions",
         "impressionsHint": "How many times you appeared on Google results surfaces.",
         "nonBrandTitle": "Non-brand impressions",
@@ -229,6 +251,8 @@
     }
   },
   "PremiumMessages": {
+    "sessionRequired": "Your session paused this action. Sign in again or refresh the page, then retry.",
+    "invalidPayload": "The request body could not be read. Refresh and try again with valid JSON.",
     "actionError": "We're processing this data right now. Please try again in a few minutes. If it persists, contact your team.",
     "adminActionError": "This action couldn't be completed. Please try again or contact support.",
     "integrationReconnectHint": "We need to refresh the connection. Re-authorize the platform from Integrations.",
@@ -483,8 +507,42 @@
         "2": "Active user",
         "3": "Expert",
         "4": "Master",
-        "5": "Elite",
+        "5": "Brand Architect",
         "6": "Legend"
+      },
+      "levelUpBadge": "Level up",
+      "levelUpTitle": "Level {from} → {to}",
+      "levelUpSubtitle": "A new mastery tier is yours. Keep the streak and XP compounding.",
+      "mastery": {
+        "kicker": "Hall of Fame",
+        "title": "Mastery",
+        "subtitle": "Your dopamine ledger — locked silhouettes show what to chase next. Hover a locked badge for unlock rules.",
+        "levelLabel": "Current level",
+        "toNext": "{xp} XP to next tier",
+        "maxLevel": "Legend tier · maximum level reached",
+        "collectionHeading": "Badge collection"
+      },
+      "unlockHints": {
+        "first_login": "Sign in to the workspace once.",
+        "first_upload": "Upload a creative from Creative Studio.",
+        "first_approval": "Approve a creative asset.",
+        "first_revision": "Send your first revision comment on a creative.",
+        "quick_approver": "Approve a creative within 24 hours of upload.",
+        "approval_10": "Reach 10 approved creatives in your workspace.",
+        "streak_3": "Stay active 3 consecutive calendar days.",
+        "streak_7": "Stay active 7 consecutive calendar days.",
+        "streak_30": "Stay active 30 consecutive calendar days.",
+        "ai_explorer": "Send your first Mono AI message.",
+        "ai_power_user": "Send 50 Mono AI messages as the same user.",
+        "first_pdf": "Generate a PDF export from Mono AI.",
+        "brand_milestone_logo": "Add a logo asset to Brand Vault.",
+        "brand_milestone_guidelines": "Upload brand guidelines (PDF) to Brand Vault.",
+        "brand_milestone_palette": "Add a color palette to Brand Vault.",
+        "brand_milestone_fonts": "Upload font files to Brand Vault.",
+        "brand_builder_50": "Reach 50% Brand Vault completion score.",
+        "brand_builder_100": "Reach 100% Brand Vault completion score.",
+        "calendar_pro": "Create 10 calendar events for the tenant.",
+        "reach_100k": "Reach 100K impressions (performance milestone)."
       },
       "milestones": {
         "logo": "Logo",
@@ -515,7 +573,7 @@
         },
         "approval_10": {
           "title": "Approval master",
-          "desc": "You approved 10 creatives"
+          "desc": "Your workspace reached 10 approved creatives"
         },
         "streak_3": {
           "title": "Streak starter",
@@ -706,7 +764,13 @@
       "typeLabelOther": "Other",
       "emptyTitle": "Brand Vault is empty",
       "emptySubtitle": "Upload logos, brand books, fonts and color palettes above",
-      "filteredEmpty": "No assets in this category"
+      "filteredEmpty": "No assets in this category",
+      "setPrimaryLogo": "Set as Primary Logo",
+      "primaryBadge": "Shell primary",
+      "primaryLockedTitle": "Brand Architect (Level 5)",
+      "primaryLockedBody": "Unlock in Mastery at Level 5 to sync this logo across Sidebar, header, and mobile shell.",
+      "goMastery": "Open Mastery",
+      "primarySuccess": "Primary logo applied — refreshing…"
     },
     "StrategyPage": {
       "sectionStrategy": "Strategic intelligence",
@@ -795,7 +859,10 @@
       "toastPwShort": "Password must be at least 8 characters",
       "planStarter": "Starter",
       "planGrowth": "Growth",
-      "planEnterprise": "Enterprise"
+      "planEnterprise": "Enterprise",
+      "tourHeading": "Product tour",
+      "tourSubtitle": "Re-run the guided walkthrough to rediscover key features.",
+      "tourRestart": "Restart tour"
     },
     "DashboardPage": {
       "yourProfile": "Your profile",
@@ -1010,5 +1077,55 @@
     "impersonationBody": "You are acting as customer {tenant}.",
     "exitImpersonation": "Exit",
     "mobileSheetDragClose": "{title} — drag to close"
+  },
+  "MagicTour": {
+    "skip": "Skip tour",
+    "next": "Next",
+    "done": "Let's go",
+    "stepOf": "{current} / {total}",
+    "steps": {
+      "1": {
+        "tag": "Unified Cockpit",
+        "title": "Your command center",
+        "body": "All platform KPIs in one cockpit — ROAS, Spend, Revenue, CTR. Switch the time range or platform filter to slice any dimension instantly."
+      },
+      "2": {
+        "tag": "Performance Hub",
+        "title": "Cross-channel analytics",
+        "body": "Compare Meta, Google, and TikTok side-by-side. The Executive Trend chart shows momentum; Campaign Table shows line-item reality."
+      },
+      "3": {
+        "tag": "Creative Studio",
+        "title": "Approval workflow",
+        "body": "Upload creatives, leave revision comments, and mark assets Approved. Approved posts auto-land on the Ops Calendar."
+      },
+      "4": {
+        "tag": "Mastery · XP System",
+        "title": "Level up while you work",
+        "body": "Every action — AI messages, uploads, approvals — earns XP. Reach Level 5 (Brand Architect) to unlock white-label shell branding."
+      }
+    }
+  },
+  "Onboarding": {
+    "auditLine1": "Scanning industry trends and demand signals…",
+    "auditLine2": "Mapping competitive strategies and bid dynamics…",
+    "auditLine3": "Calibrating creative scoring engine…",
+    "auditLine4": "Merging GEO and search visibility layers…",
+    "auditLine5": "Mapping brand trust and conversion paths…",
+    "auditLine6": "Locking learned reporting backbone to sync…",
+    "headerTag": "Magic Onboarding · AI Brand Audit",
+    "connectedBanner": "Connection received — audit layer active.",
+    "auditProgressLabel": "Audit progress",
+    "hintNote": "MonoAI analysed your brand context and built quick wins from DeepSeek Reasoner — tailored to your sector.",
+    "quickWinsHeading": "Quick wins · Quick Wins",
+    "syncingHints": "Strategy engine connecting to data backbone…",
+    "selectGoalHeading": "Choose your primary growth objective:",
+    "goalSales": "Fast sales",
+    "goalSalesSubtitle": "ROAS and revenue first — conversions and growth.",
+    "goalAwareness": "Brand awareness",
+    "goalAwarenessSubtitle": "Visibility and reach — impressions & interest.",
+    "goalCost": "Cost optimisation",
+    "goalCostSubtitle": "CPA and efficiency — smarter spend, same result.",
+    "customising": "Your dashboard is being personalised…"
   }
 }

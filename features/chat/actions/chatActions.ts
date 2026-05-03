@@ -42,7 +42,10 @@ export async function sendMessage(
   type: MessageType = 'message'
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { success: false, error: await premiumSessionRequiredMessage() };
+  }
 
   const user = session.user as SessionUser;
   await requireTenantAction(companyId);

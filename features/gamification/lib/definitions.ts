@@ -1,4 +1,29 @@
-import type { AchievementDef, XPLevel } from '../types';
+import type { AchievementDef, GamificationEvent, XPLevel } from '../types';
+
+/** Base XP granted on every `trackActivity` call (before badge bonuses). */
+export const ACTION_XP: Record<GamificationEvent, number> = {
+  login:                   8,
+  creative_approved:       22,
+  creative_uploaded:       14,
+  revision_added:          10,
+  ai_message_sent:         5,
+  pdf_generated:           36,
+  brand_asset_uploaded:    16,
+  calendar_event_created:  18,
+  milestone_impressions_check: 0,
+};
+
+export function getActionXpAmount(
+  event: GamificationEvent,
+  ctx: Record<string, unknown> = {},
+): number {
+  const base = ACTION_XP[event] ?? 0;
+  if (event === 'creative_uploaded') {
+    const n = typeof ctx.batchCount === 'number' && ctx.batchCount >= 1 ? Math.floor(ctx.batchCount) : 1;
+    return base * n;
+  }
+  return base;
+}
 
 export const ACHIEVEMENT_DEFS: AchievementDef[] = [
   { key: 'first_login', icon: '🚀', color: 'indigo', xp: 50 },
@@ -33,9 +58,18 @@ export const XP_LEVELS: XPLevel[] = [
   { level: 2, minXP: 200, maxXP: 499, color: 'indigo' },
   { level: 3, minXP: 500, maxXP: 999, color: 'cyan' },
   { level: 4, minXP: 1000, maxXP: 1999, color: 'violet' },
+  /** Mastery: Brand Architect — unlocks tenant primary logo (white-label). */
   { level: 5, minXP: 2000, maxXP: 3499, color: 'amber' },
   { level: 6, minXP: 3500, maxXP: null, color: 'emerald' },
 ];
+
+/** Minimum level to set tenant primary logo from Brand Vault. */
+export const BRAND_ARCHITECT_MIN_LEVEL = 5;
+
+export function canSetTenantPrimaryLogo(totalXP: number, role: string): boolean {
+  if (role === 'super_admin') return true;
+  return getLevel(totalXP).level >= BRAND_ARCHITECT_MIN_LEVEL;
+}
 
 export function getLevel(xp: number): XPLevel {
   return [...XP_LEVELS].reverse().find((l) => xp >= l.minXP) ?? XP_LEVELS[0];
@@ -47,4 +81,11 @@ export function getLevelProgress(xp: number): number {
   const range = lvl.maxXP - lvl.minXP + 1;
   const progress = xp - lvl.minXP;
   return Math.min(100, Math.round((progress / range) * 100));
+}
+
+/** XP still needed to reach the next level (null if max level). */
+export function getXpToNextLevel(totalXP: number, level: XPLevel): number | null {
+  const next = XP_LEVELS.find((l) => l.level === level.level + 1);
+  if (!next) return null;
+  return Math.max(0, next.minXP - totalXP);
 }

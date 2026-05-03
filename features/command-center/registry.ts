@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Brain,
   CalendarDays,
+  Trophy,
   UsersRound,
   Upload,
   RefreshCw,
@@ -25,6 +26,7 @@ export type CommandNavTitleKey =
   | 'brandVault'
   | 'teamChat'
   | 'monoAi'
+  | 'masteryHall'
   | 'opsCalendar'
   | 'teamManagement'
   | 'profileSettings';
@@ -93,6 +95,13 @@ export const COMMAND_NAV: NavEntry[] = [
     titleKey: 'monoAi',
     icon: Brain,
     keywords: ['mono', 'ai', 'asistan', 'deepseek'],
+  },
+  {
+    id: 'nav-mastery',
+    href: '/mastery',
+    titleKey: 'masteryHall',
+    icon: Trophy,
+    keywords: ['mastery', 'xp', 'level', 'badge', 'rozet', 'seviye', 'koleksiyon', 'hall of fame'],
   },
   {
     id: 'nav-calendar',

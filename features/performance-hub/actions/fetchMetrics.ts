@@ -13,6 +13,18 @@ import type {
 } from '../types';
 import type { CockpitPlatform } from '../lib/cockpit-platform';
 import { dailyMetricPlatformsFilter } from '../lib/cockpit-platform';
+import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
+import {
+  showroomAggregateMetrics,
+  showroomCampaigns,
+  showroomConnectedAdAccounts,
+  showroomExecutiveTrend,
+  showroomGscSeoMatrix,
+  showroomPlatformComparison,
+  showroomPlatformMetrics,
+  showroomRecentActivity,
+  showroomSpendChart,
+} from '@/lib/demo/showroom-data';
 
 export type TimeRange = 'daily' | 'weekly' | 'monthly';
 
@@ -30,6 +42,10 @@ export interface GscSeoMatrixData {
   ctrPercent: number;
   /** Requires Search Console Indexing API wiring — null until ingested. */
   indexingIssues: number | null;
+  /** Rows in geo_reports for GSC queries — drives empty vs syncing copy. */
+  gscQueryRowCount: number;
+  /** Active Google ad account (GSC uses same OAuth) — UI can show awaiting vs disconnected. */
+  hasGoogleConnection: boolean;
   cwv: {
     lcp: number | null;
     cls: number | null;
@@ -315,6 +331,7 @@ export async function fetchAggregateMetrics(
   cockpit: CockpitPlatform = 'all',
 ): Promise<AggregateMetrics> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) return showroomAggregateMetrics(range, cockpit);
   return computeAggregateMetrics(validatedId, range, cockpit);
 }
 
@@ -324,6 +341,7 @@ export async function fetchPlatformMetrics(
   cockpit: CockpitPlatform = 'all',
 ): Promise<PlatformMetrics[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) return showroomPlatformMetrics(range, cockpit);
   return computePlatformMetrics(validatedId, range, cockpit);
 }
 
@@ -333,6 +351,9 @@ export async function fetchPlatformComparison(
   cockpit: CockpitPlatform = 'all',
 ): Promise<PlatformComparisonRow[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) {
+    return showroomPlatformComparison(range, cockpit) as PlatformComparisonRow[];
+  }
   const supabase    = await createSupabaseServerClient();
   const { current } = dateRangeFor(range);
 
@@ -426,6 +447,9 @@ export async function fetchExecutiveTrend(
   cockpit: CockpitPlatform = 'all',
 ): Promise<ExecutiveTrendPoint[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) {
+    return showroomExecutiveTrend(range, cockpit) as ExecutiveTrendPoint[];
+  }
   return computeExecutiveTrend(validatedId, range, cockpit);
 }
 
@@ -442,13 +466,26 @@ export async function fetchGscSeoMatrix(
   tenantBrandName: string | null,
 ): Promise<GscSeoMatrixData> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) {
+    return showroomGscSeoMatrix() as GscSeoMatrixData;
+  }
   const supabase    = await createSupabaseServerClient();
 
-  const { data: gscRows } = await supabase
-    .from('geo_reports')
-    .select('rank_data')
-    .eq('tenant_id', validatedId)
-    .eq('metric_source', 'gsc_query');
+  const [{ data: gscRows }, { data: googleAcct }] = await Promise.all([
+    supabase
+      .from('geo_reports')
+      .select('rank_data')
+      .eq('tenant_id', validatedId)
+      .eq('metric_source', 'gsc_query'),
+    supabase
+      .from('ad_accounts')
+      .select('id')
+      .eq('tenant_id', validatedId)
+      .eq('platform', 'google')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const tokens = tokenizeBrand(tenantBrandName);
 
@@ -509,12 +546,15 @@ export async function fetchGscSeoMatrix(
     clicks,
     ctrPercent:          Math.round(ctrPct * 100) / 100,
     indexingIssues:      null,
+    gscQueryRowCount:    gscRows?.length ?? 0,
+    hasGoogleConnection: Boolean(googleAcct),
     cwv:                 { lcp, cls, fidMs, label },
   };
 }
 
 export async function fetchConnectedAdAccounts(companyId: string): Promise<ConnectedAdAccount[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) return showroomConnectedAdAccounts();
   const supabase    = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -597,6 +637,7 @@ export async function fetchSpendChartData(
   cockpit: CockpitPlatform = 'all',
 ): Promise<ChartDataPoint[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) return showroomSpendChart(range, cockpit);
   return computeSpendChartData(validatedId, range, cockpit);
 }
 
@@ -606,6 +647,7 @@ export async function fetchCampaigns(
 ): Promise<CampaignRow[]> {
   const validatedId = await requireTenantAction(companyId);
   if (cockpit === 'seo') return [];
+  if (await isDemoTenant(validatedId)) return showroomCampaigns(cockpit);
 
   const supabase = await createSupabaseServerClient();
 
@@ -643,12 +685,13 @@ export async function fetchCampaigns(
   });
 
   return mapped
-    .filter((row) => row.status === 'active' && row.spend > 0)
+    .filter((row) => row.spend > 0 || row.impressions > 0 || row.clicks > 0 || row.conversions > 0)
     .slice(0, 24);
 }
 
 export async function fetchRecentActivity(companyId: string): Promise<ActivityItem[]> {
   const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) return showroomRecentActivity();
   const supabase    = await createSupabaseServerClient();
 
   const [logsResult, creativesResult] = await Promise.all([

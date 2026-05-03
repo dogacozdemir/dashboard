@@ -18,8 +18,12 @@ import {
 import { ApprovalBadge } from './ApprovalBadge';
 import { fetchRevisions, addRevision, updateAssetStatus } from '../actions/fetchAssets';
 import { deleteCreativeAsset } from '../actions/deleteCreativeAsset';
-import { triggerConfetti } from '@/features/gamification/components/CelebrationOverlay';
-import { trackActivity } from '@/features/gamification/actions/trackActivity';
+import {
+  triggerAchievementToast,
+  triggerConfetti,
+  triggerLevelUp,
+} from '@/features/gamification/components/CelebrationOverlay';
+import { ACHIEVEMENT_MAP } from '@/features/gamification/lib/definitions';
 import { formatRelativeFromMessages } from '@/lib/i18n/format-relative-from-messages';
 import { cn } from '@/lib/utils/cn';
 import type {
@@ -944,7 +948,26 @@ export function RevisionThread({
                   const result = await updateAssetStatus(asset.id, 'approved', companyId);
                   if (result.success) {
                     triggerConfetti();
-                    void trackActivity('creative_approved', { uploadedAt: asset.createdAt });
+                    const g = result.gamification;
+                    if (g?.newAchievements?.length) {
+                      g.newAchievements.forEach((key, i) => {
+                        const def = ACHIEVEMENT_MAP.get(key);
+                        if (!def) return;
+                        setTimeout(() => {
+                          triggerAchievementToast({
+                            icon: def.icon,
+                            achievementKey: key,
+                            xp: def.xp,
+                          });
+                        }, i * 800);
+                      });
+                    }
+                    if (g?.leveledUp) {
+                      setTimeout(
+                        () => triggerLevelUp(g.leveledUp!),
+                        (g.newAchievements?.length ?? 0) * 800 + 500,
+                      );
+                    }
                     onStatusChange?.(asset.id, 'approved');
                     setShowApproveConfirm(false);
                     onClose();

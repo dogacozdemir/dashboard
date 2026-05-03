@@ -8,6 +8,8 @@ export interface Tenant {
   slug: string;
   name: string;
   logo_url: string | null;
+  /** White-label shell logo (Brand Vault primary); empty → Madmonos default. */
+  brand_logo_url?: string | null;
   custom_domain: string | null;
   plan: TenantPlan;
   primary_color: string | null;
@@ -18,6 +20,8 @@ export interface Tenant {
   /** Primary growth goal chosen in Magic Onboarding. */
   dashboard_goal?: DashboardGoal | null;
   magic_onboarding_completed_at?: string | null;
+  /** Showroom tenant: analytics + gamification reads are simulated (no live ad/GSC data). */
+  is_demo?: boolean;
 }
 
 export interface TenantContext {

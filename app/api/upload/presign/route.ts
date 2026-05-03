@@ -9,6 +9,7 @@ import {
 } from '@/lib/storage/s3';
 import type { SessionUser } from '@/types/user';
 import { sessionHasPermission } from '@/lib/auth/session-capabilities';
+import { premiumSessionRequiredMessage } from '@/lib/i18n/premium-action-errors';
 
 export interface PresignRequest {
   filename:      string;
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   // 1. Auth check
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: await premiumSessionRequiredMessage() }, { status: 401 });
   }
   const user = session.user as SessionUser;
 

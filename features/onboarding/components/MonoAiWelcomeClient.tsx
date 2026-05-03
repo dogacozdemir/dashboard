@@ -5,15 +5,18 @@ import { motion } from 'framer-motion';
 import { Brain, Orbit, Sparkles } from 'lucide-react';
 import type { MonoWelcomeCopy } from '@/features/onboarding/actions/welcomeCopy';
 import Link from 'next/link';
+import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 
 const spring = { type: 'spring' as const, stiffness: 260, damping: 26, mass: 1 };
 
 interface Props {
   copy: MonoWelcomeCopy;
   tenantName: string;
+  /** Post-login welcome: tenant white-label mark when configured. */
+  brandLogoUrl?: string | null;
 }
 
-export function MonoAiWelcomeClient({ copy, tenantName }: Props) {
+export function MonoAiWelcomeClient({ copy, tenantName, brandLogoUrl }: Props) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -76,7 +79,17 @@ export function MonoAiWelcomeClient({ copy, tenantName }: Props) {
               boxShadow: '0 0 32px rgba(156,112,178,0.25)',
             }}
           >
-            <Brain className="h-7 w-7 text-white/90" />
+            {brandLogoUrl?.trim() ? (
+              <TenantLogoMark
+                brandLogoUrl={brandLogoUrl}
+                alt={tenantName}
+                width={36}
+                height={36}
+                className="h-9 w-9"
+              />
+            ) : (
+              <Brain className="h-7 w-7 text-white/90" />
+            )}
           </motion.div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35 flex items-center gap-1.5">

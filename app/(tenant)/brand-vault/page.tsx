@@ -1,21 +1,30 @@
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
+import { auth } from '@/lib/auth/config';
 import { fetchBrandAssets } from '@/features/brand-vault/actions/fetchAssets';
 import { AssetGrid } from '@/features/brand-vault/components/AssetGrid';
 import { BrandUploadPanel } from '@/features/brand-vault/components/BrandUploadPanel';
 import { BrandHealthMeter } from '@/features/gamification/components/BrandHealthMeter';
-import { fetchBrandHealthScore } from '@/features/gamification/actions/fetchGamification';
+import { fetchBrandHealthScore, fetchUserGamification } from '@/features/gamification/actions/fetchGamification';
+import { canSetTenantPrimaryLogo } from '@/features/gamification/lib/definitions';
 import { formatDate } from '@/lib/utils/format';
 import { Shield, Lock } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import type { SessionUser } from '@/types/user';
 
 export default async function BrandVaultPage() {
   const { companyId, tenant } = await requireTenantContext();
   const t = await getTranslations('Features.BrandVaultPage');
 
-  const [assets, healthScore] = await Promise.all([
+  const session = await auth();
+  const user = session?.user as SessionUser | undefined;
+
+  const [assets, healthScore, gamification] = await Promise.all([
     fetchBrandAssets(companyId),
     fetchBrandHealthScore(companyId),
+    fetchUserGamification(),
   ]);
+
+  const canSetPrimaryLogo = canSetTenantPrimaryLogo(gamification?.totalXP ?? 0, user?.role ?? 'tenant_user');
 
   const chron = [...assets].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
@@ -100,7 +109,12 @@ export default async function BrandVaultPage() {
         <h2 className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.12em] mb-4">
           {t('filesHeading')}
         </h2>
-        <AssetGrid assets={assets} />
+        <AssetGrid
+          assets={assets}
+          companyId={companyId}
+          tenantBrandLogoUrl={tenant.brand_logo_url ?? null}
+          canSetPrimaryLogo={canSetPrimaryLogo}
+        />
       </div>
     </div>
   );

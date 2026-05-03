@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, LayoutDashboard, Globe, Upload, Settings, Shield, Sparkles, ListTodo } from 'lucide-react';
+import Image from 'next/image';
+import { LayoutDashboard, Globe, Upload, Settings, Shield, Sparkles, ListTodo } from 'lucide-react';
 import type { SessionUser } from '@/types/user';
 import { auth } from '@/lib/auth/config';
 import { NextIntlClientProvider } from 'next-intl';
@@ -40,7 +41,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <aside className="w-56 flex flex-col h-screen border-r border-white/[0.06] bg-[#0F0F1A] shrink-0">
           <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shrink-0">
-              <Zap className="w-4 h-4 text-white" />
+              <Image
+                src="/madmonos-logo-optimized.png"
+                alt="Madmonos logo"
+                width={18}
+                height={18}
+                className="h-[18px] w-[18px] object-contain"
+                priority
+              />
             </div>
             <div className="min-w-0">
               <span className="font-bold text-sm text-white/90 block truncate">{t('sidebarTitle')}</span>

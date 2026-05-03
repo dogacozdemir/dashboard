@@ -14,7 +14,10 @@ export async function updateUserLocaleAction(
   locale: string
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { ok: false, error: 'Unauthorized' };
+  if (!session) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { ok: false, error: await premiumSessionRequiredMessage() };
+  }
 
   const user = session.user as SessionUser;
   const next: AppLocale = normalizeLocale(locale);

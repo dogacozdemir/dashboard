@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { cookies } from 'next/headers';
+import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
@@ -13,11 +14,25 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 import { TenantProvider } from '@/hooks/useTenant';
 import { fetchUserGamification } from '@/features/gamification/actions/fetchGamification';
 import { ActivityTracker } from '@/features/gamification/components/ActivityTracker';
+import { MagicTour } from '@/features/onboarding/components/MagicTour';
 import type { SessionUser } from '@/types/user';
 import { mapRowToLuxNotification } from '@/features/notifications/lib/mapNotificationRow';
 import type { LuxNotificationItem } from '@/features/notifications/types';
 import { resolveEffectiveLocale } from '@/lib/i18n/resolve-effective-locale';
 import { loadMessages } from '@/lib/i18n/load-messages';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const slug = headersList.get('x-tenant-slug') ?? '';
+  const raw = slug ? await getTenantBySlug(slug) : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const name: string = raw ? (raw as any).name ?? slug : slug;
+  return {
+    title: name
+      ? { template: `%s — ${name}`, default: `${name} — Madmonos` }
+      : { template: '%s — Madmonos', default: 'Madmonos Dashboard' },
+  };
+}
 
 export default async function TenantLayout({
   children,
@@ -97,6 +112,7 @@ export default async function TenantLayout({
     <NextIntlClientProvider locale={locale} messages={messages}>
       <TenantProvider value={{ tenant, companyId: tenant.id }}>
         <ActivityTracker />
+        <MagicTour autoShow />
         <DashboardShell
           tenant={tenant}
           user={user}
@@ -105,6 +121,7 @@ export default async function TenantLayout({
           initialNotifs={initialNotifs}
           gamification={gamification}
           impersonation={impersonation}
+          showroomMode={Boolean(tenant.is_demo)}
           canManageTeam={canManageTeam}
           canUseNotifications={canUseNotifications}
         >

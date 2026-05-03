@@ -14,6 +14,13 @@ import { assetSearchTool }             from '../tools/asset-search';
 import type { AiMessage }               from '../types';
 import type { DeepSeekMessage, DeepSeekToolCall, ToolContext } from '../tools/types'; // DeepSeekToolCall used by executeToolCalls
 import type { SessionUser }             from '@/types/user';
+import { trackActivity }                from '@/features/gamification/actions/trackActivity';
+import { isDemoTenant }                 from '@/lib/demo/is-demo-tenant';
+import { showroomStrategicAppendix }    from '@/lib/demo/showroom-data';
+import {
+  DEMO_SHOWROOM_APPENDIX_EN,
+  DEMO_SHOWROOM_APPENDIX_TR,
+} from '@/lib/demo/showroom-ai-appendix';
 
 const DEEPSEEK_URL          = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -329,7 +336,10 @@ export async function sendAiMessage(
   tenantName:  string,
 ): Promise<{ reply: string; error?: string }> {
   const session = await auth();
-  if (!session) return { reply: '', error: 'Unauthorized' };
+  if (!session) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { reply: '', error: await premiumSessionRequiredMessage() };
+  }
 
   const user        = session.user as SessionUser;
   const locale      = user.locale;
@@ -349,6 +359,8 @@ export async function sendAiMessage(
   }
 
   // ── Parallel DB fetches (summary + history + user message insert) ──────────
+  const demoTenant = await isDemoTenant(validatedId);
+
   const [
     { data: summaryRow },
     { data: history },
@@ -365,19 +377,28 @@ export async function sendAiMessage(
       .eq('tenant_id', validatedId)
       .order('created_at', { ascending: false })
       .limit(HISTORY_TURNS),
-    fetchTenantStrategicAppendix(supabase, validatedId, locale),
+    demoTenant
+      ? Promise.resolve(showroomStrategicAppendix(locale))
+      : fetchTenantStrategicAppendix(supabase, validatedId, locale),
   ]);
 
-  // Persist user message — fire-and-forget (non-blocking)
-  void Promise.resolve(
-    supabase.from('ai_chat_history').insert({
-      tenant_id: validatedId,
-      user_id:   user.id,
-      role:      'user',
-      content:   userMessage,
-      model:     'deepseek-chat',
-    })
-  ).catch((e: unknown) => console.error('[insert user msg]', e));
+  const insertUserRes = await supabase.from('ai_chat_history').insert({
+    tenant_id: validatedId,
+    user_id:   user.id,
+    role:      'user',
+    content:   userMessage,
+    model:     'deepseek-chat',
+  });
+
+  if (insertUserRes.error) {
+    console.error('[insert user msg]', insertUserRes.error.message);
+  } else {
+    try {
+      await trackActivity('ai_message_sent');
+    } catch (e: unknown) {
+      console.error('[trackActivity ai_message_sent]', e);
+    }
+  }
 
   const contextMessages: DeepSeekMessage[] = [...(history ?? []).reverse()].map((m) => ({
     role:    m.role as 'user' | 'assistant',
@@ -394,9 +415,14 @@ export async function sendAiMessage(
       ? 'This block is context only; figures depend on ad sync and cache. If anything is missing, suggest running sync or generating a GEO report.'
       : 'Bu blok yalnızca bağlamdır; rakamlar reklam senkronu ve önbelleğe bağlıdır. Eksikse kullanıcıya senkron veya GEO raporu öner.';
 
-  const systemPromptBody = strategicAppendix
+  let systemPromptBody = strategicAppendix
     ? `${buildFullSystemPrompt(tenantName, locale)}\n\n${geoHeader}\n${strategicAppendix}\n\n${geoFooter}`
     : buildFullSystemPrompt(tenantName, locale);
+
+  if (demoTenant) {
+    const demoAppend = locale === 'en' ? DEMO_SHOWROOM_APPENDIX_EN : DEMO_SHOWROOM_APPENDIX_TR;
+    systemPromptBody = `${systemPromptBody}\n\n${demoAppend}`;
+  }
 
   const systemMessages: DeepSeekMessage[] = [{ role: 'system', content: systemPromptBody }];
   if (summaryRow?.summary_text) {
@@ -566,6 +592,11 @@ export async function sendAiMessage(
             `\n\n---\n**PDF hazır** · ${filename} · ${sizeKb} KB\n` +
             `**İndir / Download:** [${filename}](${pdfResult.downloadUrl})\n` +
             `_(Link 1 saat geçerlidir · Link valid for 1 hour)_`;
+        }
+        try {
+          await trackActivity('pdf_generated');
+        } catch (e: unknown) {
+          console.error('[trackActivity pdf_generated]', e);
         }
       } catch (pdfErr) {
         console.error('[auto-pdf]', pdfErr);

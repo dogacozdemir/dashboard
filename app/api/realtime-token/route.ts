@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { buildRealtimeToken } from '@/lib/auth/realtime-jwt';
 import type { SessionUser } from '@/types/user';
+import {
+  premiumDataPersistErrorMessage,
+  premiumSessionRequiredMessage,
+} from '@/lib/i18n/premium-action-errors';
 
 export async function GET() {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: await premiumSessionRequiredMessage() }, { status: 401 });
   }
 
   const user = session.user as SessionUser;
@@ -21,7 +25,7 @@ export async function GET() {
       expiresIn: 600,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to issue realtime token';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[realtime-token]', error);
+    return NextResponse.json({ error: await premiumDataPersistErrorMessage() }, { status: 500 });
   }
 }

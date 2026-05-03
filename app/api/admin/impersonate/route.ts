@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
 import type { SessionUser } from '@/types/user';
+import {
+  premiumForbiddenMessage,
+  premiumSessionRequiredMessage,
+} from '@/lib/i18n/premium-action-errors';
+import { getTranslations } from 'next-intl/server';
+import { resolveActionLocale } from '@/lib/i18n/resolve-action-locale';
 
 const COOKIE_OPTS = {
   httpOnly: true as const,
@@ -18,15 +24,20 @@ const COOKIE_OPTS = {
 export async function POST(request: NextRequest) {
   const session = await auth();
   const user = session?.user as SessionUser | undefined;
-  if (!session || user?.role !== 'super_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: await premiumSessionRequiredMessage() }, { status: 401 });
+  }
+  if (user?.role !== 'super_admin') {
+    return NextResponse.json({ error: await premiumForbiddenMessage() }, { status: 403 });
   }
 
   let body: { slug?: string | null };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    const locale = await resolveActionLocale();
+    const t = await getTranslations({ locale, namespace: 'PremiumMessages' });
+    return NextResponse.json({ error: t('invalidPayload') }, { status: 400 });
   }
 
   const raw = body.slug;

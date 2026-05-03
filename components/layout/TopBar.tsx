@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 import { motion } from 'framer-motion';
-import { Search, Settings, Zap } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +25,8 @@ interface TopBarProps {
   companyId: string;
   title: string;
   subtitle?: string;
-  /** @deprecated hamburger removed — mobile now uses MobileBottomNav */
-  mobileSidebar?: React.ReactNode;
+  /** White-label mark for mobile header chip. */
+  brandLogoUrl?: string | null;
   initialNotifs?: LuxNotificationItem[];
   canUseNotifications?: boolean;
 }
@@ -35,6 +36,7 @@ export function TopBar({
   companyId,
   title,
   subtitle,
+  brandLogoUrl,
   initialNotifs = [],
   canUseNotifications = false,
 }: TopBarProps) {
@@ -61,7 +63,14 @@ export function TopBar({
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
         <Link href="/dashboard" className="md:hidden shrink-0 press-scale">
           <div className="relative flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-[#9c70b2] to-[#bea042] shadow-lg shadow-[#9c70b2]/25 md:h-8 md:w-8">
-            <Zap className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+            <TenantLogoMark
+              brandLogoUrl={brandLogoUrl}
+              alt="Brand"
+              width={16}
+              height={16}
+              className="h-3.5 w-3.5 md:h-4 md:w-4"
+              priority
+            />
             <span className="pulse-ring absolute inset-0 rounded-xl" />
           </div>
         </Link>

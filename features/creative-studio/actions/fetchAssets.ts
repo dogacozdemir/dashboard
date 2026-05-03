@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { requirePermission } from '@/lib/auth/permissions';
 import { auth } from '@/lib/auth/config';
+import { trackActivity } from '@/features/gamification/actions/trackActivity';
 import { createPresignedDownloadUrl } from '@/lib/storage/s3';
 import type { CreativeAsset, Revision, AssetStatus, VideoRevisionMeta, ImageRevisionMeta } from '../types';
 import type { SessionUser } from '@/types/user';
@@ -124,14 +125,20 @@ export async function updateAssetStatus(
   assetId: string,
   status: AssetStatus,
   companyId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  gamification?: Awaited<ReturnType<typeof trackActivity>> | null;
+}> {
   await requireTenantAction(companyId);
   await requirePermission('creative.approve');
 
   const supabase = await createSupabaseServerClient();
   const { data: asset, error: assetError } = await supabase
     .from('creative_assets')
-    .select('id, title, tenant_id, platform, caption, scheduled_date, scheduled_time, social_post_event_id')
+    .select(
+      'id, title, tenant_id, platform, caption, scheduled_date, scheduled_time, social_post_event_id, created_at',
+    )
     .eq('id', assetId)
     .eq('tenant_id', companyId)
     .single();
@@ -150,6 +157,13 @@ export async function updateAssetStatus(
   if (error) {
     console.error('[updateAssetStatus]', error.message);
     return { success: false, error: await getPremiumActionError() };
+  }
+
+  let gamification: Awaited<ReturnType<typeof trackActivity>> | null = null;
+  if (status === 'approved') {
+    gamification = await trackActivity('creative_approved', {
+      uploadedAt: (asset as { created_at: string }).created_at,
+    });
   }
 
   // Bridge: when approved, automatically create Ops Calendar social post event once.
@@ -203,7 +217,7 @@ export async function updateAssetStatus(
     assetTitle: asset.title,
   });
 
-  return { success: true };
+  return { success: true, gamification };
 }
 
 export async function addRevision(
@@ -214,7 +228,10 @@ export async function addRevision(
   imageMetadata: ImageRevisionMeta | null = null,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { success: false, error: await premiumSessionRequiredMessage() };
+  }
 
   const userId = (session.user as SessionUser).id;
   await requireTenantAction(tenantId);

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Zap } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
 
@@ -47,7 +48,14 @@ export function LoginForm() {
       <GlassCard padding="lg" className="space-y-6">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-[#9c70b2] to-[#bea042] mb-4 shadow-lg shadow-[#9c70b2]/20">
-            <Zap className="w-6 h-6 text-white" />
+            <Image
+              src="/madmonos-logo-optimized.png"
+              alt="Madmonos logo"
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+              priority
+            />
           </div>
           <h1 className="text-xl font-bold gradient-text-indigo">{t('brandTitle')}</h1>
           <p className="text-xs text-white/30 uppercase tracking-widest">{t('tagline')}</p>

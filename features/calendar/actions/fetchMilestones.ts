@@ -4,6 +4,7 @@ import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { auth } from '@/lib/auth/config';
+import { trackActivity } from '@/features/gamification/actions/trackActivity';
 import type { CalendarMilestone, CalendarEvent, SocialPlatform } from '../types';
 import type { SessionUser } from '@/types/user';
 
@@ -94,7 +95,10 @@ export async function createCalendarEvent(
   }
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session) {
+    const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
+    return { success: false, error: await premiumSessionRequiredMessage() };
+  }
 
   const user        = session.user as SessionUser;
   const validatedId = await requireTenantAction(companyId);
@@ -119,6 +123,13 @@ export async function createCalendarEvent(
     console.error('[createCalendarEvent]', error.message);
     return { success: false, error: await getPremiumActionError() };
   }
+
+  try {
+    await trackActivity('calendar_event_created');
+  } catch (e) {
+    console.error('[trackActivity calendar_event_created]', e);
+  }
+
   return { success: true };
 }
 

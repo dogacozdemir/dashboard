@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { ImpersonationBanner } from './ImpersonationBanner';
+import { DemoShowroomBanner } from './DemoShowroomBanner';
 import type { Tenant } from '@/types/tenant';
 import type { SessionUser } from '@/types/user';
 import type { UserGamificationData } from '@/features/gamification/types';
@@ -23,6 +24,8 @@ interface DashboardShellProps {
   gamification?:   UserGamificationData | null;
   /** Super-admin customer view (impersonation cookie). */
   impersonation?:  { tenantName: string; exitHref: string } | null;
+  /** Showroom tenant — simulated analytics & gamification. */
+  showroomMode?: boolean;
   canManageTeam?:  boolean;
   canUseNotifications?: boolean;
   children:        React.ReactNode;
@@ -43,6 +46,7 @@ export function DashboardShell({
   initialNotifs = [],
   gamification,
   impersonation = null,
+  showroomMode = false,
   canManageTeam = false,
   canUseNotifications = false,
   children,
@@ -91,6 +95,7 @@ export function DashboardShell({
           companyId={tenant.id}
           title={title}
           subtitle={subtitle}
+          brandLogoUrl={tenant.brand_logo_url ?? null}
           initialNotifs={initialNotifs}
           canUseNotifications={canUseNotifications}
         />
@@ -98,6 +103,8 @@ export function DashboardShell({
         {impersonation && (
           <ImpersonationBanner tenantName={impersonation.tenantName} exitHref={impersonation.exitHref} />
         )}
+
+        {showroomMode ? <DemoShowroomBanner /> : null}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
@@ -115,9 +122,14 @@ export function DashboardShell({
       </div>
 
       {/* ── Mobile bottom navigation (hidden on md+) ── */}
-      <MobileBottomNav />
+      <MobileBottomNav brandLogoUrl={tenant.brand_logo_url ?? null} />
 
-      <CommandCenter companyId={tenant.id} user={user} />
+      <CommandCenter
+        companyId={tenant.id}
+        user={user}
+        totalXP={gamification?.totalXP ?? null}
+        level={gamification?.level.level ?? null}
+      />
     </div>
   );
 }

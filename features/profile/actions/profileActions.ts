@@ -1,6 +1,7 @@
 'use server';
 
 import { getPremiumActionError } from '@/lib/copy/premium-copy';
+import { premiumSessionRequiredMessage } from '@/lib/i18n/premium-action-errors';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { auth } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
@@ -10,7 +11,7 @@ export async function updateProfile(data: {
   avatarUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session) return { success: false, error: await premiumSessionRequiredMessage() };
 
   const user     = session.user as SessionUser;
   const supabase = await createSupabaseServerClient();
@@ -36,7 +37,7 @@ export async function updatePassword(
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session) return { success: false, error: await premiumSessionRequiredMessage() };
 
   const user     = session.user as SessionUser;
   const supabase = await createSupabaseServerClient();

@@ -65,4 +65,13 @@ export type GamificationEvent =
   | 'ai_message_sent'
   | 'pdf_generated'
   | 'brand_asset_uploaded'
-  | 'calendar_event_created';
+  | 'calendar_event_created'
+  /** No action XP — evaluates reach_100k from ctx.totalLifetimeImpressions */
+  | 'milestone_impressions_check';
+
+export interface GamificationTrackResult {
+  newAchievements: string[];
+  leveledUp:       { from: number; to: number } | null;
+  xpGained:        number;
+  totalXP:         number;
+}

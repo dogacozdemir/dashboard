@@ -7,6 +7,8 @@ import { requirePermission } from '@/lib/auth/permissions';
 import { decryptToken, encryptToken, packToken, unpackToken } from '@/lib/utils/crypto';
 import type { AdPlatform } from '../types';
 import { mapIntegrationSyncErrorForUser } from '@/lib/integrations/user-facing-errors';
+import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
+import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
 
 const DATE_END = () => new Date().toISOString().split('T')[0];
 const DATE_START_30 = () => {
@@ -176,6 +178,72 @@ async function touchAdAccountSync(supabase: SupabaseClient, tenantId: string, pl
 
 // ─── Meta (Facebook) Ads API ─────────────────────────────────────────────────
 
+function mapMetaCampaignStatus(s: string): 'active' | 'paused' | 'completed' {
+  const u = (s ?? '').toUpperCase();
+  if (u === 'ACTIVE') return 'active';
+  if (u === 'PAUSED') return 'paused';
+  return 'completed';
+}
+
+type MetaInsightLike = {
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  conversions?: string;
+  actions?: Array<{ action_type: string; value: string }>;
+  action_values?: Array<{ action_type: string; value: string }>;
+  purchase_roas?: Array<{ value: string }>;
+  ctr?: string;
+};
+
+function metaSpendImpressionsClicksConversionsRoasCtr(row: MetaInsightLike): {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  roas: number;
+  ctr: number;
+} {
+  let conversions = parseInt(row.conversions ?? '0', 10) || 0;
+  if (conversions === 0) {
+    for (const a of row.actions ?? []) {
+      if (a.action_type === 'purchase' || a.action_type === 'offsite_conversion.fb_pixel_purchase') {
+        conversions += parseInt(a.value, 10) || 0;
+      }
+    }
+  }
+  if (conversions === 0) {
+    const convAct = row.actions?.find((a) => a.action_type === 'conversions');
+    if (convAct) conversions = parseInt(convAct.value, 10) || 0;
+  }
+
+  const spend         = parseFloat(row.spend ?? '0');
+  const impressions = parseInt(row.impressions ?? '0', 10);
+  const clicks        = parseInt(row.clicks ?? '0', 10);
+  let roas            = parseFloat(row.purchase_roas?.[0]?.value ?? '0');
+  let revenue         = 0;
+  for (const av of row.action_values ?? []) {
+    if (av.action_type === 'purchase' || av.action_type === 'offsite_conversion.fb_pixel_purchase') {
+      revenue += parseFloat(av.value) || 0;
+    }
+  }
+  if (revenue <= 0 && spend > 0 && roas > 0) revenue = spend * roas;
+  if (roas <= 0 && spend > 0 && revenue > 0) roas = Math.round((revenue / spend) * 100) / 100;
+
+  const ctrRaw = parseFloat(row.ctr ?? '0');
+  const ctrPct =
+    impressions > 0 ? (clicks / impressions) * 100 : ctrRaw * (ctrRaw <= 1 ? 100 : 1);
+
+  return {
+    spend,
+    impressions,
+    clicks,
+    conversions,
+    roas: Math.round(roas * 100) / 100,
+    ctr:  Math.round(ctrPct * 10000) / 10000,
+  };
+}
+
 async function syncMeta(accessToken: string, tenantId: string, supabase: SupabaseClient): Promise<void> {
   const accountsRes = await fetch(
     `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`
@@ -188,97 +256,118 @@ async function syncMeta(accessToken: string, tenantId: string, supabase: Supabas
   if (!accounts?.length) return;
 
   let wroteMetrics = false;
+  const timeRange = encodeURIComponent(JSON.stringify({ since: DATE_START_30(), until: DATE_END() }));
 
   for (const account of accounts) {
     const actId = account.id.startsWith('act_') ? account.id : `act_${account.id}`;
 
-    const campaignsRes = await fetch(
+    const campaignByName = new Map<string, { name: string; graphStatus: string }>();
+
+    let nextCampUrl: string | null =
       `https://graph.facebook.com/v18.0/${actId}/campaigns` +
-        `?fields=id,name,status,objective` +
-        `&access_token=${accessToken}` +
-        `&limit=50`
-    );
-    if (campaignsRes.ok) {
-      const { data: campaigns } = (await campaignsRes.json()) as {
-        data: Array<{ id: string; name: string; status: string }>;
+      `?fields=id,name,status,objective&access_token=${accessToken}&limit=100`;
+
+    while (nextCampUrl) {
+      const campaignsRes = await fetch(nextCampUrl);
+      if (!campaignsRes.ok) break;
+      const campJson = (await campaignsRes.json()) as {
+        data?: Array<{ id: string; name: string; status: string }>;
+        paging?: { next?: string };
       };
-      for (const campaign of campaigns ?? []) {
-        await supabase.from('ad_campaigns').upsert(
-          {
-            tenant_id:     tenantId,
-            platform:      'meta',
-            campaign_name: campaign.name,
-            data:          { status: campaign.status },
-          },
-          { onConflict: 'tenant_id,platform,campaign_name' }
-        );
+      for (const c of campJson.data ?? []) {
+        if (c.name) campaignByName.set(c.name, { name: c.name, graphStatus: c.status ?? 'UNKNOWN' });
       }
+      nextCampUrl = campJson.paging?.next ?? null;
+    }
+
+    type CampInsight = {
+      campaign_name?: string;
+      campaign_id?: string;
+      campaign_status?: string;
+    } & MetaInsightLike;
+
+    const metricsByCampaignName = new Map<string, CampInsight>();
+
+    const campInsightsRes = await fetch(
+      `https://graph.facebook.com/v18.0/${actId}/insights` +
+        `?level=campaign` +
+        `&fields=campaign_name,campaign_id,campaign_status,spend,impressions,clicks,actions,action_values,purchase_roas,ctr` +
+        `&time_range=${timeRange}` +
+        `&access_token=${accessToken}` +
+        `&limit=500`
+    );
+
+    if (campInsightsRes.ok) {
+      const campInsightsJson = (await campInsightsRes.json()) as { data?: CampInsight[] };
+      for (const row of campInsightsJson.data ?? []) {
+        const nm = row.campaign_name?.trim();
+        if (nm) metricsByCampaignName.set(nm, row);
+      }
+    }
+
+    const namesToWrite = new Set<string>([...campaignByName.keys(), ...metricsByCampaignName.keys()]);
+    for (const name of namesToWrite) {
+      const fromList = campaignByName.get(name);
+      const insightRow = metricsByCampaignName.get(name);
+      const graphStatus = insightRow?.campaign_status ?? fromList?.graphStatus ?? 'UNKNOWN';
+      const m = insightRow
+        ? metaSpendImpressionsClicksConversionsRoasCtr(insightRow)
+        : {
+            spend:       0,
+            impressions: 0,
+            clicks:      0,
+            conversions: 0,
+            roas:        0,
+            ctr:         0,
+          };
+
+      await supabase.from('ad_campaigns').upsert(
+        {
+          tenant_id:     tenantId,
+          platform:      'meta',
+          campaign_name: name,
+          data:          {
+            status:      mapMetaCampaignStatus(graphStatus),
+            spend:       Math.round(m.spend * 100) / 100,
+            impressions: Math.round(m.impressions),
+            clicks:      Math.round(m.clicks),
+            conversions: Math.round(m.conversions),
+            roas:        m.roas,
+            ctr:         m.ctr,
+          },
+        },
+        { onConflict: 'tenant_id,platform,campaign_name' },
+      );
     }
 
     const insightsRes = await fetch(
       `https://graph.facebook.com/v18.0/${actId}/insights` +
         `?fields=date_start,spend,impressions,clicks,actions,action_values,purchase_roas,ctr` +
         `&time_increment=1` +
-        `&time_range={"since":"${DATE_START_30()}","until":"${DATE_END()}"}` +
+        `&time_range=${timeRange}` +
         `&access_token=${accessToken}` +
         `&limit=90`
     );
     if (!insightsRes.ok) continue;
 
     const { data: insights } = (await insightsRes.json()) as {
-      data: Array<{
-        date_start: string;
-        spend: string;
-        impressions: string;
-        clicks: string;
-        conversions?: string;
-        actions?: Array<{ action_type: string; value: string }>;
-        action_values?: Array<{ action_type: string; value: string }>;
-        purchase_roas?: Array<{ value: string }>;
-        ctr: string;
-      }>;
+      data: Array<{ date_start: string } & MetaInsightLike>;
     };
 
     for (const row of insights ?? []) {
-      let conversions = parseInt(row.conversions ?? '0', 10) || 0;
-      if (conversions === 0) {
-        for (const a of row.actions ?? []) {
-          if (a.action_type === 'purchase' || a.action_type === 'offsite_conversion.fb_pixel_purchase') {
-            conversions += parseInt(a.value, 10) || 0;
-          }
-        }
-      }
-      if (conversions === 0) {
-        const convAct = row.actions?.find((a) => a.action_type === 'conversions');
-        if (convAct) conversions = parseInt(convAct.value, 10) || 0;
-      }
-
-      const spend       = parseFloat(row.spend ?? '0');
-      const impressions = parseInt(row.impressions ?? '0', 10);
-      const clicks      = parseInt(row.clicks ?? '0', 10);
-      let roas          = parseFloat(row.purchase_roas?.[0]?.value ?? '0');
-      let revenue = 0;
-      for (const av of row.action_values ?? []) {
-        if (av.action_type === 'purchase' || av.action_type === 'offsite_conversion.fb_pixel_purchase') {
-          revenue += parseFloat(av.value) || 0;
-        }
-      }
-      if (revenue <= 0 && spend > 0 && roas > 0) revenue = spend * roas;
-      if (roas <= 0 && spend > 0 && revenue > 0) roas = Math.round((revenue / spend) * 100) / 100;
-
-      const ctrPct = impressions > 0 ? (clicks / impressions) * 100 : parseFloat(row.ctr ?? '0') * (parseFloat(row.ctr ?? '0') <= 1 ? 100 : 1);
+      const m = metaSpendImpressionsClicksConversionsRoasCtr(row);
 
       const { error } = await supabase.from('daily_metrics').upsert(
         {
           tenant_id:   tenantId,
           date:        row.date_start,
           platform:    'meta',
-          spend,
-          impressions,
-          clicks,
-          conversions,
-          roas:        Math.round(roas * 100) / 100,
-          ctr:         Math.round(ctrPct * 10000) / 10000,
+          spend:       m.spend,
+          impressions: m.impressions,
+          clicks:      m.clicks,
+          conversions: m.conversions,
+          roas:        m.roas,
+          ctr:         m.ctr,
         },
         { onConflict: 'tenant_id,date,platform' }
       );
@@ -456,6 +545,13 @@ async function syncGoogle(accessToken: string, tenantId: string, supabase: Supab
 
 // ─── TikTok Ads API ──────────────────────────────────────────────────────────
 
+function mapTikTokCampaignStatus(op: string): 'active' | 'paused' | 'completed' {
+  const u = (op ?? '').toUpperCase();
+  if (u === 'ENABLE') return 'active';
+  if (u === 'DISABLE') return 'paused';
+  return 'completed';
+}
+
 async function syncTikTok(accessToken: string, tenantId: string, supabase: SupabaseClient): Promise<void> {
   const advertisersRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/', {
     headers: {
@@ -477,6 +573,152 @@ async function syncTikTok(accessToken: string, tenantId: string, supabase: Supab
 
   for (const advertiser of list) {
     const advertiserId = advertiser.advertiser_id;
+
+    const campaignMeta = new Map<
+      string,
+      { campaign_name: string; operation_status: string }
+    >();
+
+    let campPage = 1;
+    for (;;) {
+      const campRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/campaign/get/', {
+        method: 'POST',
+        headers: {
+          'Access-Token': accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          advertiser_id: advertiserId,
+          page:          campPage,
+          page_size:     1000,
+        }),
+      });
+      if (!campRes.ok) break;
+      const campJson = (await campRes.json()) as {
+        code?: number;
+        data?: {
+          list?: Array<{
+            campaign_id: string;
+            campaign_name: string;
+            operation_status: string;
+          }>;
+          page_info?: { total_page?: number };
+        };
+      };
+      if (campJson.code != null && campJson.code !== 0) break;
+      const rows = campJson.data?.list ?? [];
+      for (const c of rows) {
+        campaignMeta.set(c.campaign_id, {
+          campaign_name:    c.campaign_name || c.campaign_id,
+          operation_status: c.operation_status ?? 'DISABLE',
+        });
+      }
+      const totalPage = campJson.data?.page_info?.total_page ?? campPage;
+      if (campPage >= totalPage || !rows.length) break;
+      campPage += 1;
+    }
+
+    type CampDayRow = {
+      dimensions: { stat_time_day: string; campaign_id: string };
+      metrics: Record<string, string>;
+    };
+
+    const rollupByCampaign: Record<
+      string,
+      { spend: number; impressions: number; clicks: number; conversions: number; convValue: number }
+    > = {};
+
+    let repPage = 1;
+    for (;;) {
+      const campReportRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/', {
+        method: 'POST',
+        headers: {
+          'Access-Token': accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          advertiser_id: advertiserId,
+          report_type:   'BASIC',
+          dimensions:    ['stat_time_day', 'campaign_id'],
+          metrics:       ['spend', 'impressions', 'clicks', 'conversion', 'purchase_roas', 'ctr'],
+          start_date:    DATE_START_30(),
+          end_date:      DATE_END(),
+          page:          repPage,
+          page_size:     1000,
+        }),
+      });
+      if (!campReportRes.ok) break;
+      const crJson = (await campReportRes.json()) as {
+        code?: number;
+        data?: { list?: CampDayRow[]; page_info?: { total_page?: number } };
+      };
+      if (crJson.code != null && crJson.code !== 0) break;
+      const crList = crJson.data?.list ?? [];
+      for (const row of crList) {
+        const cid = row.dimensions.campaign_id;
+        if (!cid) continue;
+        const metrics     = row.metrics;
+        const spend       = parseFloat(metrics.spend ?? '0');
+        const impressions = parseInt(metrics.impressions ?? '0', 10);
+        const clicks      = parseInt(metrics.clicks ?? '0', 10);
+        const conversions = parseInt(metrics.conversion ?? metrics.conversions ?? '0', 10);
+        let roas          = parseFloat(metrics.purchase_roas ?? '0');
+        const revenue     = spend > 0 && roas > 0 ? spend * roas : 0;
+        if (roas <= 0 && spend > 0 && revenue > 0) roas = Math.round((revenue / spend) * 100) / 100;
+        const convVal = spend > 0 && roas > 0 ? spend * roas : 0;
+
+        if (!rollupByCampaign[cid]) {
+          rollupByCampaign[cid] = { spend: 0, impressions: 0, clicks: 0, conversions: 0, convValue: 0 };
+        }
+        const r = rollupByCampaign[cid];
+        r.spend += spend;
+        r.impressions += impressions;
+        r.clicks += clicks;
+        r.conversions += conversions;
+        r.convValue += convVal;
+      }
+      const totalPage = crJson.data?.page_info?.total_page ?? repPage;
+      if (repPage >= totalPage || !crList.length) break;
+      repPage += 1;
+    }
+
+    const campaignIds = new Set<string>([
+      ...campaignMeta.keys(),
+      ...Object.keys(rollupByCampaign),
+    ]);
+
+    for (const cid of campaignIds) {
+      const meta = campaignMeta.get(cid);
+      const name = meta?.campaign_name ?? cid;
+      const tot  = rollupByCampaign[cid] ?? {
+        spend: 0,
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        convValue: 0,
+      };
+      const spend = tot.spend;
+      const roas  = spend > 0 ? Math.round((tot.convValue / spend) * 100) / 100 : 0;
+      const ctr   = tot.impressions > 0 ? (tot.clicks / tot.impressions) * 100 : 0;
+
+      await supabase.from('ad_campaigns').upsert(
+        {
+          tenant_id:     tenantId,
+          platform:      'tiktok',
+          campaign_name: name,
+          data:          {
+            status:      mapTikTokCampaignStatus(meta?.operation_status ?? 'DISABLE'),
+            spend:       Math.round(spend * 100) / 100,
+            impressions: Math.round(tot.impressions),
+            clicks:      Math.round(tot.clicks),
+            conversions: Math.round(tot.conversions),
+            roas,
+            ctr:         Math.round(ctr * 10000) / 10000,
+          },
+        },
+        { onConflict: 'tenant_id,platform,campaign_name' },
+      );
+    }
 
     const reportRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/', {
       method: 'POST',
@@ -802,6 +1044,10 @@ export async function syncSEO(tenantId: string): Promise<{ success: boolean; err
 
 /** Cron / admin: no session guard. */
 export async function runSyncSEOForTenant(tenantId: string, supabase: SupabaseClient) {
+  const { data: trow } = await supabase.from('tenants').select('is_demo').eq('id', tenantId).maybeSingle();
+  if (Boolean((trow as { is_demo?: boolean } | null)?.is_demo)) {
+    return { success: true, skipped: true };
+  }
   const gsc = await syncGSCDataWithSupabase(tenantId, supabase);
   try {
     await simulatePagespeedTechnicalLog(tenantId, supabase);
@@ -816,6 +1062,11 @@ export async function runSyncAdPlatformForTenant(
   platform: AdPlatform,
   supabase: SupabaseClient
 ): Promise<{ success: boolean; error?: string }> {
+  const { data: tenantRow } = await supabase.from('tenants').select('is_demo').eq('id', tenantId).maybeSingle();
+  if (Boolean((tenantRow as { is_demo?: boolean } | null)?.is_demo)) {
+    return { success: true };
+  }
+
   let accessToken: string;
 
   if (platform === 'google') {
@@ -856,11 +1107,17 @@ export async function syncAdPlatform(
 ): Promise<{ success: boolean; error?: string }> {
   await requireTenantAction(tenantId);
   await requirePermission('integrations.manage');
+  if (await isDemoTenant(tenantId)) {
+    return { success: true };
+  }
   const supabase = await createSupabaseServerClient();
   const res = await runSyncAdPlatformForTenant(tenantId, platform, supabase);
   if (!res.success && res.error) {
     console.error(`[syncAdPlatform][${platform}]`, res.error);
     return { success: false, error: await mapIntegrationSyncErrorForUser(res.error) };
+  }
+  if (res.success) {
+    await evaluateImpressionMilestone(tenantId);
   }
   return res;
 }

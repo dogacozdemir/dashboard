@@ -11,6 +11,7 @@ import { MetricCard } from '@/features/performance-hub/components/MetricCard';
 import { SpendChart } from '@/features/performance-hub/components/SpendChart';
 import { CampaignTable } from '@/features/performance-hub/components/CampaignTable';
 import { CockpitToolbar } from '@/features/performance-hub/components/CockpitToolbar';
+import { CockpitMetricsCrossfade } from '@/features/performance-hub/components/CockpitMetricsCrossfade';
 import { OverviewMetrics, type MetricId } from '@/features/performance-hub/components/OverviewMetrics';
 import { ConnectedAccountsStrip } from '@/features/performance-hub/components/ConnectedAccountsStrip';
 import { ChannelGlassIcon } from '@/features/performance-hub/components/ChannelGlassIcon';
@@ -69,13 +70,14 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         </div>
       )}
 
-      <div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
-          <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">
-            {tPerf('performancePage.overviewHeading')}
-          </h2>
-          <CockpitToolbar currentRange={range} currentPlatform={cockpit} />
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">
+          {tPerf('performancePage.overviewHeading')}
+        </h2>
+        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
+      </div>
+
+      <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
         <Suspense
           fallback={
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -93,25 +95,25 @@ export default async function PerformancePage({ searchParams }: PageProps) {
             cockpitPlatform={cockpit}
           />
         </Suspense>
-      </div>
 
-      <Suspense fallback={null}>
-        <ConnectedAccountsStrip companyId={companyId} />
-      </Suspense>
-
-      {cockpit === 'all' && comparisonRows.length > 0 ? (
-        <PlatformComparisonMatrix rows={comparisonRows} />
-      ) : null}
-
-      {paidSurface ? (
-        <Suspense fallback={<ChartSkeleton height={120} />}>
-          <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+        <Suspense fallback={null}>
+          <ConnectedAccountsStrip companyId={companyId} />
         </Suspense>
-      ) : null}
 
-      {paidSurface ? <SpendChart data={chartData} range={range} /> : null}
+        {cockpit === 'all' && comparisonRows.length > 0 ? (
+          <PlatformComparisonMatrix rows={comparisonRows} />
+        ) : null}
 
-      {paidSurface ? <CampaignTable campaigns={campaigns} /> : null}
+        {paidSurface ? (
+          <Suspense fallback={<ChartSkeleton height={120} />}>
+            <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+          </Suspense>
+        ) : null}
+
+        {paidSurface ? <SpendChart data={chartData} range={range} /> : null}
+
+        {paidSurface ? <CampaignTable campaigns={campaigns} /> : null}
+      </CockpitMetricsCrossfade>
 
       {cockpit === 'all' || cockpit === 'seo' ? (
         <Suspense fallback={<ChartSkeleton height={200} />}>

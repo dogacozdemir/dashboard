@@ -31,6 +31,8 @@ import {
   syncAllConnectedPlatformsAction,
   type CommandDataRow,
 } from '@/features/command-center/actions/commandCenterActions';
+import { ACHIEVEMENT_MAP } from '@/features/gamification/lib/definitions';
+import { triggerAchievementToast, triggerLevelUp } from '@/features/gamification/components/CelebrationOverlay';
 import { getAdminRolesUrl } from '@/lib/utils/tenant-urls';
 
 const OPEN_EVENT = 'madmonos:command-open';
@@ -38,6 +40,9 @@ const OPEN_EVENT = 'madmonos:command-open';
 export type CommandCenterProps = {
   companyId: string;
   user: SessionUser;
+  /** Live gamification stats (from layout). */
+  totalXP?: number | null;
+  level?:    number | null;
 };
 
 type FlatItem = {
@@ -74,7 +79,7 @@ function looksLikeNl(q: string): boolean {
   );
 }
 
-export function CommandCenter({ companyId, user }: CommandCenterProps) {
+export function CommandCenter({ companyId, user, totalXP = null, level = null }: CommandCenterProps) {
   const tNav = useTranslations('Common.commandNav');
   const tQuick = useTranslations('Common.commandQuick');
   const tCom = useTranslations('Common');
@@ -166,6 +171,21 @@ export function CommandCenter({ companyId, user }: CommandCenterProps) {
             try {
               const r = await syncAllConnectedPlatformsAction(companyId);
               if (!r.ok) console.warn(r.error);
+              if (r.ok && r.gamification?.newAchievements?.length) {
+                r.gamification.newAchievements.forEach((key, i) => {
+                  const def = ACHIEVEMENT_MAP.get(key);
+                  if (!def) return;
+                  setTimeout(() => {
+                    triggerAchievementToast({ icon: def.icon, achievementKey: key, xp: def.xp });
+                  }, i * 800);
+                });
+                if (r.gamification.leveledUp) {
+                  setTimeout(
+                    () => triggerLevelUp(r.gamification!.leveledUp!),
+                    r.gamification.newAchievements.length * 800 + 500,
+                  );
+                }
+              }
               router.refresh();
             } finally {
               syncLock.current = false;
@@ -469,7 +489,14 @@ export function CommandCenter({ companyId, user }: CommandCenterProps) {
                 )}
               </div>
 
-              <p className="text-[10px] text-white/25 text-center pt-1">{tPalette('footerHint')}</p>
+              <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-white/[0.06]">
+                <p className="text-[10px] text-white/25 text-left min-w-0">{tPalette('footerHint')}</p>
+                {typeof totalXP === 'number' && typeof level === 'number' ? (
+                  <p className="text-[10px] font-semibold text-[#bea042]/90 tabular-nums shrink-0 tracking-tight">
+                    {tPalette('xpStat', { xp: totalXP, level })}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </motion.div>
         </>

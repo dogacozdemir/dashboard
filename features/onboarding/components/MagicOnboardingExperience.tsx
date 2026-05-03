@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Brain,
   Sparkles,
@@ -26,13 +27,10 @@ import { cn } from '@/lib/utils/cn';
 
 const spring = { type: 'spring' as const, stiffness: 260, damping: 28, mass: 1 };
 
-const AUDIT_LINES = [
-  'Sektör trendleri ve talep sinyalleri taranıyor…',
-  'Rakip stratejileri ve teklif dinamikleri eşleniyor…',
-  'Kreatif skorlama motoru kalibre ediliyor…',
-  'GEO ve arama görünürlüğü katmanları birleştiriliyor…',
-  'Marka güveni ile dönüşüm yolları haritalanıyor…',
-  'Öğrenilmiş raporlama omurgası senkrona kilitleniyor…',
+const GOAL_IDS: { id: DashboardGoal; icon: typeof Zap }[] = [
+  { id: 'sales',     icon: Zap },
+  { id: 'awareness', icon: Eye },
+  { id: 'cost',      icon: Scale },
 ];
 
 interface Props {
@@ -41,33 +39,8 @@ interface Props {
   connected?: string;
 }
 
-const GOALS: {
-  id: DashboardGoal;
-  title: string;
-  subtitle: string;
-  icon: typeof Zap;
-}[] = [
-  {
-    id: 'sales',
-    title: 'Hızlı satış',
-    subtitle: 'ROAS ve gelir önceliği — dönüşüm ve büyüme.',
-    icon: Zap,
-  },
-  {
-    id: 'awareness',
-    title: 'Marka bilinirliği',
-    subtitle: 'Görünürlük ve erişim — gösterim & ilgi artışı.',
-    icon: Eye,
-  },
-  {
-    id: 'cost',
-    title: 'Maliyet optimizasyonu',
-    subtitle: 'CPA ve verim — aynı sonuç için daha akıllı harcama.',
-    icon: Scale,
-  },
-];
-
 export function MagicOnboardingExperience({ companyId, tenantName, connected }: Props) {
+  const t = useTranslations('Onboarding');
   const router = useRouter();
   const [lineIdx, setLineIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -88,9 +61,11 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
 
   const auroraBlend = progress / 100;
 
+  const AUDIT_LINE_COUNT = 6;
+
   useEffect(() => {
     const id = setInterval(() => {
-      setLineIdx((i) => (i + 1) % AUDIT_LINES.length);
+      setLineIdx((i) => (i + 1) % AUDIT_LINE_COUNT);
     }, 2600);
     return () => clearInterval(id);
   }, []);
@@ -156,7 +131,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
       try {
         const res = await completeMagicOnboarding(companyId, goal);
         if (!res.success) {
-          setError(res.error ?? 'Kayıt başarısız.');
+          setError(res.error ?? t('customising'));
           setSubmitting(false);
           return;
         }
@@ -168,7 +143,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
         router.replace('/dashboard');
         router.refresh();
       } catch {
-        setError('Bağlantı hatası.');
+        setError(t('customising'));
         setSubmitting(false);
       }
     },
@@ -255,9 +230,9 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
             <Brain className="h-7 w-7 text-white/92" />
           </motion.div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35 flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3 text-[#bea042]" />
-              Magic Onboarding · AI Brand Audit
+              {t('headerTag')}
             </p>
             <h1 className="text-lg md:text-xl font-semibold text-white/90 tracking-tight mt-1">
               {tenantName}
@@ -269,7 +244,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
           <p className="text-xs text-emerald-400/85 flex items-center gap-2">
             <span className="capitalize font-semibold">{connected}</span>
             <span className="text-white/35">·</span>
-            <span className="text-white/45">Bağlantı alındı — denetim katmanı aktif.</span>
+            <span className="text-white/45">{t('connectedBanner')}</span>
           </p>
         ) : null}
 
@@ -292,7 +267,14 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
                     transition={{ duration: 0.45 }}
                     className="text-sm md:text-[15px] text-white/65 leading-relaxed"
                   >
-                    {AUDIT_LINES[lineIdx]}
+                    {[
+                      t('auditLine1'),
+                      t('auditLine2'),
+                      t('auditLine3'),
+                      t('auditLine4'),
+                      t('auditLine5'),
+                      t('auditLine6'),
+                    ][lineIdx]}
                   </motion.p>
                 </AnimatePresence>
               </div>
@@ -301,7 +283,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
                 <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-white/35">
                   <span className="flex items-center gap-1.5 text-[#bea042]/80">
                     <TrendingUp className="h-3 w-3" />
-                    Denetim ilerlemesi
+                    {t('auditProgressLabel')}
                   </span>
                   <span className="tabular-nums text-white/45">{Math.round(progress)}%</span>
                 </div>
@@ -331,7 +313,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
                   </motion.div>
                 </div>
                 <p className="text-[10px] text-white/28 text-center">
-                  Frictionless veri köprüsü — çekilen ilk sinyaller MonoAI tarafından işleniyor.
+                  {t('hintNote')}
                 </p>
               </div>
 
@@ -343,7 +325,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-[#bea042]/85 flex items-center gap-2">
                     <Crown className="h-3.5 w-3.5" />
-                    Hızlı kazanımlar · Quick Wins
+                    {t('quickWinsHeading')}
                   </p>
                   <ul className="space-y-2.5">
                     {hints!.map((h, i) => (
@@ -371,13 +353,13 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
                       boxShadow: '0 0 24px rgba(190,160,66,0.22)',
                     }}
                   >
-                    Stratejiyi seç
+                    {t('selectGoalHeading')}
                     <ChevronRight className="h-4 w-4" />
                   </motion.button>
                 </motion.div>
               ) : (
                 <p className="text-[11px] text-white/25 text-center pt-1">
-                  İpucu motoru veri omurgasına bağlanıyor…
+                  {t('syncingHints')}
                 </p>
               )}
             </motion.div>
@@ -391,52 +373,48 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
             >
               <div className="text-center space-y-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                  Önceliğiniz hangisi?
-                </p>
-                <p className="text-sm text-white/55">
-                  Seçiminiz dashboard&apos;un ilk düzenini ve vurgularını kişiselleştirir.
+                  {t('selectGoalHeading')}
                 </p>
               </div>
 
               <div className="grid gap-3">
-                {GOALS.map((g, idx) => {
-                  const Icon = g.icon;
-                  return (
-                    <motion.button
-                      key={g.id}
-                      type="button"
-                      disabled={submitting}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.06, ...spring }}
-                      whileHover={{ scale: submitting ? 1 : 1.015 }}
-                      whileTap={{ scale: submitting ? 1 : 0.985 }}
-                      onClick={() => void onSelectGoal(g.id)}
-                      className={cn(
-                        'rounded-2xl p-4 text-left flex gap-4 items-start border transition-colors',
-                        'border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#bea042]/35',
-                        submitting && 'opacity-50 pointer-events-none'
-                      )}
+                {GOAL_IDS.map(({ id, icon: Icon }, idx) => (
+                  <motion.button
+                    key={id}
+                    type="button"
+                    disabled={submitting}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.06, ...spring }}
+                    whileHover={{ scale: submitting ? 1 : 1.015 }}
+                    whileTap={{ scale: submitting ? 1 : 0.985 }}
+                    onClick={() => void onSelectGoal(id)}
+                    className={cn(
+                      'rounded-2xl p-4 text-left flex gap-4 items-start border transition-colors',
+                      'border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#bea042]/35',
+                      submitting && 'opacity-50 pointer-events-none'
+                    )}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                      style={{
+                        background: 'rgba(190,160,66,0.12)',
+                        border: '1px solid rgba(190,160,66,0.25)',
+                      }}
                     >
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                        style={{
-                          background: 'rgba(190,160,66,0.12)',
-                          border: '1px solid rgba(190,160,66,0.25)',
-                        }}
-                      >
-                        <Icon className="h-5 w-5 text-[#bea042]/90" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white/88 flex items-center gap-2">
-                          {g.title}
-                          <Target className="h-3.5 w-3.5 text-white/25" />
-                        </p>
-                        <p className="text-xs text-white/45 mt-1 leading-relaxed">{g.subtitle}</p>
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                      <Icon className="h-5 w-5 text-[#bea042]/90" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white/88 flex items-center gap-2">
+                        {t(`goal${id.charAt(0).toUpperCase() + id.slice(1)}` as 'goalSales' | 'goalAwareness' | 'goalCost')}
+                        <Target className="h-3.5 w-3.5 text-white/25" />
+                      </p>
+                      <p className="text-xs text-white/45 mt-1 leading-relaxed">
+                        {t(`goal${id.charAt(0).toUpperCase() + id.slice(1)}Subtitle` as 'goalSalesSubtitle' | 'goalAwarenessSubtitle' | 'goalCostSubtitle')}
+                      </p>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
 
               {error ? (
@@ -445,7 +423,7 @@ export function MagicOnboardingExperience({ companyId, tenantName, connected }: 
               {submitting ? (
                 <p className="text-xs text-white/35 flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-[#bea042]" />
-                  Panonuz kişiselleştiriliyor…
+                  {t('customising')}
                 </p>
               ) : null}
             </motion.div>

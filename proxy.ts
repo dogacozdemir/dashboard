@@ -3,7 +3,17 @@ import { auth } from '@/lib/auth/config';
 import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
 import type { SessionUser } from '@/types/user';
 
-const PUBLIC_PATHS = ['/login', '/api/auth', '/_next', '/favicon.ico', '/not-found', '/unauthorized'];
+const PUBLIC_PATHS = ['/login', '/api/auth', '/_next', '/manifest.json', '/not-found', '/unauthorized'];
+const PUBLIC_ASSET_PATHS = new Set([
+  '/favicon.ico',
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/madmonos-logo.png',
+  '/madmonos-logo-optimized.png',
+]);
 
 // e.g. "madmonos.nerdyreptile.com" — must be set in .env.local on the server
 const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000').split(':')[0];
@@ -56,10 +66,15 @@ function sanitizeCallbackUrl(raw: string | null, requestUrl: string): string {
 /** Next.js 16+ request proxy (replaces deprecated middleware). No `export const config` here — matcher logic is inlined. */
 export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  if (pathname === '/favicon.ico') {
+    // Force browser tab favicon to use branded icon asset.
+    return NextResponse.rewrite(new URL('/favicon-32x32.png', request.url));
+  }
+
   if (
+    PUBLIC_ASSET_PATHS.has(pathname) ||
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
-    pathname === '/favicon.ico' ||
     /\.(?:svg|png|jpg|jpeg|gif|webp)$/i.test(pathname)
   ) {
     return NextResponse.next();

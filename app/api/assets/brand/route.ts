@@ -7,10 +7,13 @@ import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { getPublicUrlForBucket } from '@/lib/storage/s3';
 import { inferBrandAssetType, isBrandAssetType } from '@/features/brand-vault/lib/brandMilestones';
 import { trackActivity } from '@/features/gamification/actions/trackActivity';
+import { premiumSessionRequiredMessage } from '@/lib/i18n/premium-action-errors';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: await premiumSessionRequiredMessage() }, { status: 401 });
+  }
 
   const body = await request.json();
   const { files, companyId, assetType: rawAssetType } = body as {

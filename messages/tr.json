@@ -10,6 +10,7 @@
       "brandVault": "Brand Vault",
       "teamChat": "Ekip Sohbeti",
       "monoAi": "Mono AI",
+      "masteryHall": "Mastery · Şeref Salonu",
       "opsCalendar": "Operasyon Takvimi",
       "teamManagement": "Kullanıcı & Ekip Yönetimi",
       "profileSettings": "Profil & Ayarlar"
@@ -27,6 +28,7 @@
       "loadingData": "Veri taranıyor…",
       "empty": "Sonuç yok · farklı bir terim deneyin",
       "footerHint": "↑ ↓ seç · Enter uygula · Esc kapat · İzinler otomatik filtrelenir",
+      "xpStat": "XP: {xp} · Sv.{level}",
       "aiHintSubtitle": "MonoAI · doğal dil → aksiyon",
       "commandCenterAria": "Komuta Merkezi",
       "searchAria": "Ara",
@@ -37,7 +39,9 @@
   },
   "Dashboard": {
     "shell": {
-      "subtitle": "Sürtünmesiz Pazarlama Operasyonları"
+      "subtitle": "Sürtünmesiz Pazarlama Operasyonları",
+      "showroomBadge": "Showroom modu — simüle edilmiş veriler",
+      "showroomLine": "Premium kokpit önizlemesi. Metrikler Madmonos Lux Cosmetics için örnektir."
     },
     "sidebar": {
       "overview": "Özet",
@@ -47,6 +51,7 @@
       "brandVault": "Brand Vault",
       "chat": "Sohbet",
       "monoAi": "Mono AI",
+      "masteryHall": "Mastery",
       "opsCalendar": "Ops Takvim",
       "badgeLive": "Canlı",
       "badgeAi": "AI",
@@ -64,7 +69,8 @@
       "creative": "Kreatif",
       "mono": "Mono",
       "chat": "Sohbet",
-      "mainNavAria": "Ana gezinme"
+      "mainNavAria": "Ana gezinme",
+      "stackMastery": "XP · rozetler · seviye"
     },
     "mobileDrawer": {
       "openAria": "Gezinmeyi aç",
@@ -98,6 +104,11 @@
       "toolbarHint": {
         "srFilters": "Zaman aralığı ve kanal filtresi"
       },
+      "monoReport": {
+        "export": "mono Report indir",
+        "busy": "PDF hazırlanıyor…",
+        "sr": "Yönetici mono Report PDF indir"
+      },
       "platform": {
         "all": "Tümü",
         "meta": "Meta",
@@ -117,6 +128,17 @@
         "sectionTitle": "SEO ve Search Console matrisi",
         "sectionSubtitle": "Google Search Console organik görünürlük ve deneyim sinyalleri — yalnızca açıklayıcı metrikler; kampanya önerisi yok.",
         "empty": "Google bağlayıp GSC senkronu tamamlayınca matris dolacak.",
+        "emptyConnected": "Google bağlantınız aktif. Search Console sorgu satırları içeri alınıyor — ilk anlık görüntü gelir gelmez matris dolacak.",
+        "badgeGscSyncing": "Arama verisi senkronize ediliyor",
+        "badgePositionCalibrating": "Sıralama sinyali kalibre ediliyor",
+        "badgeCtrAwaiting": "CTR, gösterim geldikçe açılır",
+        "badgeIndexingPipeline": "Dizin zekâsı hattında",
+        "indexingFootnote": "URL bazlı dizin akışı henüz bağlı değil — feed gelene kadar bu hücre premium beklemede kalır.",
+        "badgeCwvAwaiting": "Deneyim anlık görüntüsü hazırlanıyor",
+        "cwvFootnote": "Core Web Vitals, PageSpeed tarzı telemetriden beslenir — ilk ölçüm, çalışma alanı aktivitesinden kısa süre sonra gelir.",
+        "cwvSubWhenMissing": "CLS ve FID, LCP ile aynı anlık görüntüde görünür.",
+        "cwvSubLine": "CLS {cls} · FID {fid} ms",
+        "valuePending": "bekliyor",
         "impressionsTitle": "Gösterim",
         "impressionsHint": "Google sonuçlarında kaç kez insanların karşısına çıktınız?",
         "nonBrandTitle": "Marka dışı gösterim",
@@ -229,6 +251,8 @@
     }
   },
   "PremiumMessages": {
+    "sessionRequired": "Oturumunuz bu işlemi duraklattı. Yeniden giriş yapın veya sayfayı yenileyip tekrar deneyin.",
+    "invalidPayload": "İstek gövdesi okunamadı. Sayfayı yenileyip geçerli JSON ile tekrar deneyin.",
     "actionError": "Sistemimiz şu an bu veriyi işliyor. Lütfen birkaç dakika sonra tekrar deneyin. Sorun sürerse ekibinizle iletişime geçin.",
     "adminActionError": "İşlem şu an tamamlanamadı. Lütfen tekrar deneyin veya destek ile görüşün.",
     "integrationReconnectHint": "Bağlantıyı tazelememiz gerekiyor. Entegrasyonlar’dan platformu yeniden yetkilendirin.",
@@ -483,8 +507,42 @@
         "2": "Aktif Kullanıcı",
         "3": "Uzman",
         "4": "Usta",
-        "5": "Elite",
+        "5": "Brand Mimarı",
         "6": "Efsane"
+      },
+      "levelUpBadge": "Seviye atladın",
+      "levelUpTitle": "Seviye {from} → {to}",
+      "levelUpSubtitle": "Yeni bir ustalık katmanı açıldı. Streak ve XP biriktirmeye devam.",
+      "mastery": {
+        "kicker": "Şeref Salonu",
+        "title": "Mastery",
+        "subtitle": "Dopamin defterin — kilitli silüetler bir sonraki hedefini gösterir. Kilitli rozete gelerek kazanma şartını gör.",
+        "levelLabel": "Mevcut seviye",
+        "toNext": "Sonraki seviyeye {xp} XP kaldı",
+        "maxLevel": "Efsane seviye · maksimum ulaşıldı",
+        "collectionHeading": "Rozet koleksiyonu"
+      },
+      "unlockHints": {
+        "first_login": "Çalışma alanına en az bir kez giriş yap.",
+        "first_upload": "Kreatif Stüdyo’dan bir kreatif yükle.",
+        "first_approval": "Bir kreatif varlığını onayla.",
+        "first_revision": "Bir kreatife ilk revizyon yorumunu yaz.",
+        "quick_approver": "Yüklemeden sonraki 24 saat içinde bir kreatifi onayla.",
+        "approval_10": "Çalışma alanında 10 onaylı kreatife ulaş.",
+        "streak_3": "Üst üste 3 takvim günü aktif kal.",
+        "streak_7": "Üst üste 7 takvim günü aktif kal.",
+        "streak_30": "Üst üste 30 takvim günü aktif kal.",
+        "ai_explorer": "Mono AI’a ilk mesajını gönder.",
+        "ai_power_user": "Aynı kullanıcı olarak 50 Mono AI mesajı gönder.",
+        "first_pdf": "Mono AI üzerinden bir PDF çıktısı üret.",
+        "brand_milestone_logo": "Brand Vault’a logo ekle.",
+        "brand_milestone_guidelines": "Brand Vault’a marka rehberi (PDF) yükle.",
+        "brand_milestone_palette": "Brand Vault’a renk paleti ekle.",
+        "brand_milestone_fonts": "Brand Vault’a font dosyaları yükle.",
+        "brand_builder_50": "Brand Vault tamamlanma skorunda %50’ye ulaş.",
+        "brand_builder_100": "Brand Vault tamamlanma skorunda %100’e ulaş.",
+        "calendar_pro": "Kiracı için 10 takvim etkinliği oluştur.",
+        "reach_100k": "100 bin gösterim (performans kilometre taşı) elde et."
       },
       "milestones": {
         "logo": "Logo",
@@ -515,7 +573,7 @@
         },
         "approval_10": {
           "title": "Onay Ustası",
-          "desc": "10 kreatif onayladın"
+          "desc": "Çalışma alanında 10 onaylı kreatife ulaşıldı"
         },
         "streak_3": {
           "title": "Seri Başlıyor",
@@ -706,7 +764,13 @@
       "typeLabelOther": "Diğer",
       "emptyTitle": "Brand Vault boş",
       "emptySubtitle": "Logo, marka rehberi, font ve renk paletlerini yukarıdan yükleyin",
-      "filteredEmpty": "Bu kategoride dosya yok"
+      "filteredEmpty": "Bu kategoride dosya yok",
+      "setPrimaryLogo": "Ana logo olarak işaretle",
+      "primaryBadge": "Kabuk ana logo",
+      "primaryLockedTitle": "Brand Mimarı (Seviye 5)",
+      "primaryLockedBody": "Sidebar, üst bar ve mobil kabukta senkron için Mastery’de Seviye 5’i açın.",
+      "goMastery": "Mastery’e git",
+      "primarySuccess": "Ana logo uygulandı — yenileniyor…"
     },
     "StrategyPage": {
       "sectionStrategy": "Stratejik istihbarat",
@@ -795,7 +859,10 @@
       "toastPwShort": "Şifre en az 8 karakter olmalı",
       "planStarter": "Starter",
       "planGrowth": "Büyüme",
-      "planEnterprise": "Kurumsal"
+      "planEnterprise": "Kurumsal",
+      "tourHeading": "Ürün turu",
+      "tourSubtitle": "Temel özellikleri yeniden keşfetmek için rehberli turu tekrar başlat.",
+      "tourRestart": "Turu yeniden başlat"
     },
     "DashboardPage": {
       "yourProfile": "Senin Profil",
@@ -1010,5 +1077,55 @@
     "impersonationBody": "Şu an {tenant} müşterisi gözüyle işlem yapıyorsunuz.",
     "exitImpersonation": "Çıkış yap",
     "mobileSheetDragClose": "{title} — sürükleyerek kapat"
+  },
+  "MagicTour": {
+    "skip": "Turu atla",
+    "next": "İleri",
+    "done": "Başlayalım",
+    "stepOf": "{current} / {total}",
+    "steps": {
+      "1": {
+        "tag": "Unified Cockpit",
+        "title": "Komuta merkezin",
+        "body": "Tüm platform KPI'ları tek bir cockpit'te — ROAS, Harcama, Gelir, CTR. Zaman aralığı veya platform filtresini değiştirerek istediğin boyutu anında dilimle."
+      },
+      "2": {
+        "tag": "Performance Hub",
+        "title": "Çok kanallı analitik",
+        "body": "Meta, Google ve TikTok'u yan yana karşılaştır. Executive Trend grafiği ivmeyi, Campaign Table gerçek hat bazlı performansı gösterir."
+      },
+      "3": {
+        "tag": "Creative Studio",
+        "title": "Onay iş akışı",
+        "body": "Kreatif yükle, revizyon yorumu bırak ve varlıkları Onaylı olarak işaretle. Onaylanan gönderiler otomatik olarak Ops Takvimine düşer."
+      },
+      "4": {
+        "tag": "Mastery · XP Sistemi",
+        "title": "Çalışırken seviye atla",
+        "body": "Her eylem — AI mesajları, yüklemeler, onaylar — XP kazandırır. Seviye 5'e (Brand Mimarı) ulaş ve white-label kabuk markalamasının kilidini aç."
+      }
+    }
+  },
+  "Onboarding": {
+    "auditLine1": "Sektör trendleri ve talep sinyalleri taranıyor…",
+    "auditLine2": "Rakip stratejileri ve teklif dinamikleri eşleniyor…",
+    "auditLine3": "Kreatif skorlama motoru kalibre ediliyor…",
+    "auditLine4": "GEO ve arama görünürlüğü katmanları birleştiriliyor…",
+    "auditLine5": "Marka güveni ile dönüşüm yolları haritalanıyor…",
+    "auditLine6": "Öğrenilmiş raporlama omurgası senkrona kilitleniyor…",
+    "headerTag": "Magic Onboarding · AI Marka Denetimi",
+    "connectedBanner": "Bağlantı alındı — denetim katmanı aktif.",
+    "auditProgressLabel": "Denetim ilerlemesi",
+    "hintNote": "MonoAI marka bağlamınızı analiz etti ve DeepSeek Reasoner'dan sektörünüze özel hızlı kazanımlar oluşturdu.",
+    "quickWinsHeading": "Hızlı kazanımlar · Quick Wins",
+    "syncingHints": "Strateji motoru veri omurgasına bağlanıyor…",
+    "selectGoalHeading": "Birincil büyüme hedefinizi seçin:",
+    "goalSales": "Hızlı satış",
+    "goalSalesSubtitle": "ROAS ve gelir önceliği — dönüşüm ve büyüme.",
+    "goalAwareness": "Marka bilinirliği",
+    "goalAwarenessSubtitle": "Görünürlük ve erişim — gösterim & ilgi artışı.",
+    "goalCost": "Maliyet optimizasyonu",
+    "goalCostSubtitle": "CPA ve verim — aynı sonuç için daha akıllı harcama.",
+    "customising": "Panonuz kişiselleştiriliyor…"
   }
 }

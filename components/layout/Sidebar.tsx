@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,11 +14,11 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Zap,
   MessageSquare,
   CalendarDays,
   Brain,
   Sparkles,
+  Trophy,
   UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -36,6 +37,7 @@ interface NavItem {
     | 'brandVault'
     | 'chat'
     | 'monoAi'
+    | 'masteryHall'
     | 'opsCalendar';
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   badgeKey?: 'badgeLive' | 'badgeAi';
@@ -44,6 +46,7 @@ interface NavItem {
 
 const NAV_DEF: NavItem[] = [
   { href: '/dashboard', labelKey: 'overview', icon: LayoutDashboard },
+  { href: '/mastery', labelKey: 'masteryHall', icon: Trophy, color: 'amber' },
   {
     href: '/performance',
     labelKey: 'performanceHub',
@@ -103,7 +106,14 @@ export function Sidebar({ tenant, gamification, canManageTeam = false }: Sidebar
             transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-br from-[#9c70b2] via-[#b48dc8] to-[#bea042] shadow-lg shadow-[#9c70b2]/30"
           >
-            <Zap className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
+            <TenantLogoMark
+              brandLogoUrl={tenant.brand_logo_url}
+              alt={tenant.name ? `${tenant.name} logo` : 'Brand logo'}
+              width={22}
+              height={22}
+              className="h-5.5 w-5.5"
+              priority
+            />
           </motion.div>
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#bea042] border-2 border-[#0e080e] animate-float-slow" />
         </div>
@@ -118,7 +128,7 @@ export function Sidebar({ tenant, gamification, canManageTeam = false }: Sidebar
               className="overflow-hidden"
             >
               <span className="font-bold text-sm tracking-tight gradient-text-indigo whitespace-nowrap">
-                madmonos
+                {tenant.brand_logo_url?.trim() ? tenant.name : 'madmonos'}
               </span>
               <p className="text-[10px] text-white/25 uppercase tracking-widest mt-0.5 truncate">
                 {t('tagline')}
