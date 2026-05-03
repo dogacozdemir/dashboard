@@ -67,7 +67,7 @@ export default async function CreativePage() {
             }}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.12em] mb-3 line-clamp-2">
+            <p className="text-[10px] font-semibold text-white/50 uppercase tracking-[0.12em] mb-3 line-clamp-2">
               {t(stat.labelKey)}
             </p>
             <p className={`text-4xl font-bold tabular-nums tracking-tight ${stat.color}`}>
@@ -80,7 +80,7 @@ export default async function CreativePage() {
       <CreativeUploadPanel companyId={companyId} />
 
       <div>
-        <h2 className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.12em] mb-5">
+        <h2 className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.12em] mb-5">
           {t('assetsHeading')}
         </h2>
         <MediaGrid

@@ -1,7 +1,77 @@
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
-import { fetchGscSeoMatrix } from '../actions/fetchMetrics';
+import { fetchGscSeoMatrix, type GscSeoMatrixData } from '../actions/fetchMetrics';
 import { GlassCard } from '@/components/shared/GlassCard';
+
+type GscInsightKey =
+  | 'balanced'
+  | 'nonBrandDominant'
+  | 'brandDominant'
+  | 'ctrOpportunity'
+  | 'ctrStrong'
+  | 'serpTop'
+  | 'serpDepth'
+  | 'lcpRisk'
+  | 'lcpHealthy'
+  | 'queriesQueued';
+
+function pickGscInsight(data: GscSeoMatrixData): { key: GscInsightKey; pct?: number; lcp?: string } | null {
+  if (!data.hasGoogleConnection) return null;
+
+  const hasNumeric =
+    data.impressions > 0 || data.clicks > 0 || data.avgPosition > 0 || data.cwv.lcp != null;
+  const awaitingQueries = data.hasGoogleConnection && data.gscQueryRowCount === 0 && !hasNumeric;
+  if (awaitingQueries) return { key: 'queriesQueued' };
+  if (!hasNumeric && data.gscQueryRowCount > 0) return { key: 'queriesQueued' };
+  if (data.impressions < 1 && !hasNumeric) return null;
+
+  const nbRatio = data.impressions > 0 ? data.nonBrandImpressions / data.impressions : 0;
+  const lcpRaw = data.cwv.lcp;
+
+  if (lcpRaw != null && lcpRaw > 2.6) {
+    return { key: 'lcpRisk', lcp: lcpRaw.toFixed(1) };
+  }
+  if (data.avgPosition > 0 && data.avgPosition <= 11) return { key: 'serpTop' };
+  if (data.avgPosition >= 22) return { key: 'serpDepth' };
+  if (data.impressions >= 5000 && data.ctrPercent < 2.1) return { key: 'ctrOpportunity' };
+  if (data.impressions >= 1500 && data.ctrPercent >= 4.2) return { key: 'ctrStrong' };
+  if (data.impressions >= 3000 && nbRatio >= 0.52) {
+    return { key: 'nonBrandDominant', pct: Math.round(nbRatio * 100) };
+  }
+  if (data.impressions >= 3000 && nbRatio <= 0.22) return { key: 'brandDominant' };
+  if (lcpRaw != null && lcpRaw > 0 && lcpRaw <= 2) {
+    return { key: 'lcpHealthy', lcp: lcpRaw.toFixed(1) };
+  }
+  return { key: 'balanced' };
+}
+
+function formatGscInsight(
+  tInsight: Awaited<ReturnType<typeof getTranslations>>,
+  insight: { key: GscInsightKey; pct?: number; lcp?: string },
+): string {
+  switch (insight.key) {
+    case 'nonBrandDominant':
+      return tInsight('nonBrandDominant', { pct: insight.pct ?? 0 });
+    case 'lcpRisk':
+      return tInsight('lcpRisk', { lcp: insight.lcp ?? '—' });
+    case 'lcpHealthy':
+      return tInsight('lcpHealthy', { lcp: insight.lcp ?? '—' });
+    case 'balanced':
+      return tInsight('balanced');
+    case 'brandDominant':
+      return tInsight('brandDominant');
+    case 'ctrOpportunity':
+      return tInsight('ctrOpportunity');
+    case 'ctrStrong':
+      return tInsight('ctrStrong');
+    case 'serpTop':
+      return tInsight('serpTop');
+    case 'serpDepth':
+      return tInsight('serpDepth');
+    case 'queriesQueued':
+      return tInsight('queriesQueued');
+  }
+}
 
 function GscLiquidBadge({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +95,8 @@ export async function SeoGscMatrix({
   companyId: string;
   tenantBrandName: string | null;
 }) {
-  const t    = await getTranslations('Performance.cockpit.seoMatrix');
+  const t = await getTranslations('Performance.cockpit.seoMatrix');
+  const tInsight = await getTranslations('Performance.cockpit.seoMatrix.insights');
   const data = await fetchGscSeoMatrix(companyId, tenantBrandName);
 
   const awaitingGscQueries = data.hasGoogleConnection && data.gscQueryRowCount === 0;
@@ -162,12 +233,29 @@ export async function SeoGscMatrix({
     data.avgPosition > 0 ||
     data.cwv.lcp != null;
 
+  const insightPick = pickGscInsight(data);
+  const insightText =
+    insightPick && hasSignal && insightPick.key !== 'queriesQueued'
+      ? formatGscInsight(tInsight, insightPick)
+      : null;
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">{t('sectionTitle')}</h2>
-        <p className="text-[11px] text-white/35 mt-1 max-w-2xl leading-relaxed">{t('sectionSubtitle')}</p>
+        <p className="text-[11px] text-white/38 mt-1 max-w-2xl leading-relaxed">{t('sectionSubtitle')}</p>
       </div>
+
+      {insightText ? (
+        <blockquote
+          className="rounded-[1.25rem] border border-cyan-500/20 bg-gradient-to-r from-cyan-500/[0.07] to-[#9c70b2]/[0.06] px-4 py-3 text-[12px] leading-relaxed text-white/72 backdrop-blur-xl md:px-5"
+          style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}
+        >
+          <span className="font-semibold text-cyan-200/90">{t('insightEyebrow')}</span>
+          <span className="text-white/35"> — </span>
+          {insightText}
+        </blockquote>
+      ) : null}
 
       {!data.hasGoogleConnection ? (
         <GlassCard

@@ -106,7 +106,7 @@ export function DashboardShell({
 
         {showroomMode ? <DemoShowroomBanner /> : null}
 
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.main
             key={pathname}
             variants={pageVariants}

@@ -107,7 +107,8 @@
       "monoReport": {
         "export": "Export mono Report",
         "busy": "Building PDF…",
-        "sr": "Download executive mono Report as PDF"
+        "sr": "Download executive mono Report as PDF",
+        "exportFailed": "Could not build PDF. Try again or contact support."
       },
       "platform": {
         "all": "All",
@@ -126,6 +127,7 @@
       },
       "seoMatrix": {
         "sectionTitle": "SEO & Search Console matrix",
+        "insightEyebrow": "monoAI · GEO signal",
         "sectionSubtitle": "Organic visibility from Google Search Console and on-site experience signals — descriptive metrics only. No campaign recommendations.",
         "empty": "Connect Google and complete a GSC sync to populate this matrix.",
         "emptyConnected": "Your Google link is live. We are ingesting Search Console query rows — the matrix will fill as soon as the first snapshot lands.",
@@ -152,7 +154,19 @@
         "indexingTitle": "Indexing issues",
         "indexingHint": "URLs Google could not crawl or index — requires Search Console indexing export (not wired yet).",
         "cwvTitle": "Experience metrics",
-        "cwvHint": "Core Web Vitals snapshot — how quickly key pages become usable on mobile."
+        "cwvHint": "Core Web Vitals snapshot — how quickly key pages become usable on mobile.",
+        "insights": {
+          "balanced": "Organic mix looks balanced for this snapshot — keep syncing to tighten week-over-week deltas.",
+          "nonBrandDominant": "About {pct}% of impressions are non-brand — strong service-led demand signal. Double down on landing pages that convert these queries.",
+          "brandDominant": "Brand queries dominate visibility — consider expanding non-brand keyword coverage to capture new demand.",
+          "ctrOpportunity": "CTR is soft relative to volume — test SERP titles and meta descriptions on high-impression queries.",
+          "ctrStrong": "CTR outperforms typical benchmarks for this volume — your snippets and intent match are working.",
+          "serpTop": "Average position is strong — defend top slots on your highest-converting queries.",
+          "serpDepth": "Average position has headroom — prioritize technical fixes and content depth on underperforming URLs.",
+          "lcpRisk": "LCP at {lcp}s suggests page-speed friction — improving Core Web Vitals can lift organic engagement.",
+          "lcpHealthy": "LCP at {lcp}s is in a healthy band — maintain performance budgets as you ship new pages.",
+          "queriesQueued": "Query rows are ingesting — the matrix will populate as the first GSC snapshot lands."
+        }
       },
       "comparison": {
         "title": "Platform comparison",
@@ -873,7 +887,16 @@
       "executiveTrendHeading": "Executive pulse",
       "leaderboardHeading": "Leaderboard",
       "recentActivity": "Recent activity",
-      "welcomeFallback": "Hello"
+      "welcomeFallback": "Hello",
+      "firstFlight": {
+        "badge": "MonoAI · First flight",
+        "sectorLabel": "Industry context",
+        "brandMono": "Brand Mono",
+        "syncHint": "Connect Meta / Google / TikTok to unlock full AI Brand Audit and goal-based cockpit layout.",
+        "integrationsCta": "Open integrations",
+        "monoAiCta": "Chat with MonoAI",
+        "dismissAria": "Dismiss welcome banner"
+      }
     },
     "Strategy": {
       "skeletonLoading": "Loading",

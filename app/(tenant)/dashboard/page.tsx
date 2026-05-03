@@ -19,7 +19,7 @@ import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth/config';
 import { isTenantFreshStart } from '@/features/onboarding/lib/isFreshTenant';
 import { fetchMonoWelcomeCopy } from '@/features/onboarding/actions/welcomeCopy';
-import { MonoAiWelcomeClient } from '@/features/onboarding/components/MonoAiWelcomeClient';
+import { MonoAiWelcomeBanner } from '@/features/onboarding/components/MonoAiWelcomeBanner';
 import { MagicOnboardingExperience } from '@/features/onboarding/components/MagicOnboardingExperience';
 import { DashboardRevealMotion } from '@/features/onboarding/components/DashboardRevealMotion';
 import type { SessionUser } from '@/types/user';
@@ -45,25 +45,22 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     );
   }
 
-  if (await isTenantFreshStart(companyId)) {
-    const session = await auth();
+  const session = await auth();
+  const userId = (session?.user as SessionUser | undefined)?.id;
+
+  const freshStart = await isTenantFreshStart(companyId);
+  let welcomeCopy: Awaited<ReturnType<typeof fetchMonoWelcomeCopy>> | null = null;
+  if (freshStart) {
     const u = session?.user as SessionUser | undefined;
     const fallback = tDash('welcomeFallback');
     const rawName = (u?.name ?? u?.email ?? fallback).trim();
     const firstName = rawName.split(/\s+/)[0] || fallback;
-    const copy = await fetchMonoWelcomeCopy({
+    welcomeCopy = await fetchMonoWelcomeCopy({
       tenantName: tenant.name,
       userFirstName: firstName,
       industryHint: tenant.industry ?? null,
       locale: u?.locale ?? 'tr',
     });
-    return (
-      <MonoAiWelcomeClient
-        copy={copy}
-        tenantName={tenant.name}
-        brandLogoUrl={tenant.brand_logo_url ?? null}
-      />
-    );
   }
 
   const range = (['daily', 'weekly', 'monthly'] as const).includes(params.range as never)
@@ -71,9 +68,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     : ('monthly' as const);
 
   const cockpit = parseCockpitPlatform(params.platform);
-
-  const session = await auth();
-  const userId = (session?.user as SessionUser | undefined)?.id;
 
   const [digest, leaderboard, gamification, impressionMilestone] = await Promise.all([
     fetchWeeklyDigest(companyId),
@@ -125,20 +119,30 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       </div>
     ) : null;
 
+  const welcomeBanner =
+    welcomeCopy != null ? (
+      <MonoAiWelcomeBanner
+        companyId={companyId}
+        copy={welcomeCopy}
+        tenantName={tenant.name}
+        brandLogoUrl={tenant.brand_logo_url ?? null}
+      />
+    ) : null;
+
   const performanceOverview = (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>
           <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">{tDash('performanceOverview')}</h2>
-          <p className="text-[10px] text-white/22 mt-1 uppercase tracking-wider">{tDash('executiveTrendHeading')}</p>
+          <p className="text-[10px] text-white/30 mt-1 uppercase tracking-wider">{tDash('executiveTrendHeading')}</p>
         </div>
         <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
       </div>
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
-        <Suspense fallback={<ChartSkeleton height={240} />}>
-          <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
-        </Suspense>
-        <div className="mt-6">
+        <div className="flex w-full min-w-0 flex-col gap-8">
+          <Suspense fallback={<ChartSkeleton height={240} />}>
+            <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
+          </Suspense>
           <Suspense
             fallback={
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -175,7 +179,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     </div>
   );
 
-  const sections = [gamificationRow, achievementsShelf, performanceOverview, leaderboardActivity].filter(
+  const sections = [welcomeBanner, gamificationRow, achievementsShelf, performanceOverview, leaderboardActivity].filter(
     Boolean
   ) as ReactNode[];
 

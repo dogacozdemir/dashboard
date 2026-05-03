@@ -187,7 +187,7 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
             </div>
             <div>
               <p className="text-sm font-medium text-white/60">{t('uploadDropTitle')}</p>
-              <p className="text-xs text-white/25 mt-1">
+              <p className="text-xs text-white/42 mt-1">
                 {t('uploadDropHint')}
               </p>
             </div>

@@ -112,8 +112,8 @@ export function MediaGrid({ assets: initialAssets, companyId, canApproveCreative
           <Clapperboard className="w-6 h-6 text-[#9c70b2]" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white/50 tracking-tight line-clamp-2">{t('emptyTitle')}</p>
-          <p className="text-xs text-white/25 mt-1.5 line-clamp-3">{t('emptySubtitle')}</p>
+          <p className="text-sm font-semibold text-white/65 tracking-tight line-clamp-2">{t('emptyTitle')}</p>
+          <p className="text-xs text-white/42 mt-1.5 line-clamp-3">{t('emptySubtitle')}</p>
         </div>
       </div>
     );
@@ -152,7 +152,7 @@ export function MediaGrid({ assets: initialAssets, companyId, canApproveCreative
               />
             )}
             <span className="relative z-10 truncate max-w-[5.5rem]">{t(f.labelKey)}</span>
-            <span className="relative z-10 ml-1.5 text-white/22 tabular-nums">
+            <span className="relative z-10 ml-1.5 text-white/40 tabular-nums">
               {f.value === 'all' ? bySchedule.length : bySchedule.filter((a) => a.status === f.value).length}
             </span>
           </motion.button>
@@ -223,7 +223,7 @@ export function MediaGrid({ assets: initialAssets, companyId, canApproveCreative
           style={{ background: 'rgba(255,255,255,0.02)' }}
         >
           <p className="text-sm font-medium text-white/45 line-clamp-2">{t('filteredEmptyTitle')}</p>
-          <p className="text-xs text-white/25 max-w-sm line-clamp-4">
+          <p className="text-xs text-white/45 max-w-sm line-clamp-4">
             {t('filteredEmptySubtitle')}
           </p>
         </div>
@@ -288,7 +288,7 @@ export function MediaGrid({ assets: initialAssets, companyId, canApproveCreative
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(156,112,178,0.15)' }}>
                           <Video className="w-5 h-5 text-[#9c70b2]" />
                         </div>
-                        <span className="text-[10px] text-white/25 uppercase tracking-wider">{t('mediaFallback')}</span>
+                        <span className="text-[10px] text-white/45 uppercase tracking-wider">{t('mediaFallback')}</span>
                       </div>
                     )}
 
@@ -316,7 +316,7 @@ export function MediaGrid({ assets: initialAssets, companyId, canApproveCreative
                     <p className="text-sm font-medium text-white/80 leading-tight truncate tracking-tight">{asset.title}</p>
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                       <span className="text-[10px] text-[#bea042]/85 font-medium truncate max-w-full">{scheduleLabelOnCard(asset, t('noSchedule'))}</span>
-                      <span className="text-[10px] text-white/22">· {formatRelativeTime(asset.createdAt)}</span>
+                      <span className="text-[10px] text-white/40">· {formatRelativeTime(asset.createdAt)}</span>
                     </div>
                   </div>
                 </div>

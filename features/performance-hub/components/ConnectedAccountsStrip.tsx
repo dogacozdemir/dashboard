@@ -12,7 +12,7 @@ export async function ConnectedAccountsStrip({ companyId }: ConnectedAccountsStr
   const accounts = await fetchConnectedAdAccounts(companyId);
 
   return (
-    <GlassCard padding="md" className="bento-card">
+    <GlassCard padding="md" className="bento-card relative z-[1] isolate w-full min-w-0">
       <div className="mb-3 space-y-1">
         <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.12em]">
           {t('title')}

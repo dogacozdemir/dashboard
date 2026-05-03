@@ -17,13 +17,53 @@ const TEXT = rgb(0.92, 0.92, 0.94);
 const MUTED = rgb(0.55, 0.52, 0.58);
 const LINE = rgb(0.18, 0.12, 0.18);
 
+/**
+ * StandardFonts (Helvetica) use WinAnsi — Turkish dotless i / dotted I and many Unicode
+ * letters throw "WinAnsi cannot encode". Fold to Latin-1-safe ASCII before drawText.
+ */
 function toWinAnsi(text: string): string {
-  return text
+  let s = text
+    // Turkish (must run before generic strip — ı/İ are outside WinAnsi)
+    .replace(/\u0131/g, 'i')
+    .replace(/\u0130/g, 'I')
+    .replace(/\u015f/g, 's')
+    .replace(/\u015e/g, 'S')
+    .replace(/\u011f/g, 'g')
+    .replace(/\u011e/g, 'G')
+    .replace(/\u00e7/g, 'c')
+    .replace(/\u00c7/g, 'C')
+    .replace(/\u00fc/g, 'u')
+    .replace(/\u00dc/g, 'U')
+    .replace(/\u00f6/g, 'o')
+    .replace(/\u00d6/g, 'O')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  s = s
     .replace(/[\u2018\u2019\u0060]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/\u2026/g, '...')
     .replace(/[^\x20-\xFF\n\r\t]/g, '');
+
+  return s;
+}
+
+/** Split a token that exceeds max width (URLs, long words) so pdf-lib never infinite-loops. */
+function splitOversizedToken(font: PDFFont, token: string, size: number, maxW: number): string[] {
+  const out: string[] = [];
+  let chunk = '';
+  for (const ch of token) {
+    const trial = chunk + ch;
+    if (font.widthOfTextAtSize(trial, size) <= maxW) {
+      chunk = trial;
+    } else {
+      if (chunk) out.push(chunk);
+      chunk = ch;
+    }
+  }
+  if (chunk) out.push(chunk);
+  return out.length ? out : [token.slice(0, 48)];
 }
 
 function wrapLine(font: PDFFont, text: string, size: number, maxW: number): string[] {
@@ -31,7 +71,16 @@ function wrapLine(font: PDFFont, text: string, size: number, maxW: number): stri
   const words = clean.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let cur = '';
+
   for (const w of words) {
+    if (font.widthOfTextAtSize(w, size) > maxW) {
+      if (cur) {
+        lines.push(cur);
+        cur = '';
+      }
+      lines.push(...splitOversizedToken(font, w, size, maxW));
+      continue;
+    }
     const trial = cur ? `${cur} ${w}` : w;
     if (font.widthOfTextAtSize(trial, size) <= maxW) {
       cur = trial;
@@ -42,6 +91,11 @@ function wrapLine(font: PDFFont, text: string, size: number, maxW: number): stri
   }
   if (cur) lines.push(cur);
   return lines.length ? lines : [''];
+}
+
+function n(v: unknown, fallback = 0): number {
+  const x = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(x) ? x : fallback;
 }
 
 function drawFooter(page: PDFPage, font: PDFFont, pageNum: number) {
@@ -103,7 +157,7 @@ export async function renderMonoReportPdf(input: {
     font: bold,
     color: TEXT,
   });
-  page.drawText(poweredLine, {
+  page.drawText(toWinAnsi(poweredLine), {
     x: M + 52,
     y: PAGE_H - 78,
     size: 9,
@@ -114,12 +168,11 @@ export async function renderMonoReportPdf(input: {
   y = PAGE_H - 140;
   page.drawText(toWinAnsi(tenantName), { x: M, y, size: 14, font: bold, color: TEXT });
   y -= 22;
-  page.drawText(`Range: ${range}   ·   Cockpit: ${cockpit}`, { x: M, y, size: 10, font: regular, color: MUTED });
+  page.drawText(toWinAnsi(`Range: ${range}   ·   Cockpit: ${cockpit}`), { x: M, y, size: 10, font: regular, color: MUTED });
   y -= 18;
-  page.drawText(
-    `Period ${metrics.dateRange.from} → ${metrics.dateRange.to}`,
-    { x: M, y, size: 9, font: regular, color: MUTED },
-  );
+  const from = String(metrics.dateRange?.from ?? '—');
+  const to = String(metrics.dateRange?.to ?? '—');
+  page.drawText(toWinAnsi(`Period ${from} -> ${to}`), { x: M, y, size: 9, font: regular, color: MUTED });
   y -= 28;
 
   page.drawText('Executive summary', { x: M, y, size: 12, font: bold, color: GOLD });
@@ -135,11 +188,11 @@ export async function renderMonoReportPdf(input: {
   });
 
   const rows: string[] = [
-    `ROAS (current)     ${metrics.roas.current.toFixed(2)}`,
-    `Spend (current)    ${metrics.spend.current.toFixed(2)}`,
-    `Revenue (current)  ${metrics.revenue.current.toFixed(2)}`,
-    `CTR %              ${metrics.ctr.current.toFixed(2)}`,
-    `Conversions        ${metrics.conversions.current.toFixed(0)}`,
+    `ROAS (current)     ${n(metrics.roas?.current).toFixed(2)}`,
+    `Spend (current)    ${n(metrics.spend?.current).toFixed(2)}`,
+    `Revenue (current)  ${n(metrics.revenue?.current).toFixed(2)}`,
+    `CTR %              ${n(metrics.ctr?.current).toFixed(2)}`,
+    `Conversions        ${n(metrics.conversions?.current).toFixed(0)}`,
   ];
   let ry = y - 14;
   for (const line of rows) {
@@ -150,16 +203,16 @@ export async function renderMonoReportPdf(input: {
 
   page.drawText('Spend trend (tabular)', { x: M, y, size: 12, font: bold, color: VIOLET });
   y -= 14;
-  const slice = chart.slice(-16);
+  const slice = Array.isArray(chart) ? chart.slice(-16) : [];
   for (const row of slice) {
-    const line = `${row.date}   meta ${row.meta.toFixed(0)}   google ${row.google.toFixed(0)}   tiktok ${row.tiktok.toFixed(0)}`;
+    const line = `${String(row.date ?? '')}   meta ${n(row.meta).toFixed(0)}   google ${n(row.google).toFixed(0)}   tiktok ${n(row.tiktok).toFixed(0)}`;
     if (y < 80) {
       page = doc.addPage([PAGE_W, PAGE_H]);
       page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: BG });
       y = PAGE_H - M;
     }
     for (const wl of wrapLine(regular, line, 8.5, PAGE_W - 2 * M)) {
-      page.drawText(wl, { x: M, y, size: 8.5, font: regular, color: TEXT });
+      page.drawText(toWinAnsi(wl), { x: M, y, size: 8.5, font: regular, color: TEXT });
       y -= 11;
     }
   }
@@ -177,12 +230,17 @@ export async function renderMonoReportPdf(input: {
         page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: BG });
         y = PAGE_H - M;
       }
-      page.drawText(line, { x: M, y, size: 10, font: regular, color: TEXT });
+      page.drawText(toWinAnsi(line), { x: M, y, size: 10, font: regular, color: TEXT });
       y -= 13;
     }
     y -= 6;
   }
 
   doc.getPages().forEach((p, i) => drawFooter(p, regular, i + 1));
-  return doc.save();
+  try {
+    return await doc.save();
+  } catch (e) {
+    console.error('[renderMonoReportPdf] doc.save failed', e);
+    throw e;
+  }
 }

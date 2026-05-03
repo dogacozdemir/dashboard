@@ -78,41 +78,43 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       </div>
 
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <MetricCardSkeleton key={i} />
-              ))}
-            </div>
-          }
-        >
-          <OverviewMetrics
-            companyId={companyId}
-            range={range}
-            dashboardGoal={dashboardGoal}
-            spotlightMetric={spotlightMetric}
-            cockpitPlatform={cockpit}
-          />
-        </Suspense>
-
-        <Suspense fallback={null}>
-          <ConnectedAccountsStrip companyId={companyId} />
-        </Suspense>
-
-        {cockpit === 'all' && comparisonRows.length > 0 ? (
-          <PlatformComparisonMatrix rows={comparisonRows} />
-        ) : null}
-
-        {paidSurface ? (
-          <Suspense fallback={<ChartSkeleton height={120} />}>
-            <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+        <div className="flex w-full min-w-0 flex-col gap-8">
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <MetricCardSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <OverviewMetrics
+              companyId={companyId}
+              range={range}
+              dashboardGoal={dashboardGoal}
+              spotlightMetric={spotlightMetric}
+              cockpitPlatform={cockpit}
+            />
           </Suspense>
-        ) : null}
 
-        {paidSurface ? <SpendChart data={chartData} range={range} /> : null}
+          <Suspense fallback={null}>
+            <ConnectedAccountsStrip companyId={companyId} />
+          </Suspense>
 
-        {paidSurface ? <CampaignTable campaigns={campaigns} /> : null}
+          {cockpit === 'all' && comparisonRows.length > 0 ? (
+            <PlatformComparisonMatrix rows={comparisonRows} />
+          ) : null}
+
+          {paidSurface ? (
+            <Suspense fallback={<ChartSkeleton height={120} />}>
+              <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+            </Suspense>
+          ) : null}
+
+          {paidSurface ? <SpendChart data={chartData} range={range} /> : null}
+
+          {paidSurface ? <CampaignTable campaigns={campaigns} /> : null}
+        </div>
       </CockpitMetricsCrossfade>
 
       {cockpit === 'all' || cockpit === 'seo' ? (

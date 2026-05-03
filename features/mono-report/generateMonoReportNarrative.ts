@@ -12,14 +12,19 @@ export async function generateMonoReportNarrative(input: {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   const { tenantName, range, cockpit, metrics, locale } = input;
 
+  const n = (v: unknown, d = 0) => {
+    const x = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(x) ? x : d;
+  };
+
   const kpi = {
     range,
     cockpit,
-    spend: metrics.spend.current,
-    revenue: metrics.revenue.current,
-    roas: metrics.roas.current,
-    hasData: metrics.hasData,
-    period: metrics.dateRange,
+    spend: n(metrics.spend?.current),
+    revenue: n(metrics.revenue?.current),
+    roas: n(metrics.roas?.current),
+    hasData: Boolean(metrics.hasData),
+    period: metrics.dateRange ?? { from: '—', to: '—' },
   };
 
   if (!apiKey) {

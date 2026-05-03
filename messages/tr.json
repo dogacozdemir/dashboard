@@ -107,7 +107,8 @@
       "monoReport": {
         "export": "mono Report indir",
         "busy": "PDF hazırlanıyor…",
-        "sr": "Yönetici mono Report PDF indir"
+        "sr": "Yönetici mono Report PDF indir",
+        "exportFailed": "PDF oluşturulamadı. Tekrar deneyin veya destek ile iletişime geçin."
       },
       "platform": {
         "all": "Tümü",
@@ -126,6 +127,7 @@
       },
       "seoMatrix": {
         "sectionTitle": "SEO ve Search Console matrisi",
+        "insightEyebrow": "monoAI · GEO sinyali",
         "sectionSubtitle": "Google Search Console organik görünürlük ve deneyim sinyalleri — yalnızca açıklayıcı metrikler; kampanya önerisi yok.",
         "empty": "Google bağlayıp GSC senkronu tamamlayınca matris dolacak.",
         "emptyConnected": "Google bağlantınız aktif. Search Console sorgu satırları içeri alınıyor — ilk anlık görüntü gelir gelmez matris dolacak.",
@@ -152,7 +154,19 @@
         "indexingTitle": "Dizin sorunları",
         "indexingHint": "Google’ın okuyamadığı sayfalar — Search Console dizin raporu bağlanınca görünür (henüz bağlı değil).",
         "cwvTitle": "Deneyim metrikleri",
-        "cwvHint": "Core Web Vitals — mobilde sayfalarınız ne kadar hızlı açılıyor?"
+        "cwvHint": "Core Web Vitals — mobilde sayfalarınız ne kadar hızlı açılıyor?",
+        "insights": {
+          "balanced": "Bu anlık görüntüde organik karışım dengeli görünüyor — haftadan haftaya kıyas için senkronu sürdürün.",
+          "nonBrandDominant": "Gösterimlerin yaklaşık %{pct}’i marka dışı — güçlü hizmet talebi sinyali. Bu sorguları dönüştüren açılış sayfalarına yatırım yapın.",
+          "brandDominant": "Görünürlük marka sorgularına dayanıyor — yeni talep için marka dışı anahtar kelime kapsamını genişletmeyi düşünün.",
+          "ctrOpportunity": "CTR, hacme göre zayıf — yüksek gösterimli sorgularda başlık ve meta açıklamalarını test edin.",
+          "ctrStrong": "CTR bu hacim için tipik eşiğin üzerinde — snippet ve niyet eşleşmeniz işliyor.",
+          "serpTop": "Ortalama pozisyon güçlü — en çok dönüştüren sorgularda üst sıraları koruyun.",
+          "serpDepth": "Ortalama pozisyonda iyileştirme alanı var — zayıf URL’lerde teknik ve içerik derinliğine öncelik verin.",
+          "lcpRisk": "LCP {lcp} sn — sayfa hızı sürtünmesi olabilir; Core Web Vitals iyileştirmesi organik etkileşimi destekler.",
+          "lcpHealthy": "LCP {lcp} sn sağlıklı bir banda yakın — yeni sayfa yayınlarında performans bütçesini koruyun.",
+          "queriesQueued": "Sorgu satırları işleniyor — ilk GSC anlık görüntüsü geldiğinde matris dolacak."
+        }
       },
       "comparison": {
         "title": "Kanal karşılaştırması",
@@ -873,7 +887,16 @@
       "executiveTrendHeading": "Yönetici özeti",
       "leaderboardHeading": "Sıralama",
       "recentActivity": "Son Aktivite",
-      "welcomeFallback": "Merhaba"
+      "welcomeFallback": "Merhaba",
+      "firstFlight": {
+        "badge": "MonoAI · İlk uçuş",
+        "sectorLabel": "Sektör bağlamı",
+        "brandMono": "Brand Mono",
+        "syncHint": "Tam AI Marka Denetimi ve hedefe göre kokpit için Meta / Google / TikTok bağlantılarını tamamlayın.",
+        "integrationsCta": "Entegrasyonlara git",
+        "monoAiCta": "MonoAI ile konuş",
+        "dismissAria": "Karşılama bandını kapat"
+      }
     },
     "Strategy": {
       "skeletonLoading": "Yükleniyor",

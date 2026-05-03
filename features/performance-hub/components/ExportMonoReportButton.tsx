@@ -14,14 +14,24 @@ interface ExportMonoReportButtonProps {
 export function ExportMonoReportButton({ range, cockpit }: ExportMonoReportButtonProps) {
   const t = useTranslations('Performance.cockpit.monoReport');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onExport() {
     setBusy(true);
+    setError(null);
     try {
       const qs = new URLSearchParams({ range, platform: cockpit });
       const res = await fetch(`/api/reports/mono-report?${qs.toString()}`, { method: 'GET' });
       if (!res.ok) {
-        console.error('[mono Report]', await res.text());
+        const body = await res.text();
+        console.error('[mono Report]', res.status, body);
+        setError(t('exportFailed'));
+        return;
+      }
+      const ct = res.headers.get('Content-Type') ?? '';
+      if (!ct.includes('application/pdf')) {
+        console.error('[mono Report] unexpected content-type', ct);
+        setError(t('exportFailed'));
         return;
       }
       const blob = await res.blob();
@@ -34,12 +44,16 @@ export function ExportMonoReportButton({ range, cockpit }: ExportMonoReportButto
       a.download = name;
       a.click();
       URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[mono Report] network', e);
+      setError(t('exportFailed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
+    <span className="inline-flex flex-col items-end gap-1">
     <button
       type="button"
       onClick={() => void onExport()}
@@ -50,5 +64,7 @@ export function ExportMonoReportButton({ range, cockpit }: ExportMonoReportButto
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 text-[#bea042]" />}
       <span>{busy ? t('busy') : t('export')}</span>
     </button>
+      {error ? <span className="max-w-[220px] text-right text-[10px] text-rose-300/90">{error}</span> : null}
+    </span>
   );
 }

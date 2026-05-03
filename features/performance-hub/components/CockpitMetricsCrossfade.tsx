@@ -14,7 +14,7 @@ export function CockpitMetricsCrossfade({
   children: React.ReactNode;
 }) {
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence initial={false}>
       <motion.div
         key={`${cockpit}-${range}`}
         initial={{ opacity: 0 }}
