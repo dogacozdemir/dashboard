@@ -1,7 +1,8 @@
 'use client';
 
+import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -13,7 +14,12 @@ import type { UserGamificationData } from '@/features/gamification/types';
 import { CelebrationOverlay } from '@/features/gamification/components/CelebrationOverlay';
 import type { LuxNotificationItem } from '@/features/notifications/types';
 import { CommandCenter } from '@/app/components/layout/CommandCenter';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  MADMONOS_SPRING,
+  madmonosLiquidPageVariants,
+  madmonosReducedPageVariants,
+  madmonosReducedTransition,
+} from '@/lib/motion/madmonos-motion';
 
 interface DashboardShellProps {
   tenant:          Tenant;
@@ -31,13 +37,6 @@ interface DashboardShellProps {
   children:        React.ReactNode;
 }
 
-const pageTransition = {
-  type: 'spring' as const,
-  stiffness: 260,
-  damping: 26,
-  mass: 1,
-};
-
 export function DashboardShell({
   tenant,
   user,
@@ -52,18 +51,31 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
-  const mobileNav = useMediaQuery('(max-width: 767px)');
-  const pageVariants = mobileNav
-    ? {
-        initial: { opacity: 0, x: 20 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -16 },
+  const mainScrollRef = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+
+  const pageVariants = reduce ? madmonosReducedPageVariants : madmonosLiquidPageVariants;
+  const pageTransition = reduce ? madmonosReducedTransition : MADMONOS_SPRING;
+
+  useLayoutEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    el.scrollLeft = 0;
+    if (!reduce) {
+      el.style.willChange = 'transform, opacity, filter';
+    }
+    const clear = () => {
+      if (mainScrollRef.current === el) {
+        el.style.willChange = 'auto';
       }
-    : {
-        initial: { opacity: 0, y: 16 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -10 },
-      };
+    };
+    const t = window.setTimeout(clear, 520);
+    return () => {
+      window.clearTimeout(t);
+      clear();
+    };
+  }, [pathname, reduce]);
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-[#0c070c]">
@@ -88,7 +100,7 @@ export function DashboardShell({
 
       {/* ── Main column ── */}
       <div
-        className="relative z-10 flex min-w-0 flex-1 flex-col gap-2 overflow-hidden px-safe pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+        className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden px-safe pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
       >
         <TopBar
           user={user}
@@ -106,19 +118,23 @@ export function DashboardShell({
 
         {showroomMode ? <DemoShowroomBanner /> : null}
 
-        <AnimatePresence initial={false}>
-          <motion.main
-            key={pathname}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={pageTransition}
-            className="dashboard-scroll-region flex-1 overflow-y-auto scrollbar-thin px-4 py-4 md:px-6 md:py-4 pb-mobile-dock md:pb-6"
-          >
-            {children}
-          </motion.main>
-        </AnimatePresence>
+        {/* Stable clip rect + positioning root for popLayout (exiting route is absolute). */}
+        <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.main
+              ref={mainScrollRef}
+              key={pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageTransition}
+              className="dashboard-scroll-region mm-page-motion-will-change relative z-[1] min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-4 md:px-6 md:py-4 pb-mobile-dock md:pb-6"
+            >
+              {children}
+            </motion.main>
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* ── Mobile bottom navigation (hidden on md+) ── */}

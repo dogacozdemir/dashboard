@@ -1,8 +1,14 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { CockpitPlatform } from '../lib/cockpit-platform';
 import type { TimeRange } from '../actions/fetchMetrics';
+import {
+  MADMONOS_SPRING,
+  madmonosCockpitCrossfadeVariants,
+  madmonosReducedPageVariants,
+  madmonosReducedTransition,
+} from '@/lib/motion/madmonos-motion';
 
 export function CockpitMetricsCrossfade({
   cockpit,
@@ -13,17 +19,23 @@ export function CockpitMetricsCrossfade({
   range: TimeRange;
   children: React.ReactNode;
 }) {
+  const reduce = useReducedMotion();
+
   return (
-    <AnimatePresence initial={false}>
-      <motion.div
-        key={`${cockpit}-${range}`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div className="relative isolate min-w-0 overflow-hidden">
+      <AnimatePresence initial={false} mode="popLayout">
+        <motion.div
+          key={`${cockpit}-${range}`}
+          className="mm-cockpit-crossfade-will-change relative z-[1] min-w-0"
+          variants={reduce ? madmonosReducedPageVariants : madmonosCockpitCrossfadeVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={reduce ? madmonosReducedTransition : MADMONOS_SPRING}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }

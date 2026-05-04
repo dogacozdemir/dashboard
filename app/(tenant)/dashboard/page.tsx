@@ -5,6 +5,10 @@ import { RecentActivity } from '@/features/performance-hub/components/RecentActi
 import { CockpitToolbar } from '@/features/performance-hub/components/CockpitToolbar';
 import { ExecutiveTrendSection } from '@/features/performance-hub/components/ExecutiveTrendSection';
 import { CockpitMetricsCrossfade } from '@/features/performance-hub/components/CockpitMetricsCrossfade';
+import {
+  CockpitHeavyStagger,
+  CockpitStaggerSection,
+} from '@/features/performance-hub/components/CockpitHeavyStagger';
 import { parseCockpitPlatform } from '@/features/performance-hub/lib/cockpit-platform';
 import { MetricCardSkeleton, ChartSkeleton } from '@/components/shared/LoadingSkeleton';
 import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
@@ -139,27 +143,31 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
       </div>
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
-        <div className="flex w-full min-w-0 flex-col gap-8">
-          <Suspense fallback={<ChartSkeleton height={240} />}>
-            <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
-          </Suspense>
-          <Suspense
-            fallback={
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <MetricCardSkeleton key={i} />
-                ))}
-              </div>
-            }
-          >
-            <OverviewMetrics
-              companyId={companyId}
-              range={range}
-              dashboardGoal={dashboardGoal}
-              cockpitPlatform={cockpit}
-            />
-          </Suspense>
-        </div>
+        <CockpitHeavyStagger>
+          <CockpitStaggerSection>
+            <Suspense fallback={<ChartSkeleton height={240} />}>
+              <ExecutiveTrendSection companyId={companyId} range={range} cockpit={cockpit} />
+            </Suspense>
+          </CockpitStaggerSection>
+          <CockpitStaggerSection>
+            <Suspense
+              fallback={
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(8)].map((_, i) => (
+                    <MetricCardSkeleton key={i} />
+                  ))}
+                </div>
+              }
+            >
+              <OverviewMetrics
+                companyId={companyId}
+                range={range}
+                dashboardGoal={dashboardGoal}
+                cockpitPlatform={cockpit}
+              />
+            </Suspense>
+          </CockpitStaggerSection>
+        </CockpitHeavyStagger>
       </CockpitMetricsCrossfade>
     </div>
   );

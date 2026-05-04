@@ -377,10 +377,19 @@
     background: rgba(190,160,66,0.5);
   }
 
-  /* Skip layout/paint for off-screen dashboard chunks while scrolling */
+  /* Main dashboard scrollport — do NOT use content-visibility here: it skews
+     scrollHeight / scroll anchoring on first paint so the region can open scrolled. */
   .dashboard-scroll-region {
-    content-visibility: auto;
-    contain-intrinsic-size: 1px 1200px;
+    overflow-anchor: none;
+  }
+
+  /* Route transition GPU hint — paired with Framer page variants (transform, opacity, filter). */
+  .mm-page-motion-will-change {
+    will-change: transform, opacity, filter;
+  }
+
+  .mm-cockpit-crossfade-will-change {
+    will-change: transform, opacity;
   }
 
   /* Inline stacks that use blur(48px)+saturate(200%) — pair with style prop in TSX if needed */

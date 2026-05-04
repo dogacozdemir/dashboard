@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { MADMONOS_SPRING } from '@/lib/motion/madmonos-motion';
 
 export const DASHBOARD_CELEBRATE_STORAGE_KEY = 'mm_dashboard_celebrate';
 
@@ -19,7 +20,7 @@ const item = {
     opacity: 1,
     y: 0,
     filter: 'blur(0px)',
-    transition: { type: 'spring' as const, stiffness: 300, damping: 30, mass: 0.9 },
+    transition: MADMONOS_SPRING,
   },
 };
 

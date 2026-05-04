@@ -12,6 +12,10 @@ import { SpendChart } from '@/features/performance-hub/components/SpendChart';
 import { CampaignTable } from '@/features/performance-hub/components/CampaignTable';
 import { CockpitToolbar } from '@/features/performance-hub/components/CockpitToolbar';
 import { CockpitMetricsCrossfade } from '@/features/performance-hub/components/CockpitMetricsCrossfade';
+import {
+  CockpitHeavyStagger,
+  CockpitStaggerSection,
+} from '@/features/performance-hub/components/CockpitHeavyStagger';
 import { OverviewMetrics, type MetricId } from '@/features/performance-hub/components/OverviewMetrics';
 import { ConnectedAccountsStrip } from '@/features/performance-hub/components/ConnectedAccountsStrip';
 import { ChannelGlassIcon } from '@/features/performance-hub/components/ChannelGlassIcon';
@@ -78,43 +82,59 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       </div>
 
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
-        <div className="flex w-full min-w-0 flex-col gap-8">
-          <Suspense
-            fallback={
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <MetricCardSkeleton key={i} />
-                ))}
-              </div>
-            }
-          >
-            <OverviewMetrics
-              companyId={companyId}
-              range={range}
-              dashboardGoal={dashboardGoal}
-              spotlightMetric={spotlightMetric}
-              cockpitPlatform={cockpit}
-            />
-          </Suspense>
+        <CockpitHeavyStagger>
+          <CockpitStaggerSection>
+            <Suspense
+              fallback={
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(8)].map((_, i) => (
+                    <MetricCardSkeleton key={i} />
+                  ))}
+                </div>
+              }
+            >
+              <OverviewMetrics
+                companyId={companyId}
+                range={range}
+                dashboardGoal={dashboardGoal}
+                spotlightMetric={spotlightMetric}
+                cockpitPlatform={cockpit}
+              />
+            </Suspense>
+          </CockpitStaggerSection>
 
-          <Suspense fallback={null}>
-            <ConnectedAccountsStrip companyId={companyId} />
-          </Suspense>
+          <CockpitStaggerSection>
+            <Suspense fallback={null}>
+              <ConnectedAccountsStrip companyId={companyId} />
+            </Suspense>
+          </CockpitStaggerSection>
 
           {cockpit === 'all' && comparisonRows.length > 0 ? (
-            <PlatformComparisonMatrix rows={comparisonRows} />
+            <CockpitStaggerSection>
+              <PlatformComparisonMatrix rows={comparisonRows} />
+            </CockpitStaggerSection>
           ) : null}
 
           {paidSurface ? (
-            <Suspense fallback={<ChartSkeleton height={120} />}>
-              <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
-            </Suspense>
+            <CockpitStaggerSection>
+              <Suspense fallback={<ChartSkeleton height={120} />}>
+                <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+              </Suspense>
+            </CockpitStaggerSection>
           ) : null}
 
-          {paidSurface ? <SpendChart data={chartData} range={range} /> : null}
+          {paidSurface ? (
+            <CockpitStaggerSection>
+              <SpendChart data={chartData} range={range} />
+            </CockpitStaggerSection>
+          ) : null}
 
-          {paidSurface ? <CampaignTable campaigns={campaigns} /> : null}
-        </div>
+          {paidSurface ? (
+            <CockpitStaggerSection>
+              <CampaignTable campaigns={campaigns} />
+            </CockpitStaggerSection>
+          ) : null}
+        </CockpitHeavyStagger>
       </CockpitMetricsCrossfade>
 
       {cockpit === 'all' || cockpit === 'seo' ? (
