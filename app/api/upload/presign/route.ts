@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   const { filename, contentType, contentLength, bucket, folder = 'uploads' } = body;
 
-  if (bucket === 'creative' && !sessionHasPermission(user, 'creative.upload')) {
+  if (bucket === 'creative' && user.role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (bucket === 'brand' && !sessionHasPermission(user, 'brand.upload')) {

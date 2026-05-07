@@ -14,6 +14,7 @@ export default async function CreativePage() {
   const user = session?.user as SessionUser | undefined;
   const canApproveCreative = sessionHasPermission(user, 'creative.approve');
   const canDeleteCreative = user?.role === 'super_admin';
+  const canUploadCreative = user?.role === 'super_admin';
 
   const assets = await fetchCreativeAssets(companyId);
 
@@ -77,7 +78,7 @@ export default async function CreativePage() {
         ))}
       </div>
 
-      <CreativeUploadPanel companyId={companyId} />
+      {canUploadCreative ? <CreativeUploadPanel companyId={companyId} /> : null}
 
       <div>
         <h2 className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.12em] mb-5">

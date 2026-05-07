@@ -18,6 +18,11 @@ export async function POST(request: NextRequest) {
   }
 
   const user = session.user as SessionUser;
+
+  if (user.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const { files, companyId } = await request.json();
 
   await requireTenantAction(companyId);
