@@ -8,17 +8,27 @@ import { Calendar, Clapperboard, Loader2, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GlassCard } from '@/components/shared/GlassCard';
 import type { SocialPlatform } from '@/features/calendar/types';
+import type { CreativeContentFormat } from '@/features/creative-studio/types';
 
 interface CreativeUploadPanelProps {
+  /** Current tenant UUID from `requireTenantContext()` (impersonated / subdomain tenant), never the viewer’s unrelated profile tenant. */
   companyId: string;
   onSuccess?: () => void;
 }
 
-interface PendingFile {
-  file: File;
+interface PendingFiles {
+  files: File[];
 }
 
 const PLATFORMS: SocialPlatform[] = ['meta', 'google', 'tiktok', 'instagram', 'linkedin', 'x'];
+
+const CONTENT_FORMAT_CHOICES: Array<{ value: '' | CreativeContentFormat; labelKey: string }> = [
+  { value: '', labelKey: 'contentFormatInfer' },
+  { value: 'feed_post', labelKey: 'contentFormatFeedPost' },
+  { value: 'carousel', labelKey: 'contentFormatCarousel' },
+  { value: 'reel', labelKey: 'contentFormatReel' },
+  { value: 'story', labelKey: 'contentFormatStory' },
+];
 
 function platformOptionLabel(t: (key: string) => string, p: SocialPlatform): string {
   switch (p) {
@@ -36,97 +46,107 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
   const router = useRouter();
   const t = useTranslations('Features.Creative');
   const inputRef = useRef<HTMLInputElement>(null);
-  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
+  const [pending, setPending] = useState<PendingFiles | null>(null);
   const [dragging, setDragging] = useState(false);
   const [title, setTitle] = useState('');
   const [platform, setPlatform] = useState<SocialPlatform>('instagram');
   const [caption, setCaption] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [contentFormat, setContentFormat] = useState<'' | CreativeContentFormat>('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const canUpload = useMemo(
-    () => !!pendingFile && title.trim().length > 1 && !!scheduledDate,
-    [pendingFile, title, scheduledDate]
+    () => !!pending && pending.files.length >= 1 && title.trim().length > 1 && !!scheduledDate,
+    [pending, title, scheduledDate],
   );
 
   function resetModal() {
-    setPendingFile(null);
+    setPending(null);
     setTitle('');
     setPlatform('instagram');
     setCaption('');
     setScheduledDate('');
     setScheduledTime('');
+    setContentFormat('');
     setError(null);
   }
 
-  function openModalWithFile(file: File) {
-    setPendingFile({ file });
-    setTitle(file.name.replace(/\.[^.]+$/, ''));
+  function openModalWithFiles(files: File[]) {
+    if (files.length === 0) return;
+    const first = files[0];
+    setPending({ files });
+    setTitle(first.name.replace(/\.[^.]+$/, ''));
     setError(null);
   }
 
   function handlePickedFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
-    openModalWithFile(fileList[0]);
+    openModalWithFiles(Array.from(fileList));
   }
 
   async function uploadCreative() {
-    if (!pendingFile) return;
-    const file = pendingFile.file;
+    if (!pending || pending.files.length === 0) return;
+    const files = pending.files;
+    const kind: 'carousel' | 'single' = files.length > 1 ? 'carousel' : 'single';
 
-    const presignRes = await fetch('/api/upload/presign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: file.type,
-        contentLength: file.size,
-        bucket: 'creative',
-        folder: 'creative',
-      }),
-    });
+    const uploaded: Array<{ name: string; s3Key: string; contentType: string; size?: number }> = [];
 
-    if (!presignRes.ok) {
-      throw new Error('__PRESIGN__');
-    }
+    for (const file of files) {
+      const presignRes = await fetch('/api/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          contentLength: file.size,
+          bucket: 'creative',
+          folder: 'creative',
+          companyId,
+        }),
+      });
 
-    const { uploadUrl, s3Key } = (await presignRes.json()) as {
-      uploadUrl: string;
-      s3Key: string;
-    };
+      if (!presignRes.ok) {
+        throw new Error('__PRESIGN__');
+      }
 
-    const s3PutRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-        'x-amz-server-side-encryption': 'AES256',
-      },
-      body: file,
-    });
+      const { uploadUrl, s3Key } = (await presignRes.json()) as {
+        uploadUrl: string;
+        s3Key: string;
+      };
 
-    if (!s3PutRes.ok) {
-      throw new Error(`__S3__:${s3PutRes.status}`);
+      const s3PutRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+          'x-amz-server-side-encryption': 'AES256',
+        },
+        body: file,
+      });
+
+      if (!s3PutRes.ok) {
+        throw new Error(`__S3__:${s3PutRes.status}`);
+      }
+
+      uploaded.push({ name: file.name, s3Key, contentType: file.type, size: file.size });
     }
 
     const saveRes = await fetch('/api/assets/creative', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        kind,
         companyId,
-        files: [
-          {
-            name: file.name,
-            s3Key,
-            contentType: file.type,
-            title: title.trim(),
-            platform,
-            caption: caption.trim(),
-            scheduledDate,
-            scheduledTime: scheduledTime || undefined,
-          },
-        ],
+        metadata: {
+          title: title.trim(),
+          caption: caption.trim(),
+          platform,
+          scheduledDate,
+          scheduledTime: scheduledTime || undefined,
+          ...(contentFormat ? { contentFormat } : {}),
+        },
+        files: uploaded,
       }),
     });
 
@@ -197,13 +217,14 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
         <input
           ref={inputRef}
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
           className="hidden"
           onChange={(e) => handlePickedFiles(e.target.files)}
         />
       </GlassCard>
 
-      <Dialog open={!!pendingFile} onOpenChange={(open) => !open && resetModal()}>
+      <Dialog open={!!pending} onOpenChange={(open) => !open && resetModal()}>
         <DialogContent className="max-w-lg bg-[#161625] border-white/[0.1] text-white/90">
           <DialogHeader>
             <DialogTitle className="text-white/90">{t('modalTitle')}</DialogTitle>
@@ -217,9 +238,18 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3">
-              <p className="text-xs text-white/35 mb-1">{t('selectedFile')}</p>
-              <p className="text-sm text-white/70 truncate">{pendingFile?.file.name}</p>
+            <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 space-y-1.5">
+              <p className="text-xs text-white/35">{t('selectedFileCount', { count: pending?.files.length ?? 0 })}</p>
+              <ul className="text-sm text-white/70 space-y-0.5 max-h-24 overflow-y-auto">
+                {(pending?.files ?? []).slice(0, 6).map((f) => (
+                  <li key={f.name + f.size} className="truncate">{f.name}</li>
+                ))}
+                {(pending?.files.length ?? 0) > 6 && (
+                  <li className="text-white/45 text-xs">
+                    {t('selectedFilesOverflow', { count: (pending?.files.length ?? 0) - 6 })}
+                  </li>
+                )}
+              </ul>
             </div>
 
             <div className="space-y-1">
@@ -243,6 +273,20 @@ export function CreativeUploadPanel({ companyId, onSuccess }: CreativeUploadPane
                   <option key={value} value={value}>{platformOptionLabel(t, value)}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-white/40">{t('labelContentFormat')}</label>
+              <select
+                value={contentFormat}
+                onChange={(e) => setContentFormat(e.target.value as '' | CreativeContentFormat)}
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/90 text-sm outline-none focus:border-cyan-500/40 transition-all"
+              >
+                {CONTENT_FORMAT_CHOICES.map((c) => (
+                  <option key={c.value || 'infer'} value={c.value}>{t(c.labelKey)}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-white/28 leading-relaxed">{t('contentFormatHint')}</p>
             </div>
 
             <div className="space-y-1">

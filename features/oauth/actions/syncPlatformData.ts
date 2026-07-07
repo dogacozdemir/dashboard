@@ -976,38 +976,118 @@ async function syncGSCDataWithSupabase(
   }
 }
 
-/** Simulated PageSpeed/Lighthouse-style CWV snapshot → technical_logs (SSOT for rings when no manual SEO payload). */
-async function simulatePagespeedTechnicalLog(tenantId: string, supabase: SupabaseClient) {
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+/** Resolve the URL to measure: tenant custom domain first, else a verified GSC site. */
+async function resolveCwvTargetUrl(tenantId: string, supabase: SupabaseClient): Promise<string | null> {
+  const { data: trow } = await supabase
+    .from('tenants')
+    .select('custom_domain')
+    .eq('id', tenantId)
+    .maybeSingle();
+
+  const cd = (trow as { custom_domain?: string | null } | null)?.custom_domain?.trim();
+  if (cd) return /^https?:\/\//i.test(cd) ? cd : `https://${cd}`;
+
+  // Fall back to a verified Search Console property stored during GSC sync.
+  const { data: rows } = await supabase
+    .from('geo_reports')
+    .select('rank_data')
+    .eq('tenant_id', tenantId)
+    .eq('metric_source', 'gsc_query')
+    .limit(1);
+
+  const site = (rows?.[0]?.rank_data as Record<string, unknown> | null)?.siteUrl as string | undefined;
+  if (!site) return null;
+  if (site.startsWith('sc-domain:')) return `https://${site.slice('sc-domain:'.length)}`;
+  return site;
+}
+
+/**
+ * Real Core Web Vitals via Google PageSpeed Insights (CrUX field data, else Lighthouse lab).
+ * No-ops without PAGESPEED_API_KEY — we never fabricate CWV for real tenants.
+ */
+async function fetchPagespeedCwv(tenantId: string, supabase: SupabaseClient): Promise<void> {
+  const apiKey = process.env.PAGESPEED_API_KEY;
+  if (!apiKey) return;
+
+  const url = await resolveCwvTargetUrl(tenantId, supabase);
+  if (!url) return;
+
+  // Throttle: at most one PageSpeed snapshot per 12h per tenant.
+  const halfDayAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
   const { data: recent } = await supabase
     .from('technical_logs')
     .select('metadata')
     .eq('tenant_id', tenantId)
-    .gte('created_at', dayAgo)
+    .gte('created_at', halfDayAgo)
     .order('created_at', { ascending: false })
     .limit(40);
   const already = (recent ?? []).some(
-    (r) => (r.metadata as Record<string, unknown> | null)?.source === 'pagespeed_simulation'
+    (r) => (r.metadata as Record<string, unknown> | null)?.source === 'pagespeed',
   );
   if (already) return;
 
-  const jitter = () => 0.92 + Math.random() * 0.12;
-  const lcp    = Math.round((2.2 * jitter()) * 100) / 100;
-  const fid    = Math.round(65 + Math.random() * 40);
-  const cls    = Math.round((0.04 + Math.random() * 0.06) * 1000) / 1000;
+  const endpoint =
+    `https://www.googleapis.com/pagespeedonline/v5/runPagespeed` +
+    `?url=${encodeURIComponent(url)}&strategy=mobile&category=performance&key=${apiKey}`;
+
+  const res = await fetch(endpoint);
+  if (!res.ok) {
+    console.warn(`[fetchPagespeedCwv] PSI ${res.status} for ${url}`);
+    return;
+  }
+
+  const json = (await res.json()) as {
+    loadingExperience?: { metrics?: Record<string, { percentile?: number }> };
+    lighthouseResult?: { audits?: Record<string, { numericValue?: number }> };
+  };
+
+  const field = json.loadingExperience?.metrics ?? {};
+  const lab   = json.lighthouseResult?.audits ?? {};
+
+  let lcp: number | null = null;
+  let cls: number | null = null;
+  let fid: number | null = null;
+  let dataSource: 'field' | 'lab' = 'lab';
+
+  const fLcp = field.LARGEST_CONTENTFUL_PAINT_MS?.percentile;
+  const fCls = field.CUMULATIVE_LAYOUT_SHIFT_SCORE?.percentile;
+  const fInp = field.INTERACTION_TO_NEXT_PAINT?.percentile ?? field.FIRST_INPUT_DELAY_MS?.percentile;
+
+  if (fLcp != null) { lcp = Math.round((fLcp / 1000) * 100) / 100; dataSource = 'field'; }
+  // CrUX returns CLS as an integer scaled ×100 (e.g. 10 → 0.10).
+  if (fCls != null) cls = Math.round((fCls / 100) * 1000) / 1000;
+  if (fInp != null) fid = Math.round(fInp);
+
+  if (lcp == null && lab['largest-contentful-paint']?.numericValue != null) {
+    lcp = Math.round((lab['largest-contentful-paint'].numericValue! / 1000) * 100) / 100;
+  }
+  if (cls == null && lab['cumulative-layout-shift']?.numericValue != null) {
+    cls = Math.round(lab['cumulative-layout-shift'].numericValue! * 1000) / 1000;
+  }
+  if (fid == null) {
+    const inp =
+      lab['interaction-to-next-paint']?.numericValue ??
+      lab['max-potential-fid']?.numericValue ??
+      lab['total-blocking-time']?.numericValue;
+    if (inp != null) fid = Math.round(inp);
+  }
+
+  if (lcp == null && cls == null && fid == null) return;
 
   await supabase.from('technical_logs').insert({
     tenant_id:   tenantId,
     type:        'system',
-    description: `Core Web Vitals snapshot (simulated PageSpeed pipeline) · LCP ${lcp}s, FID ${fid}ms, CLS ${cls}`,
+    description: `Core Web Vitals (PageSpeed Insights · ${dataSource}) · LCP ${lcp ?? '—'}s, INP/FID ${fid ?? '—'}ms, CLS ${cls ?? '—'}`,
     metadata:    {
-      source:       'pagespeed_simulation',
-      simulated:    true,
-      lcp:          lcp,
+      source:       'pagespeed',
+      simulated:    false,
+      url,
+      dataSource,
+      lcp,
       lcpSeconds:   lcp,
-      fid:          fid,
+      fid,
       fidMs:        fid,
-      cls:          cls,
+      cls,
       generated_at: new Date().toISOString(),
     },
   });
@@ -1031,9 +1111,9 @@ export async function syncSEO(tenantId: string): Promise<{ success: boolean; err
   const supabase = await createSupabaseServerClient();
   const gsc = await syncGSCDataWithSupabase(tenantId, supabase);
   try {
-    await simulatePagespeedTechnicalLog(tenantId, supabase);
+    await fetchPagespeedCwv(tenantId, supabase);
   } catch (e) {
-    console.error('[syncSEO] pagespeed sim', e);
+    console.error('[syncSEO] pagespeed', e);
   }
   if (gsc.error) {
     console.error('[syncSEO] gsc raw:', gsc.error);
@@ -1050,9 +1130,9 @@ export async function runSyncSEOForTenant(tenantId: string, supabase: SupabaseCl
   }
   const gsc = await syncGSCDataWithSupabase(tenantId, supabase);
   try {
-    await simulatePagespeedTechnicalLog(tenantId, supabase);
+    await fetchPagespeedCwv(tenantId, supabase);
   } catch (e) {
-    console.error('[runSyncSEOForTenant] pagespeed sim', e);
+    console.error('[runSyncSEOForTenant] pagespeed', e);
   }
   return gsc;
 }

@@ -1,20 +1,57 @@
 export type AssetStatus = 'pending' | 'approved' | 'revision';
 export type AssetType = 'image' | 'video';
 
-export interface CreativeAsset {
+/** Scheduled social creative shape — drives Ops Calendar social-mode dots & legend. */
+export type CreativeContentFormat = 'feed_post' | 'carousel' | 'reel' | 'story';
+
+export type CreativePlatform = 'meta' | 'google' | 'tiktok' | 'instagram' | 'linkedin' | 'x' | null;
+
+/** One media file inside a carousel post. */
+export interface CreativeSlide {
   id: string;
+  slideIndex: number;
+  /** Per-slide label (often file-derived). */
   title: string;
   url: string;
   thumbnailUrl: string | null;
   type: AssetType;
-  status: AssetStatus;
-  uploadedBy: string;
-  platform: 'meta' | 'google' | 'tiktok' | 'instagram' | 'linkedin' | 'x' | null;
+  createdAt: string;
+}
+
+/** Parent entity: one scheduled social / creative review unit (single or carousel). */
+export interface CreativePost {
+  id: string;
+  title: string;
   caption: string | null;
+  platform: CreativePlatform;
+  contentFormat: CreativeContentFormat;
+  status: AssetStatus;
   scheduledDate: string | null;
   scheduledTime: string | null;
   socialPostEventId: string | null;
+  /** Poster frame for grid + calendar (typically first slide). */
+  posterThumbnailUrl: string | null;
+  uploadedBy: string;
   createdAt: string;
+  slides: CreativeSlide[];
+}
+
+/** Live Instagram Business profile metrics from Meta Graph API. */
+export interface InstagramLiveProfile {
+  connected: boolean;
+  username: string | null;
+  name: string | null;
+  profilePictureUrl: string | null;
+  followersCount: number | null;
+  followsCount: number | null;
+  mediaCount: number | null;
+}
+
+/** Creative post in the hybrid simulator feed (live API + scheduled DB). */
+export interface HybridFeedPost extends CreativePost {
+  feedSource: 'live' | 'scheduled';
+  /** ISO timestamp used for chronological merge + simulation visibility. */
+  sortAt: string;
 }
 
 // ── Shared ──────────────────────────────────────────────────────────────────
@@ -22,6 +59,17 @@ export interface CreativeAsset {
 export interface RevisionReference {
   url:         string;
   description: string;
+}
+
+/** A point annotation placed on a specific image slide (percent-based, responsive). */
+export interface RevisionPin {
+  /** Horizontal position as 0–100 percent of the rendered image width. */
+  xPct:       number;
+  /** Vertical position as 0–100 percent of the rendered image height. */
+  yPct:       number;
+  note:       string;
+  /** `creative_assets.slide_index` the pin belongs to. */
+  slideIndex: number;
 }
 
 // ── Video ────────────────────────────────────────────────────────────────────
@@ -52,6 +100,8 @@ export interface ImageRevisionMeta {
   /** Only non-empty fields are stored; each key is a separate instruction. */
   aspectNotes?: Partial<Record<ImageRevisionType, string>>;
   references?: RevisionReference[];
+  /** Visual point annotations placed directly on the image. */
+  pins?: RevisionPin[];
 }
 
 // ── Revision record ──────────────────────────────────────────────────────────
@@ -59,9 +109,19 @@ export interface ImageRevisionMeta {
 export interface Revision {
   id:            string;
   assetId:       string;
+  /** Aligns with `creative_assets.slide_index`; null = whole post. */
+  slideIndex:    number | null;
   comment:       string;
+  /** Human-readable author name (falls back to email/UUID). */
   createdBy:     string;
+  /** Author `auth.users` id — used for edit/delete permission checks. */
+  createdById:   string;
   createdAt:     string;
+  updatedAt:     string | null;
+  /** Set when a reviewer marks the revision resolved. */
+  resolvedAt:    string | null;
+  /** Human-readable name of whoever resolved it. */
+  resolvedBy:    string | null;
   videoMetadata: VideoRevisionMeta | null;
   imageMetadata: ImageRevisionMeta | null;
 }

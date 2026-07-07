@@ -67,11 +67,11 @@ export const assetSearchTool: MonoAITool<typeof inputSchema> = {
     const sections: string[] = [];
     let totalFound = 0;
 
-    // Search creative assets
+    // Search creative posts (carousel or single)
     if (asset_type === 'all' || asset_type === 'creative') {
       let creativeQuery = supabase
-        .from('creative_assets')
-        .select('id, title, url, status, platform, caption, created_at')
+        .from('creative_posts')
+        .select('id, title, caption, platform, status, thumbnail_url, created_at')
         .eq('tenant_id', context.tenantId)
         .or(`title.ilike.%${query}%,caption.ilike.%${query}%`)
         .order('created_at', { ascending: false })
@@ -92,10 +92,11 @@ export const assetSearchTool: MonoAITool<typeof inputSchema> = {
           if (a.platform) parts.push(`Platform: ${a.platform}`);
           parts.push(`Status: ${a.status}`);
           if (a.caption) parts.push(`Caption: ${a.caption.slice(0, 80)}${a.caption.length > 80 ? '…' : ''}`);
-          parts.push(`URL: ${a.url}`);
+          const preview = (a.thumbnail_url as string | null) ?? '—';
+          parts.push(`Preview: ${preview}`);
           return `- ${parts.join(' · ')}`;
         });
-        sections.push(`**Creative Assets (${creatives.length} found):**\n${rows.join('\n')}`);
+        sections.push(`**Creative posts (${creatives.length} found):**\n${rows.join('\n')}`);
       }
     }
 

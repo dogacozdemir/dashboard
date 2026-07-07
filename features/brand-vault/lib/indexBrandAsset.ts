@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getS3ObjectBuffer } from '@/lib/storage/s3';
-import { embedTexts, embeddingToPgLiteral } from '@/features/ai-chat/lib/embeddings';
+import { embedTexts, embeddingToPgLiteral, isEmbeddingsConfigured } from '@/features/ai-chat/lib/embeddings';
 import { chunkText } from './chunkText';
 import type { BrandAssetType } from '../types';
 
@@ -147,12 +147,12 @@ export async function indexBrandAsset(
 
     await supabase.from('brand_knowledge_chunks').delete().eq('brand_asset_id', assetId);
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!isEmbeddingsConfigured()) {
       await supabase
         .from('brand_assets')
         .update({
           indexing_status: 'failed',
-          indexing_error:  'OPENAI_API_KEY not configured',
+          indexing_error:  'Embeddings provider not configured',
           indexed_at:      new Date().toISOString(),
         })
         .eq('id', assetId);

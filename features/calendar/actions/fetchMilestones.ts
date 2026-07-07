@@ -5,7 +5,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { auth } from '@/lib/auth/config';
 import { trackActivity } from '@/features/gamification/actions/trackActivity';
-import type { CalendarMilestone, CalendarEvent, SocialPlatform } from '../types';
+import type {
+  CalendarMilestone,
+  CalendarEvent,
+  SocialPlatform,
+  CreativeContentFormat,
+} from '../types';
 import type { SessionUser } from '@/types/user';
 
 export async function fetchCalendarMilestones(companyId: string): Promise<CalendarMilestone[]> {
@@ -39,12 +44,17 @@ export async function fetchCalendarEvents(companyId: string): Promise<CalendarEv
   const validatedId = await requireTenantAction(companyId);
   const supabase    = await createSupabaseServerClient();
 
+  // PostgREST: two FKs link these tables (creative_post_id on events ↔ social_post_event_id on posts).
+  // Must disambiguate the embed with the FK from calendar_events → creative_posts.
   const { data, error } = await supabase
     .from('calendar_events')
     .select(`
       id, event_type, title, description, event_date, event_time,
-      duration_min, meeting_url, platform, caption, creative_id,
-      creative_assets!calendar_events_creative_id_fkey (title, url),
+      duration_min, meeting_url, platform, caption, creative_post_id,
+      creative_posts!calendar_events_creative_post_id_fkey (
+        id, title, thumbnail_url, content_format,
+        creative_assets ( url, thumbnail_url, slide_index )
+      ),
       status, created_at
     `)
     .eq('tenant_id', validatedId)
@@ -57,8 +67,21 @@ export async function fetchCalendarEvents(companyId: string): Promise<CalendarEv
   }
 
   return (data ?? []).map((r) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const creative = r.creative_assets as any;
+    const rawPost = r.creative_posts as unknown;
+    const post = (Array.isArray(rawPost) ? rawPost[0] : rawPost) as {
+      id: string;
+      title: string;
+      thumbnail_url: string | null;
+      content_format: CreativeContentFormat | null;
+      creative_assets: Array<{ url: string; thumbnail_url: string | null; slide_index: number }> | null;
+    } | null | undefined;
+
+    let creativeUrl: string | null = post?.thumbnail_url ?? null;
+    const slides = [...(post?.creative_assets ?? [])].sort((a, b) => a.slide_index - b.slide_index);
+    if (!creativeUrl && slides[0]) {
+      creativeUrl = slides[0].thumbnail_url ?? slides[0].url ?? null;
+    }
+
     return {
       id:            r.id,
       eventType:     r.event_type as CalendarEvent['eventType'],
@@ -70,9 +93,13 @@ export async function fetchCalendarEvents(companyId: string): Promise<CalendarEv
       meetingUrl:    r.meeting_url,
       platform:      r.platform as SocialPlatform | null,
       caption:       r.caption,
-      creativeId:    r.creative_id,
-      creativeTitle: creative?.title ?? null,
-      creativeUrl:   creative?.url ?? null,
+      creativePostId: (r.creative_post_id as string | null) ?? null,
+      creativeTitle: post?.title ?? null,
+      creativeUrl,
+      contentFormat:
+        r.event_type === 'social_post'
+          ? (post?.content_format as CreativeContentFormat | null | undefined) ?? 'feed_post'
+          : null,
       status:        r.status as CalendarEvent['status'],
       createdAt:     r.created_at,
     };
@@ -91,7 +118,7 @@ export async function createCalendarEvent(
     meetingUrl?: string;
     platform?: SocialPlatform;
     caption?: string;
-    creativeId?: string;
+    creativePostId?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
@@ -115,7 +142,7 @@ export async function createCalendarEvent(
     meeting_url: input.meetingUrl ?? null,
     platform:    input.platform ?? null,
     caption:     input.caption ?? null,
-    creative_id: input.creativeId ?? null,
+    creative_post_id: input.creativePostId ?? null,
     created_by:  user.id,
   });
 
@@ -133,14 +160,21 @@ export async function createCalendarEvent(
   return { success: true };
 }
 
-export async function fetchCreativesForCalendar(companyId: string) {
+export async function fetchCreativesForCalendar(
+  companyId: string,
+): Promise<Array<{ id: string; title: string; contentFormat: CreativeContentFormat | null }>> {
   const validatedId = await requireTenantAction(companyId);
   const supabase    = await createSupabaseServerClient();
   const { data }    = await supabase
-    .from('creative_assets')
-    .select('id, title')
+    .from('creative_posts')
+    .select('id, title, content_format')
     .eq('tenant_id', validatedId)
     .order('created_at', { ascending: false })
     .limit(50);
-  return data ?? [];
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title ?? '',
+    contentFormat:
+      (((r as { content_format?: string }).content_format as CreativeContentFormat | null | undefined) ?? null),
+  }));
 }

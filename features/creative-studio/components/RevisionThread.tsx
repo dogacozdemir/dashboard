@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useTransition, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useTransition, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,15 +9,22 @@ import {
   ExternalLink, PlayCircle, Plus, Trash2, Link2,
   Clock, Volume2, Type, Palette, Film,
   Image as ImageIcon, Layers, AlignLeft, User, Sunset,
-  Sparkles, SlidersHorizontal,
+  Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight,
+  Pencil, Check, RotateCcw, MapPin, Crosshair,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { ApprovalBadge } from './ApprovalBadge';
-import { fetchRevisions, addRevision, updateAssetStatus } from '../actions/fetchAssets';
-import { deleteCreativeAsset } from '../actions/deleteCreativeAsset';
+import {
+  fetchRevisionsForPost, addRevision, updateAssetStatus,
+  setRevisionResolved, editRevision, deleteRevision,
+} from '../actions/fetchAssets';
+import { deleteCreativePost } from '../actions/deleteCreativePost';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { ensureRealtimeAuth } from '@/lib/supabase/realtime';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import {
   triggerAchievementToast,
   triggerConfetti,
@@ -27,10 +34,10 @@ import { ACHIEVEMENT_MAP } from '@/features/gamification/lib/definitions';
 import { formatRelativeFromMessages } from '@/lib/i18n/format-relative-from-messages';
 import { cn } from '@/lib/utils/cn';
 import type {
-  CreativeAsset, Revision,
+  CreativePost, Revision,
   VideoRevisionType, VideoRevisionMeta,
   ImageRevisionType, ImageRevisionMeta,
-  RevisionReference,
+  RevisionReference, RevisionPin,
 } from '../types';
 
 // ─── Revision type definitions ────────────────────────────────────────────────
@@ -144,6 +151,14 @@ const COLOR_PILL: Record<string, { bg: string; border: string; text: string }> =
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const drawerSpring = { type: 'spring' as const, stiffness: 260, damping: 26, mass: 1 };
+
+/** Seconds → "M:SS" timecode (for video playhead capture). */
+function secondsToTimecode(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 function detectPlatform(url: string): { label: string; color: string } {
   if (!url) return { label: 'Link', color: 'text-white/40' };
@@ -290,13 +305,37 @@ function SectionDivider({ label }: { label: string }) {
 
 const COMMENT_COLLAPSE_AT = 200;
 
-function RevisionCard({ revision }: { revision: Revision }) {
+function RevisionCard({
+  revision,
+  slides,
+  canApprove,
+  currentUserId,
+  canDeleteAny,
+  onResolveToggle,
+  onEdit,
+  onDelete,
+  busy,
+}: {
+  revision: Revision;
+  slides: CreativePost['slides'];
+  canApprove: boolean;
+  currentUserId: string | null;
+  canDeleteAny: boolean;
+  onResolveToggle: (revision: Revision) => void;
+  onEdit: (revisionId: string, comment: string) => void;
+  onDelete: (revisionId: string) => void;
+  busy: boolean;
+}) {
   const t = useTranslations('Features.Creative.revisionThread');
   const tRel = useTranslations('Shared.relativeTime');
 
   const vm = revision.videoMetadata;
   const im = revision.imageMetadata;
+  const pins = im?.pins ?? [];
+  const pinSlide = pins.length ? (slides.find((s) => s.slideIndex === pins[0].slideIndex) ?? null) : null;
   const [threadExpanded, setThreadExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(revision.comment);
   const aspectEntries = orderedAspectNoteEntries(im?.aspectNotes);
   const hasNewAspects = aspectEntries.length > 0;
   const legacyIm = im && !hasNewAspects && im.revisionType;
@@ -305,12 +344,16 @@ function RevisionCard({ revision }: { revision: Revision }) {
     hasComment &&
     (revision.comment.length > COMMENT_COLLAPSE_AT || revision.comment.split('\n').length > 4);
 
+  const isResolved = Boolean(revision.resolvedAt);
+  const isAuthor = currentUserId != null && currentUserId === revision.createdById;
+  const canRemove = isAuthor || canDeleteAny;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={drawerSpring}
-      className="flex gap-2.5"
+      className={cn('flex gap-2.5', isResolved && 'opacity-60')}
     >
       {/* Avatar */}
       <div
@@ -325,15 +368,128 @@ function RevisionCard({ revision }: { revision: Revision }) {
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[10px] font-semibold text-[#b48dc8]">{revision.createdBy}</span>
           <span className="text-[9px] text-white/22">{formatRelativeFromMessages(revision.createdAt, tRel)}</span>
+          {revision.updatedAt && (
+            <span className="text-[9px] text-white/22 italic">{t('editedTag')}</span>
+          )}
+
+          {/* Row actions */}
+          <div className="ml-auto flex items-center gap-1.5">
+            {isAuthor && !isResolved && (
+              <button
+                type="button"
+                onClick={() => { setDraft(revision.comment); setEditing((e) => !e); }}
+                disabled={busy}
+                aria-label={t('editRevisionAria')}
+                className="text-white/25 hover:text-[#b48dc8] transition-colors press-scale disabled:opacity-40"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
+            {canRemove && (
+              <button
+                type="button"
+                onClick={() => onDelete(revision.id)}
+                disabled={busy}
+                aria-label={t('deleteRevisionAria')}
+                className="text-white/25 hover:text-rose-400 transition-colors press-scale disabled:opacity-40"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+            {canApprove && (
+              <button
+                type="button"
+                onClick={() => onResolveToggle(revision)}
+                disabled={busy}
+                aria-label={isResolved ? t('reopenRevisionAria') : t('resolveRevisionAria')}
+                className={cn(
+                  'transition-colors press-scale disabled:opacity-40',
+                  isResolved ? 'text-white/30 hover:text-white/55' : 'text-emerald-400/70 hover:text-emerald-300',
+                )}
+              >
+                {isResolved ? <RotateCcw className="w-3 h-3" /> : <Check className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
         </div>
 
         <div
           className="rounded-2xl rounded-tl-[6px] p-3.5 space-y-2.5"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(12px)' }}
         >
+          {/* Resolved chip */}
+          {isResolved && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7' }}
+            >
+              <CheckCircle2 className="w-3 h-3 shrink-0" />
+              {revision.resolvedBy ? t('resolvedByBadge', { name: revision.resolvedBy }) : t('resolvedBadge')}
+            </span>
+          )}
+
+          {/* Visual pins on the annotated slide */}
+          {pins.length > 0 && pinSlide && (
+            <div className="space-y-2">
+              <div
+                className="relative h-52 w-full overflow-hidden rounded-xl bg-black/40"
+                style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={pinSlide.thumbnailUrl ?? pinSlide.url}
+                  alt={pinSlide.title}
+                  className="h-full w-full object-contain"
+                />
+                {pins.map((pin, i) => (
+                  <span
+                    key={i}
+                    className="absolute z-10 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg"
+                    style={{
+                      left: `${pin.xPct}%`,
+                      top: `${pin.yPct}%`,
+                      background: 'rgba(156,112,178,0.95)',
+                      border: '1.5px solid rgba(255,255,255,0.85)',
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                {pins.map((pin, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span
+                      className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                      style={{ background: 'rgba(156,112,178,0.9)' }}
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="text-sm text-white/78 leading-relaxed whitespace-pre-wrap">
+                      {pin.note.trim() || t('pinNoNote')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Video + legacy image badges */}
-          {(vm || legacyIm) && (
+          {(vm || legacyIm || (revision.slideIndex !== null && revision.slideIndex !== undefined)) && (
             <div className="flex flex-wrap gap-1.5">
+              {revision.slideIndex !== null && revision.slideIndex !== undefined && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'rgba(190,160,66,0.12)',
+                    border: '1px solid rgba(190,160,66,0.35)',
+                    color: '#bea042',
+                  }}
+                >
+                  <Layers className="w-3 h-3 shrink-0" />
+                  {t('slideBadge', { n: revision.slideIndex + 1 })}
+                </span>
+              )}
               {vm && (() => {
                 const pill = COLOR_PILL[colorForVideoType(vm.revisionType)] ?? COLOR_PILL.amethyst;
                 return (
@@ -387,7 +543,37 @@ function RevisionCard({ revision }: { revision: Revision }) {
             </div>
           )}
 
-          {hasComment && (
+          {editing ? (
+            <div className="space-y-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full rounded-xl px-3 py-2 text-sm text-white/88 placeholder-white/22 outline-none resize-none leading-relaxed"
+                style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { onEdit(revision.id, draft.trim()); setEditing(false); }}
+                  disabled={busy || draft.trim() === revision.comment.trim()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white/80 disabled:opacity-40"
+                  style={{ background: 'rgba(156,112,178,0.14)', border: '1px solid rgba(156,112,178,0.28)' }}
+                >
+                  <Check className="w-3 h-3" />
+                  {t('saveEdit')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditing(false); setDraft(revision.comment); }}
+                  className="px-3 py-1.5 rounded-xl text-xs text-white/45 hover:text-white/70 transition-colors"
+                >
+                  {t('cancelEdit')}
+                </button>
+              </div>
+            </div>
+          ) : hasComment ? (
             <div className="space-y-1">
               {hasNewAspects && (
                 <p className="text-[10px] font-semibold text-white/25 uppercase tracking-[0.1em]">{t('generalNoteLabel')}</p>
@@ -410,7 +596,7 @@ function RevisionCard({ revision }: { revision: Revision }) {
                 </button>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* References */}
           {(vm?.references?.length || im?.references?.length) ? (
@@ -441,29 +627,63 @@ function RevisionCard({ revision }: { revision: Revision }) {
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RevisionThreadProps {
-  asset:           CreativeAsset;
+  post:            CreativePost;
   companyId:       string;
   /** Only tenant_admin / super_admin (creative.approve). */
   canApprove?:     boolean;
   /** Platform super_admin — permanent delete (DB + S3). */
   canDeleteCreative?: boolean;
+  /** Current session user id — gates edit/delete of own revisions. */
+  currentUserId?:  string | null;
   onClose:         () => void;
-  onStatusChange?: (assetId: string, newStatus: CreativeAsset['status']) => void;
-  onAssetDeleted?: (assetId: string) => void;
+  onStatusChange?: (postId: string, newStatus: CreativePost['status']) => void;
+  onPostDeleted?: (postId: string) => void;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function RevisionThread({
-  asset,
+  post,
   companyId,
   canApprove = false,
   canDeleteCreative = false,
+  currentUserId = null,
   onClose,
   onStatusChange,
-  onAssetDeleted,
+  onPostDeleted,
 }: RevisionThreadProps) {
-  const isVideo = asset.type === 'video';
+  const slides = post.slides ?? [];
+  const [activeSlideIdx, setActiveSlideIdx] = useState(0);
+  const [revisionCommentTarget, setRevisionCommentTarget] = useState<'whole' | number>('whole');
+
+  const clampedIdx = Math.min(Math.max(0, activeSlideIdx), Math.max(0, slides.length - 1));
+  const activeSlide = slides[clampedIdx] ?? slides[0];
+  const heroIsVideo = activeSlide?.type === 'video';
+
+  /** Draft visual pins for the current image slide (percent-based). */
+  const [pins, setPins] = useState<RevisionPin[]>([]);
+  const [pinMode, setPinMode] = useState(false);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+
+  const carouselViewportRef = useRef<HTMLDivElement>(null);
+  const [carouselW, setCarouselW] = useState(280);
+  useLayoutEffect(() => {
+    const el = carouselViewportRef.current;
+    if (!el) return;
+    const measure = () => setCarouselW(Math.max(el.clientWidth, 1));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [post.id, slides.length]);
+
+  const revisionAnchorSlide = useMemo(() => {
+    if (!slides.length) return undefined;
+    if (revisionCommentTarget === 'whole') return slides[0];
+    return slides[revisionCommentTarget as number] ?? slides[0];
+  }, [slides, revisionCommentTarget]);
+
+  const composerIsVideo = revisionAnchorSlide?.type === 'video';
 
   /** `motion.main` (page transition) uses transform; `fixed` inside it anchors to content, not the viewport. Portal restores real viewport-fixed behavior. */
   const [portalReady, setPortalReady] = useState(false);
@@ -513,70 +733,198 @@ export function RevisionThread({
     [IMAGE_REVISION_TYPES_LABELED],
   );
 
+  const refetchRevisions = useCallback(() => {
+    return fetchRevisionsForPost(post.id, companyId).then(setRevisions);
+  }, [post.id, companyId]);
+
   useEffect(() => {
     setLoadingRevisions(true);
-    fetchRevisions(asset.id, companyId)
-      .then(setRevisions)
-      .finally(() => setLoadingRevisions(false));
-  }, [asset.id, companyId]);
+    refetchRevisions().finally(() => setLoadingRevisions(false));
+  }, [refetchRevisions]);
+
+  /** Live sync — refetch when any revision on this tenant changes (INSERT/UPDATE/DELETE). */
+  useEffect(() => {
+    const slideIds = new Set(slides.map((s) => s.id));
+    if (slideIds.size === 0) return;
+
+    const supabase = createSupabaseBrowserClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let mounted = true;
+
+    const connect = async () => {
+      try { await ensureRealtimeAuth(); } catch { /* fall back to manual refetch */ }
+      if (!mounted) return;
+      channel = supabase
+        .channel(`revisions:${post.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'revisions', filter: `tenant_id=eq.${companyId}` },
+          (payload: RealtimePostgresChangesPayload<{ asset_id: string }>) => {
+            const rec = payload as unknown as {
+              new?: Record<string, unknown>;
+              old?: Record<string, unknown>;
+            };
+            const assetId = (rec.new?.asset_id ?? rec.old?.asset_id) as string | undefined;
+            if (assetId && slideIds.has(assetId)) {
+              void refetchRevisions();
+            }
+          },
+        )
+        .subscribe();
+    };
+    void connect();
+
+    return () => { mounted = false; if (channel) supabase.removeChannel(channel); };
+  }, [post.id, companyId, slides, refetchRevisions]);
+
+  function handleResolveToggle(revision: Revision) {
+    startTransition(async () => {
+      const res = await setRevisionResolved(revision.id, companyId, !revision.resolvedAt);
+      if (res.success) await refetchRevisions();
+    });
+  }
+
+  function handleEditRevision(revisionId: string, nextComment: string) {
+    const target = revisions.find((r) => r.id === revisionId);
+    if (!target) return;
+    startTransition(async () => {
+      const res = await editRevision({
+        revisionId,
+        tenantId: companyId,
+        comment: nextComment,
+        videoMetadata: target.videoMetadata,
+        imageMetadata: target.imageMetadata,
+      });
+      if (res.success) await refetchRevisions();
+    });
+  }
+
+  function handleDeleteRevision(revisionId: string) {
+    startTransition(async () => {
+      const res = await deleteRevision(revisionId, companyId);
+      if (res.success) await refetchRevisions();
+    });
+  }
 
   useEffect(() => {
     setActiveImageAspect(IMAGE_ASPECT_NOTE_TYPES[0]);
-  }, [asset.id]);
+  }, [post.id]);
+
+  useEffect(() => {
+    setRevisionCommentTarget('whole');
+    setActiveSlideIdx(0);
+    setPins([]);
+    setPinMode(false);
+  }, [post.id]);
+
+  /** Clear pins/pin-mode when the annotated slide changes or the hero moves to a video. */
+  useEffect(() => {
+    setPins([]);
+    setPinMode(false);
+  }, [clampedIdx]);
+
+  const validPins = useMemo(
+    () => pins.filter((p) => p.note.trim().length > 0),
+    [pins],
+  );
+
+  function handleHeroPinClick(e: React.MouseEvent<HTMLElement>) {
+    if (!pinMode || heroIsVideo || !activeSlide) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+    if (xPct < 0 || xPct > 100 || yPct < 0 || yPct > 100) return;
+    setPins((prev) => [
+      ...prev,
+      { xPct: Math.round(xPct * 10) / 10, yPct: Math.round(yPct * 10) / 10, note: '', slideIndex: activeSlide.slideIndex },
+    ]);
+  }
 
   function handleAddRevision() {
-    if (isVideo) {
+    if (!revisionAnchorSlide || slides.length === 0) return;
+
+    const pinnedSlide =
+      !composerIsVideo && validPins.length > 0 && activeSlide
+        ? activeSlide
+        : null;
+
+    if (composerIsVideo) {
       if (!comment.trim()) return;
       if (videoType === 'time_range' && (!startTime.trim() || !endTime.trim())) return;
     } else {
       const aspects = pickNonEmptyAspectNotes(aspectNotes);
       const ir = imageRefs.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), description: r.description.trim() }));
-      if (!comment.trim() && Object.keys(aspects).length === 0 && ir.length === 0) return;
+      if (!comment.trim() && Object.keys(aspects).length === 0 && ir.length === 0 && validPins.length === 0) return;
     }
 
-    const videoMeta: VideoRevisionMeta | null = isVideo ? {
+    const videoMeta: VideoRevisionMeta | null = composerIsVideo ? {
       revisionType: videoType,
       startTime:  videoType === 'time_range' ? startTime.trim() : undefined,
       endTime:    videoType === 'time_range' ? endTime.trim()   : undefined,
       references: videoRefs.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), description: r.description.trim() })),
     } : null;
 
-    const imageMeta: ImageRevisionMeta | null = !isVideo ? (() => {
+    const imageMeta: ImageRevisionMeta | null = !composerIsVideo ? (() => {
       const aspects = pickNonEmptyAspectNotes(aspectNotes);
       const references = imageRefs.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), description: r.description.trim() }));
       const payload: ImageRevisionMeta = {};
       if (Object.keys(aspects).length > 0) payload.aspectNotes = aspects;
       if (references.length > 0) payload.references = references;
+      if (validPins.length > 0) payload.pins = validPins;
       return Object.keys(payload).length > 0 ? payload : null;
     })() : null;
 
+    // Pinned image revisions anchor to the annotated slide; otherwise honor the target selector.
+    const whole = revisionCommentTarget === 'whole' && !pinnedSlide;
+    const targetSlide = pinnedSlide ?? (whole ? slides[0] : slides[revisionCommentTarget as number]);
+    if (!targetSlide) return;
+
     startTransition(async () => {
-      const result = await addRevision(asset.id, companyId, comment.trim(), videoMeta, imageMeta);
+      const result = await addRevision({
+        postId: post.id,
+        tenantId: companyId,
+        anchorAssetId: targetSlide.id,
+        slideIndex: whole ? null : targetSlide.slideIndex,
+        comment: comment.trim(),
+        videoMetadata: videoMeta,
+        imageMetadata: imageMeta,
+      });
       if (result.success) {
         setComment('');
         setVideoType('full'); setStartTime(''); setEndTime('');
         setVideoRefs([{ url: '', description: '' }]);
         setAspectNotes(createEmptyAspectNotes());
         setImageRefs([{ url: '', description: '' }]);
-        const updated = await fetchRevisions(asset.id, companyId);
+        setPins([]);
+        setPinMode(false);
+        const updated = await fetchRevisionsForPost(post.id, companyId);
         setRevisions(updated);
-        onStatusChange?.(asset.id, 'revision');
+        onStatusChange?.(post.id, 'revision');
       }
     });
+  }
+
+  function captureVideoTime(target: 'start' | 'end') {
+    const v = heroVideoRef.current;
+    if (!v) return;
+    const tc = secondsToTimecode(v.currentTime);
+    if (target === 'start') setStartTime(tc);
+    else setEndTime(tc);
   }
 
   const videoTimeOk = videoType !== 'time_range' || (startTime.trim().length > 0 && endTime.trim().length > 0);
   const imageHasRefs = imageRefs.some((r) => r.url.trim());
   const imageHasAspects = Object.keys(pickNonEmptyAspectNotes(aspectNotes)).length > 0;
-  const hasRevisionSubstance = isVideo
+  const imageHasPins = validPins.length > 0;
+  const hasRevisionSubstance = composerIsVideo
     ? comment.trim().length > 0 && videoTimeOk
-    : comment.trim().length > 0 || imageHasAspects || imageHasRefs;
+    : comment.trim().length > 0 || imageHasAspects || imageHasRefs || imageHasPins;
 
   const canSubmit = hasRevisionSubstance;
 
   function handleSubmitRevision() {
     if (isPending || !hasRevisionSubstance) return;
-    if (isVideo && videoType === 'time_range' && (!startTime.trim() || !endTime.trim())) {
+    if (composerIsVideo && videoType === 'time_range' && (!startTime.trim() || !endTime.trim())) {
       setRevisionDetailsOpen(true);
       return;
     }
@@ -600,9 +948,9 @@ export function RevisionThread({
           <div className="shrink-0 flex items-start justify-between px-5 py-4 border-b border-white/[0.07]">
             <div className="space-y-2 min-w-0">
               <h3 className="text-sm font-semibold text-white/88 leading-tight tracking-tight truncate pr-4">
-                {asset.title}
+                {post.title}
               </h3>
-              <ApprovalBadge status={asset.status} size="md" />
+              <ApprovalBadge status={post.status} size="md" />
             </div>
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -619,7 +967,7 @@ export function RevisionThread({
           {/* ── Scrollable body ── */}
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-5" style={{ scrollbarWidth: 'none' }}>
 
-            {/* ── Hero asset preview ── */}
+            {/* ── Hero carousel preview ── */}
             <div className="space-y-2.5">
               <p className="text-[10px] font-semibold text-white/25 uppercase tracking-[0.12em]">{t('assetPreview')}</p>
               <div
@@ -629,22 +977,234 @@ export function RevisionThread({
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.07)',
                 }}
               >
-                {/* Rim light overlay */}
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent z-10 pointer-events-none" />
-                <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-white/12 via-transparent to-transparent z-10 pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent z-20 pointer-events-none" />
+                <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-white/12 via-transparent to-transparent z-20 pointer-events-none" />
 
-                {isVideo ? (
-                  <video src={asset.url} controls className="w-full h-52 object-contain bg-black/40" preload="metadata" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={asset.thumbnailUrl ?? asset.url} alt={asset.title} className="w-full h-52 object-contain bg-black/30" />
+                <div
+                  ref={carouselViewportRef}
+                  className="relative h-52 w-full overflow-hidden bg-black/40 touch-pan-y"
+                >
+                  <motion.div
+                    className={cn(
+                      'flex h-full',
+                      slides.length > 1 && 'cursor-grab active:cursor-grabbing',
+                    )}
+                    style={{
+                      width: Math.max(slides.length, 1) * carouselW,
+                      touchAction: slides.length > 1 ? 'pan-y' : undefined,
+                    }}
+                    animate={{ x: -clampedIdx * carouselW }}
+                    transition={drawerSpring}
+                    drag={slides.length > 1 && !pinMode ? 'x' : false}
+                    dragConstraints={{
+                      left: -Math.max(0, slides.length - 1) * carouselW,
+                      right: 0,
+                    }}
+                    dragElastic={0.06}
+                    onDragEnd={(_, info) => {
+                      const n = slides.length;
+                      if (n < 2 || carouselW < 8) return;
+                      const threshold = Math.min(56, carouselW * 0.14);
+                      const impulse = info.offset.x + info.velocity.x * 0.16;
+                      if (impulse < -threshold) {
+                        setActiveSlideIdx((i) => Math.min(i + 1, n - 1));
+                      } else if (impulse > threshold) {
+                        setActiveSlideIdx((i) => Math.max(i - 1, 0));
+                      }
+                    }}
+                  >
+                    {slides.map((s, slideIdx) => {
+                      const isActive = slideIdx === clampedIdx;
+                      const pinnable = isActive && pinMode && s.type !== 'video';
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={pinnable ? handleHeroPinClick : undefined}
+                          className={cn(
+                            'relative h-full shrink-0 flex items-center justify-center',
+                            pinnable && 'cursor-crosshair',
+                          )}
+                          style={{ width: carouselW, minHeight: '100%' }}
+                        >
+                          {s.type === 'video' ? (
+                            isActive ? (
+                              <video
+                                key={s.url}
+                                ref={heroVideoRef}
+                                src={s.url}
+                                controls
+                                className="max-h-full w-full max-w-full object-contain"
+                                preload="metadata"
+                                playsInline
+                              />
+                            ) : (
+                              <div
+                                className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black/45 px-3 text-center"
+                                aria-hidden
+                              >
+                                <PlayCircle className="w-11 h-11 text-white/35" />
+                                <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
+                                  {t('videoSlideCue', { n: slideIdx + 1 })}
+                                </span>
+                              </div>
+                            )
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={s.thumbnailUrl ?? s.url}
+                              alt={s.title}
+                              className="max-h-full w-full max-w-full object-contain bg-black/30 pointer-events-none"
+                            />
+                          )}
+
+                          {/* Draft pin markers for the active image */}
+                          {isActive && s.type !== 'video' &&
+                            pins.map((pin, pinIdx) => (
+                              <button
+                                key={pinIdx}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPins((prev) => prev.filter((_, k) => k !== pinIdx));
+                                }}
+                                aria-label={t('removePinAria', { n: pinIdx + 1 })}
+                                className="absolute z-30 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg transition-transform hover:scale-110"
+                                style={{
+                                  left: `${pin.xPct}%`,
+                                  top: `${pin.yPct}%`,
+                                  background: 'rgba(156,112,178,0.95)',
+                                  border: '1.5px solid rgba(255,255,255,0.9)',
+                                }}
+                              >
+                                {pinIdx + 1}
+                              </button>
+                            ))}
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                </div>
+
+                {slides.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={t('carouselPrev')}
+                      onClick={() => setActiveSlideIdx((i) => Math.max(0, i - 1))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-2xl flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                      style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        backdropFilter: 'blur(16px) saturate(180%)',
+                      }}
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t('carouselNext')}
+                      onClick={() => setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-2xl flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                      style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        backdropFilter: 'blur(16px) saturate(180%)',
+                      }}
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-30">
+                      {slides.map((s, dotIdx) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          aria-current={dotIdx === clampedIdx}
+                          aria-label={t('carouselDot', { n: dotIdx + 1 })}
+                          onClick={() => setActiveSlideIdx(dotIdx)}
+                          className={cn(
+                            'w-2 h-2 rounded-full transition-all',
+                            dotIdx === clampedIdx ? 'bg-white/85 scale-110' : 'bg-white/25 hover:bg-white/40',
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
-              <a href={asset.url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-[#9c70b2] hover:text-[#b48dc8] transition-colors">
-                {isVideo ? <PlayCircle className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
-                {t('openFullAsset')}
-              </a>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {activeSlide && (
+                  <a
+                    href={activeSlide.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#9c70b2] hover:text-[#b48dc8] transition-colors"
+                  >
+                    {heroIsVideo ? <PlayCircle className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                    {t('openFullAsset')}
+                  </a>
+                )}
+                {!heroIsVideo && activeSlide && (
+                  <button
+                    type="button"
+                    onClick={() => setPinMode((p) => !p)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold transition-colors press-scale',
+                      pinMode ? 'text-[#b48dc8]' : 'text-white/40 hover:text-white/65',
+                    )}
+                    style={pinMode ? {
+                      background: 'rgba(156,112,178,0.14)',
+                      border: '1px solid rgba(156,112,178,0.3)',
+                    } : {
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    {pinMode ? t('pinModeOn') : t('pinModeOff')}
+                  </button>
+                )}
+              </div>
+
+              {/* Pin annotation notes */}
+              {!heroIsVideo && pins.length > 0 && (
+                <div className="space-y-2 rounded-2xl p-3" style={{ background: 'rgba(156,112,178,0.06)', border: '1px solid rgba(156,112,178,0.18)' }}>
+                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#b48dc8]">
+                    <Crosshair className="w-3 h-3" />
+                    {t('pinNotesHeading', { count: pins.length })}
+                  </p>
+                  {pins.map((pin, pinIdx) => (
+                    <div key={pinIdx} className="flex items-start gap-2">
+                      <span
+                        className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                        style={{ background: 'rgba(156,112,178,0.9)' }}
+                      >
+                        {pinIdx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={pin.note}
+                        onChange={(e) =>
+                          setPins((prev) => prev.map((p, k) => (k === pinIdx ? { ...p, note: e.target.value } : p)))
+                        }
+                        placeholder={t('pinNotePlaceholder')}
+                        className="flex-1 rounded-lg px-2.5 py-1.5 text-xs text-white/85 placeholder-white/25 outline-none"
+                        style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPins((prev) => prev.filter((_, k) => k !== pinIdx))}
+                        aria-label={t('removePinAria', { n: pinIdx + 1 })}
+                        className="mt-1 text-white/25 hover:text-rose-400 transition-colors press-scale"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!heroIsVideo && pinMode && pins.length === 0 && (
+                <p className="text-[11px] text-white/35 leading-relaxed">{t('pinModeHint')}</p>
+              )}
             </div>
 
             {/* ── Revision thread ── */}
@@ -668,7 +1228,20 @@ export function RevisionThread({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {revisions.map((r) => <RevisionCard key={r.id} revision={r} />)}
+                  {revisions.map((r) => (
+                    <RevisionCard
+                      key={r.id}
+                      revision={r}
+                      slides={slides}
+                      canApprove={canApprove}
+                      currentUserId={currentUserId}
+                      canDeleteAny={canDeleteCreative}
+                      onResolveToggle={handleResolveToggle}
+                      onEdit={handleEditRevision}
+                      onDelete={handleDeleteRevision}
+                      busy={isPending}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -717,11 +1290,43 @@ export function RevisionThread({
                 className="rounded-3xl border border-white/[0.10] p-4 space-y-3"
                 style={{ background: 'rgba(255,255,255,0.025)', backdropFilter: 'blur(24px) saturate(180%)' }}
               >
+              {slides.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 pb-0.5">
+                  <Layers className="w-3.5 h-3.5 text-[#bea042]/85 shrink-0" aria-hidden />
+                  <label htmlFor="revision-comment-target" className="text-[10px] font-semibold text-white/30 uppercase tracking-wider shrink-0">
+                    {t('commentTargetLabel')}
+                  </label>
+                  <select
+                    id="revision-comment-target"
+                    value={revisionCommentTarget === 'whole' ? 'whole' : String(revisionCommentTarget)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'whole') {
+                        setRevisionCommentTarget('whole');
+                      } else {
+                        const idx = parseInt(v, 10);
+                        if (!Number.isNaN(idx)) {
+                          setRevisionCommentTarget(idx);
+                          setActiveSlideIdx(idx);
+                        }
+                      }
+                    }}
+                    className="text-xs rounded-xl px-2.5 py-1.5 min-w-[10rem] bg-white/[0.06] border border-white/[0.1] text-white/82 outline-none focus-visible:ring-1 focus-visible:ring-[#9c70b2]/55"
+                  >
+                    <option value="whole">{t('commentWholePost')}</option>
+                    {slides.map((s, slideArrIdx) => (
+                      <option key={s.id} value={String(slideArrIdx)}>
+                        {t('commentSlideOption', { n: slideArrIdx + 1 })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {/* Textarea */}
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder={isVideo ? t('placeholderVideoComment') : t('placeholderImageComment')}
+                placeholder={composerIsVideo ? t('placeholderVideoComment') : t('placeholderImageComment')}
                 rows={2}
                 className="w-full bg-transparent text-sm text-white/88 placeholder-white/22 outline-none resize-none leading-relaxed"
                 style={{ minHeight: 48, maxHeight: 100 }}
@@ -729,7 +1334,7 @@ export function RevisionThread({
 
               {/* Structured revision fields (collapsed by default) */}
               <AnimatePresence initial={false}>
-                {revisionDetailsOpen && isVideo && (
+                {revisionDetailsOpen && composerIsVideo && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -763,6 +1368,28 @@ export function RevisionThread({
                                 className="flex-1 px-3 py-2 rounded-xl text-sm text-white/80 placeholder-white/20 outline-none transition-all text-center font-mono"
                                 style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.2)' }} />
                             </div>
+                            {heroIsVideo && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => captureVideoTime('start')}
+                                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-cyan-200/90 transition-colors hover:text-cyan-100 press-scale"
+                                  style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)' }}
+                                >
+                                  <Crosshair className="w-3 h-3" />
+                                  {t('captureStart')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => captureVideoTime('end')}
+                                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-cyan-200/90 transition-colors hover:text-cyan-100 press-scale"
+                                  style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)' }}
+                                >
+                                  <Crosshair className="w-3 h-3" />
+                                  {t('captureEnd')}
+                                </button>
+                              </div>
+                            )}
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -773,7 +1400,7 @@ export function RevisionThread({
               </AnimatePresence>
 
               <AnimatePresence initial={false}>
-                {revisionDetailsOpen && !isVideo && (
+                {revisionDetailsOpen && !composerIsVideo && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                     transition={{ type: 'spring', stiffness: 280, damping: 28 }} className="overflow-hidden"
@@ -895,7 +1522,7 @@ export function RevisionThread({
                   whileTap={{ scale: 0.95 }}
                   transition={drawerSpring}
                   onClick={() => setShowApproveConfirm(true)}
-                  disabled={isPending || asset.status === 'approved'}
+                  disabled={isPending || post.status === 'approved'}
                   className="flex shrink-0 items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all disabled:opacity-40"
                   style={{
                     background: 'linear-gradient(135deg, #d4b44c 0%, #bea042 50%, #a07b28 100%)',
@@ -945,7 +1572,7 @@ export function RevisionThread({
               transition={drawerSpring}
               onClick={() => {
                 startTransition(async () => {
-                  const result = await updateAssetStatus(asset.id, 'approved', companyId);
+                  const result = await updateAssetStatus(post.id, 'approved', companyId);
                   if (result.success) {
                     triggerConfetti();
                     const g = result.gamification;
@@ -968,7 +1595,7 @@ export function RevisionThread({
                         (g.newAchievements?.length ?? 0) * 800 + 500,
                       );
                     }
-                    onStatusChange?.(asset.id, 'approved');
+                    onStatusChange?.(post.id, 'approved');
                     setShowApproveConfirm(false);
                     onClose();
                   }
@@ -1022,10 +1649,10 @@ export function RevisionThread({
             transition={drawerSpring}
             onClick={() => {
               startTransition(async () => {
-                const result = await deleteCreativeAsset(asset.id, companyId);
+                const result = await deleteCreativePost(post.id, companyId);
                 if (result.success) {
                   setShowDeleteConfirm(false);
-                  onAssetDeleted?.(asset.id);
+                  onPostDeleted?.(post.id);
                   onClose();
                 }
               });

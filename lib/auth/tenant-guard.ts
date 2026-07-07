@@ -6,24 +6,22 @@ import type { SessionUser } from '@/types/user';
 
 export async function getTenantContext(): Promise<TenantContext | null> {
   const headersList = await headers();
-  let tenantSlug = headersList.get('x-tenant-slug') ?? '';
-
-  // When accessing the root domain (no real subdomain), proxy sets
-  // x-tenant-slug to "localhost". Fall back to the JWT tenantSlug —
-  // mirrors the same logic in app/(tenant)/layout.tsx.
-  if (!tenantSlug || tenantSlug === 'localhost' || tenantSlug === '127.0.0.1') {
-    const session = await auth();
-    tenantSlug = (session?.user as SessionUser | undefined)?.tenantSlug ?? '';
-  }
+  const tenantSlug = (headersList.get('x-tenant-slug') ?? '').trim();
 
   if (!tenantSlug || tenantSlug === 'www' || tenantSlug === 'admin') return null;
 
   const tenantRaw = await getTenantBySlug(tenantSlug);
   if (!tenantRaw) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tenant = tenantRaw as any;
-  return { tenant, companyId: tenant.id };
+  const headerCompanyId = headersList.get('x-company-id')?.trim() ?? '';
+  const tenantId = (tenantRaw as { id: string }).id;
+
+  if (headerCompanyId && headerCompanyId !== tenantId) {
+    return null;
+  }
+
+  const tenant = tenantRaw as unknown as TenantContext['tenant'];
+  return { tenant, companyId: tenantId };
 }
 
 export async function requireTenantContext(): Promise<TenantContext> {
@@ -57,16 +55,8 @@ export async function requireTenantAction(companyId: string): Promise<string> {
     );
   }
 
-  /**
-   * Defense-in-depth vs IDOR: hostname / impersonation cookie must resolve to the same
-   * tenant UUID as the action payload (blocks confused-deputy cases for super_admin too).
-   */
   const ctx = await getTenantContext();
-  if (user.role !== 'super_admin') {
-    if (!ctx || ctx.companyId !== companyId) {
-      throw new Error('Forbidden: tenant scope mismatch');
-    }
-  } else if (ctx && ctx.companyId !== companyId) {
+  if (!ctx || ctx.companyId !== companyId) {
     throw new Error('Forbidden: tenant scope mismatch');
   }
 

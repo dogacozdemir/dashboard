@@ -1,6 +1,6 @@
 /**
  * Parse stored creative_assets.url / thumbnail_url into S3 object keys.
- * Matches logic used when signing downloads in fetchCreativeAssets.
+ * Matches logic used when signing downloads in fetchCreativePosts.
  */
 export function extractS3Key(value: string): string {
   if (!value) return '';

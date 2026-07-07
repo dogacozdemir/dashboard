@@ -87,12 +87,7 @@ export function AdminOpsCenterClient({ activeTasks, recentApprovals, health }: P
 
   return (
     <div className="relative min-h-[calc(100vh-8rem)] pb-16">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="gpu-heavy-blur-layer absolute -left-[18%] top-0 h-[38rem] w-[38rem] rounded-full bg-gradient-to-br from-violet-600/30 to-transparent blur-3xl opacity-90" />
-        <div className="gpu-heavy-blur-layer absolute -right-[12%] bottom-0 h-[32rem] w-[32rem] rounded-full bg-gradient-to-tl from-[#bea042]/15 to-transparent blur-3xl opacity-80" />
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto space-y-12">
+      <div className="relative z-10 mx-auto max-w-6xl space-y-12 cockpit-liquid-scope">
         <header className="space-y-3">
           <p className="text-[11px] uppercase tracking-[0.35em] text-white/35 font-medium">
             {t('eyebrow')}

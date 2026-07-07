@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const params = new URLSearchParams({
     client_id:     appId,
     redirect_uri:  `${appUrl}/api/oauth/meta/callback`,
-    scope:         'ads_read,ads_management,business_management',
+    scope:         'ads_read,ads_management,business_management,instagram_basic,pages_read_engagement',
     response_type: 'code',
     state:         Buffer.from(JSON.stringify(state)).toString('base64url'),
   });

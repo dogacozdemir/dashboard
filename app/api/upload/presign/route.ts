@@ -10,6 +10,7 @@ import {
 import type { SessionUser } from '@/types/user';
 import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 import { premiumSessionRequiredMessage } from '@/lib/i18n/premium-action-errors';
+import { requireTenantAction } from '@/lib/auth/tenant-guard';
 
 export interface PresignRequest {
   filename:      string;
@@ -17,6 +18,8 @@ export interface PresignRequest {
   contentLength: number;
   bucket:        StorageBucket;
   folder?:       string;
+  /** Required when bucket === creative — active tenant UUID from dashboard context (never JWT home tenant alone). */
+  companyId?:    string;
 }
 
 export interface PresignResponse {
@@ -32,10 +35,6 @@ export async function POST(request: NextRequest) {
   }
   const user = session.user as SessionUser;
 
-  if (!user.tenantId) {
-    return NextResponse.json({ error: 'Tenant context required' }, { status: 403 });
-  }
-
   // 2. Parse body
   let body: PresignRequest;
   try {
@@ -44,10 +43,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { filename, contentType, contentLength, bucket, folder = 'uploads' } = body;
+  const { filename, contentType, contentLength, bucket, folder = 'uploads', companyId: bodyCompanyId } = body;
 
-  if (bucket === 'creative' && user.role !== 'super_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  let scopedTenantId: string;
+
+  if (bucket === 'creative') {
+    if (user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const cid = bodyCompanyId?.trim();
+    if (!cid) {
+      return NextResponse.json({ error: 'companyId required for creative uploads' }, { status: 400 });
+    }
+    try {
+      await requireTenantAction(cid);
+    } catch {
+      return NextResponse.json({ error: 'Forbidden: tenant scope mismatch' }, { status: 403 });
+    }
+    scopedTenantId = cid;
+  } else {
+    if (!user.tenantId) {
+      return NextResponse.json({ error: 'Tenant context required' }, { status: 403 });
+    }
+    scopedTenantId = user.tenantId;
   }
   if (bucket === 'brand' && !sessionHasPermission(user, 'brand.upload')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -72,9 +90,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Build scoped S3 key (tenantId prefix isolates files per tenant)
-  const tenantId = user.tenantId;
-  const s3Key = buildS3Key(tenantId, folder, filename);
+  // 5. Build scoped S3 key (tenant prefix = active tenant context, not an implicit "home" tenant for super_admin)
+  const s3Key = buildS3Key(scopedTenantId, folder, filename);
 
   // 6. Generate presigned URL
   try {

@@ -62,7 +62,7 @@ export async function fetchAdminTasks(): Promise<AdminOpsPayload> {
     admin.from('brand_assets').select('tenant_id'),
     admin.from('brand_knowledge_chunks').select('tenant_id'),
     admin
-      .from('creative_assets')
+      .from('creative_posts')
       .select('id, title, tenant_id, updated_at')
       .eq('status', 'approved')
       .order('updated_at', { ascending: false })

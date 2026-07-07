@@ -11,6 +11,7 @@ import { retrieveBrandVaultContext } from '../lib/retrieveBrandRag';
 import { generateAndStorePdf }          from '../tools/generate-pdf';
 import { webSearchTool }               from '../tools/web-search';
 import { assetSearchTool }             from '../tools/asset-search';
+import { crawlUrlTool }                from '../tools/crawl-url';
 import type { AiMessage }               from '../types';
 import type { DeepSeekMessage, DeepSeekToolCall, ToolContext } from '../tools/types'; // DeepSeekToolCall used by executeToolCalls
 import type { SessionUser }             from '@/types/user';
@@ -134,6 +135,7 @@ const RESEARCH_RE = new RegExp(
 
 // Keywords that trigger proactive asset search
 const ASSET_RE    = /creative|asset|kreatif|marka\b|brand|göster|listele|içerik|medya/i;
+const CRAWL_RE    = /https?:\/\/|rakip|siteyi tara/i;
 // Keywords that signal the user wants PDF output
 const PDF_REQUEST_RE = /\bpdf\b|raporla|as pdf|pdf olarak|doküman|brief|özet.*kaydet|oluştur.*pdf/i;
 
@@ -482,6 +484,22 @@ export async function sendAiMessage(
         }
       } catch (e) {
         console.error('[tool:brand_rag]', e);
+      }
+    }
+
+    if (CRAWL_RE.test(userMessage)) {
+      const urlMatch = userMessage.match(/https?:\/\/[^\s<>"']+/i);
+      if (urlMatch) {
+        try {
+          const r = await crawlUrlTool.execute({ url: urlMatch[0], persist: true }, toolCtx);
+          if (!r.isError && r.content.trim()) {
+            const label =
+              locale === 'en' ? '**DeepMarka crawl intelligence:**' : '**DeepMarka site taraması:**';
+            toolSnippets.push(`${label}\n${r.content}`);
+          }
+        } catch (e) {
+          console.error('[tool:crawl_url]', e);
+        }
       }
     }
 

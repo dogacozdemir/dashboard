@@ -148,7 +148,7 @@ async function checkAchievements(
       if (!(await has('first_approval'))) await award('first_approval');
 
       const { count: approvedCount } = await supabase
-        .from('creative_assets')
+        .from('creative_posts')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('status', 'approved');

@@ -189,9 +189,11 @@ export function getMimeCategory(contentType: string): AssetMimeCategory | null {
   return null;
 }
 
+/** Per-file ceilings for presigned uploads (bytes). Override with NEXT_PUBLIC_MAX_* env. */
 export const MAX_SIZES: Record<AssetMimeCategory, number> = {
-  image: parseInt(process.env.NEXT_PUBLIC_MAX_IMAGE_SIZE ?? '20971520'),
-  video: parseInt(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE ?? '524288000'),
-  doc:   parseInt(process.env.NEXT_PUBLIC_MAX_DOC_SIZE   ?? '52428800'),
+  /** 50 MiB — high-res creatives / carousels; was 20 MiB (too small for 25–45 MB JPEGs). */
+  image: parseInt(process.env.NEXT_PUBLIC_MAX_IMAGE_SIZE ?? `${50 * 1024 * 1024}`, 10),
+  video: parseInt(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE ?? '524288000', 10),
+  doc:   parseInt(process.env.NEXT_PUBLIC_MAX_DOC_SIZE ?? '52428800', 10),
   font:  10_485_760, // 10 MB
 };

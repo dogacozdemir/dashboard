@@ -27,6 +27,32 @@ import type { UserGamificationData } from '@/features/gamification/types';
 import { XPProgress } from '@/features/gamification/components/XPProgress';
 import { StreakCounter } from '@/features/gamification/components/StreakCounter';
 
+function InstagramNavIcon({
+  className,
+  strokeWidth = 2,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
+}
+
 interface NavItem {
   href: string;
   labelKey:
@@ -38,7 +64,8 @@ interface NavItem {
     | 'chat'
     | 'monoAi'
     | 'masteryHall'
-    | 'opsCalendar';
+    | 'opsCalendar'
+    | 'instagramPreview';
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   badgeKey?: 'badgeLive' | 'badgeAi';
   color?: string;
@@ -55,6 +82,7 @@ const NAV_DEF: NavItem[] = [
     color: 'cyan',
   },
   { href: '/creative', labelKey: 'creativeStudio', icon: Clapperboard, color: 'violet' },
+  { href: '/instagram', labelKey: 'instagramPreview', icon: InstagramNavIcon, color: 'pink' },
   { href: '/strategy', labelKey: 'seoGeo', icon: Globe, color: 'emerald' },
   { href: '/brand-vault', labelKey: 'brandVault', icon: Shield },
   { href: '/chat', labelKey: 'chat', icon: MessageSquare },

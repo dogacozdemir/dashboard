@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { fetchAllTenants } from '@/features/admin/actions/fetchAdmin';
 import { TenantTable } from '@/features/admin/components/TenantTable';
+import { GlassCard } from '@/components/shared/GlassCard';
 
 export default async function AdminTenantsPage() {
   const t = await getTranslations('Admin.tenantsPage');
@@ -18,23 +19,13 @@ export default async function AdminTenantsPage() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="cockpit-liquid-scope space-y-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="relative rounded-[2rem] p-6 overflow-hidden"
-            style={{
-              background: 'rgba(29, 15, 29, 0.4)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 50px rgba(0,0,0,0.35)',
-              backdropFilter: 'blur(32px) saturate(180%)',
-            }}
-          >
-            <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.12em] mb-2">{stat.label}</p>
+          <GlassCard key={stat.label} padding="lg" className="bento-card">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">{stat.label}</p>
             <p className={`text-3xl font-bold tabular-nums tracking-tight ${stat.color}`}>{stat.value}</p>
-          </div>
+          </GlassCard>
         ))}
       </div>
 

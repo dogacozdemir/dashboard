@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { embedQuery, embeddingToPgLiteral } from './embeddings';
+import { embedQuery, embeddingToPgLiteral, isEmbeddingsConfigured } from './embeddings';
 
 export type BrandChunkMatch = {
   id:             string;
@@ -11,14 +11,14 @@ export type BrandChunkMatch = {
 };
 
 /**
- * Returns markdown block for system/user augmentation, or null if no hits / no API key.
+ * Returns markdown block for system/user augmentation, or null if no hits / embeddings unavailable.
  */
 export async function retrieveBrandVaultContext(
   supabase: SupabaseClient,
   tenantId: string,
   userMessage: string,
 ): Promise<string | null> {
-  if (!process.env.OPENAI_API_KEY) return null;
+  if (!isEmbeddingsConfigured()) return null;
 
   let embedding: number[];
   try {

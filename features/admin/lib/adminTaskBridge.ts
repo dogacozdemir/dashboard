@@ -135,9 +135,9 @@ export async function recordCreativePendingAdminTasks(
 }
 
 export async function recordCreativeRevisionAdminTask(input: {
-  assetId: string;
+  postId: string;
   tenantId: string;
-  assetTitle: string;
+  postTitle: string;
 }): Promise<void> {
   const admin = getAdmin();
   const tenant = admin ? await fetchTenantMini(admin, input.tenantId) : null;
@@ -148,13 +148,13 @@ export async function recordCreativeRevisionAdminTask(input: {
     tenantId:         input.tenantId,
     taskType:         'CREATIVE_REVISION_REQUEST',
     priority:         'critical',
-    title:            t('Admin.tasks.creativeRevisionTitle', { title: input.assetTitle }),
+    title:            t('Admin.tasks.creativeRevisionTitle', { title: input.postTitle }),
     body:             t('Admin.tasks.creativeRevisionBody'),
     targetPath:       '/creative',
-    relatedEntityId:  input.assetId,
-    dedupeKey:        `creative:revision:${input.assetId}`,
+    relatedEntityId:  input.postId,
+    dedupeKey:        `creative:revision:${input.postId}`,
     notify: {
-      message:     t('Admin.tasks.creativeRevisionNotify', { tenant: tname, title: input.assetTitle }),
+      message:     t('Admin.tasks.creativeRevisionNotify', { tenant: tname, title: input.postTitle }),
       actionLabel: t('Admin.tasks.actionOpenRevision'),
     },
   });
@@ -165,15 +165,15 @@ export async function recordCreativeRevisionAdminTask(input: {
       .update({ status: 'done', resolved_at: new Date().toISOString() })
       .eq('status', 'open')
       .eq('task_type', 'CREATIVE_APPROVAL_PENDING')
-      .eq('related_entity_id', input.assetId);
+      .eq('related_entity_id', input.postId);
   }
 }
 
 export async function resolveCreativeAdminTasksAfterStatus(input: {
-  assetId: string;
+  postId: string;
   tenantId: string;
   newStatus: 'pending' | 'approved' | 'revision';
-  assetTitle: string;
+  postTitle: string;
 }): Promise<void> {
   const admin = getAdmin();
   if (!admin) return;
@@ -186,13 +186,13 @@ export async function resolveCreativeAdminTasksAfterStatus(input: {
       .update({ status: 'done', resolved_at: new Date().toISOString() })
       .eq('status', 'open')
       .in('task_type', ['CREATIVE_APPROVAL_PENDING', 'CREATIVE_REVISION_REQUEST'])
-      .eq('related_entity_id', input.assetId);
+      .eq('related_entity_id', input.postId);
 
     const tenant = await fetchTenantMini(admin, input.tenantId);
     const tname = tenant?.name ?? t('Admin.tasks.tenantFallback');
     await notifySuperAdminsLux({
       tenantId:     input.tenantId,
-      message:      t('Admin.tasks.approvedNotify', { tenant: tname, title: input.assetTitle }),
+      message:      t('Admin.tasks.approvedNotify', { tenant: tname, title: input.postTitle }),
       actionPath:   '/creative',
       actionLabel:  t('Admin.tasks.actionGoCreative'),
     });
@@ -209,6 +209,6 @@ export async function resolveCreativeAdminTasksAfterStatus(input: {
       .update({ status: 'done', resolved_at: new Date().toISOString() })
       .eq('status', 'open')
       .eq('task_type', 'CREATIVE_APPROVAL_PENDING')
-      .eq('related_entity_id', input.assetId);
+      .eq('related_entity_id', input.postId);
   }
 }

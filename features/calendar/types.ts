@@ -1,7 +1,11 @@
+import type { CreativeContentFormat } from '@/features/creative-studio/types';
+
 export type MilestoneCategory = 'technical' | 'content' | 'geo' | 'performance';
 export type MilestoneStatus   = 'completed' | 'in-progress' | 'upcoming';
 export type CalendarEventType = 'strategy_call' | 'social_post';
 export type SocialPlatform    = 'meta' | 'google' | 'tiktok' | 'instagram' | 'linkedin' | 'x';
+
+export type { CreativeContentFormat };
 
 export interface CalendarMilestone {
   id: string;
@@ -25,9 +29,12 @@ export interface CalendarEvent {
   meetingUrl: string | null;
   platform: SocialPlatform | null;
   caption: string | null;
-  creativeId: string | null;
+  /** Linked creative **post** (carousel or single). */
+  creativePostId: string | null;
   creativeTitle: string | null;
   creativeUrl: string | null;
+  /** From linked creative_posts.content_format — social dots / legend in Social mode. */
+  contentFormat?: CreativeContentFormat | null;
   status: 'scheduled' | 'done' | 'cancelled';
   createdAt: string;
 }
@@ -37,5 +44,7 @@ export interface DayItem {
   id: string;
   title: string;
   color: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber';
+  /** Populated for social_post when calendar JOIN returns creative format. */
+  contentFormat?: CreativeContentFormat | null;
   data: CalendarMilestone | CalendarEvent;
 }

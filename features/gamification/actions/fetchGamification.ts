@@ -111,18 +111,18 @@ export async function fetchWeeklyDigest(tenantId: string): Promise<WeeklyDigestD
 
     const [appThis, appLast, revThis, aiThis, newAch] = await Promise.all([
       supabase
-        .from('creative_assets')
+        .from('creative_posts')
         .select('id', { count: 'exact' })
         .eq('tenant_id', validatedId)
         .eq('status', 'approved')
-        .gte('created_at', thisMonday.toISOString()),
+        .gte('updated_at', thisMonday.toISOString()),
       supabase
-        .from('creative_assets')
+        .from('creative_posts')
         .select('id', { count: 'exact' })
         .eq('tenant_id', validatedId)
         .eq('status', 'approved')
-        .gte('created_at', lastMonday.toISOString())
-        .lt('created_at', thisMonday.toISOString()),
+        .gte('updated_at', lastMonday.toISOString())
+        .lt('updated_at', thisMonday.toISOString()),
       supabase
         .from('revisions')
         .select('id', { count: 'exact' })

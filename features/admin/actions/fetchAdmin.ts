@@ -6,13 +6,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { requireAdminSession } from '@/lib/auth/tenant-guard';
 import type { TenantWithStats } from '../types';
 import type { AdminOverviewStats, PlatformHealth } from '../types/admin-overview';
-
-const DEMO_TENANTS: TenantWithStats[] = [
-  { id: '1', slug: 'acme', name: 'Acme Corp', logo_url: null, custom_domain: 'acme.madmonos.com', plan: 'enterprise', primary_color: '#6366F1', is_active: true, created_at: '2024-01-15T00:00:00Z', userCount: 5, assetCount: 24, campaignCount: 12, lastActivity: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-  { id: '2', slug: 'brand-x', name: 'Brand X', logo_url: null, custom_domain: null, plan: 'growth', primary_color: '#06B6D4', is_active: true, created_at: '2024-02-20T00:00:00Z', userCount: 3, assetCount: 11, campaignCount: 5, lastActivity: new Date(Date.now() - 1000 * 3600 * 3).toISOString() },
-  { id: '3', slug: 'nova', name: 'Nova Digital', logo_url: null, custom_domain: 'nova.madmonos.com', plan: 'starter', primary_color: '#10B981', is_active: true, created_at: '2024-03-10T00:00:00Z', userCount: 2, assetCount: 4, campaignCount: 2, lastActivity: new Date(Date.now() - 1000 * 3600 * 24).toISOString() },
-  { id: '4', slug: 'stealth', name: 'Stealth Brand', logo_url: null, custom_domain: null, plan: 'growth', primary_color: null, is_active: false, created_at: '2024-04-01T00:00:00Z', userCount: 1, assetCount: 0, campaignCount: 0, lastActivity: null },
-];
+import { normalizeTenantSlug, tenantSlugIssue } from '../lib/tenant-slug';
+import { customDomainIssue, normalizeCustomDomainInput } from '../lib/custom-domain';
 
 function aggregateLastActivity(
   tenantId: string,
@@ -44,10 +39,10 @@ export async function fetchAllTenants(): Promise<TenantWithStats[]> {
 
   if (error) {
     console.error('[fetchAllTenants]', error.message);
-    return DEMO_TENANTS;
+    return [];
   }
 
-  if (!data?.length) return DEMO_TENANTS;
+  if (!data?.length) return [];
 
   if (!admin) {
     return data.map((t) => ({
@@ -62,7 +57,7 @@ export async function fetchAllTenants(): Promise<TenantWithStats[]> {
 
   const [{ data: userRows }, { data: assetRows }, { data: campaignRows }] = await Promise.all([
     admin.from('users').select('tenant_id'),
-    admin.from('creative_assets').select('tenant_id, created_at'),
+    admin.from('creative_posts').select('tenant_id, created_at'),
     admin.from('ad_campaigns').select('tenant_id, synced_at'),
   ]);
 
@@ -113,13 +108,32 @@ export async function createTenant(data: {
 }): Promise<{ success: boolean; error?: string }> {
   await requireAdminSession();
 
+  const name = data.name.trim();
+  if (name.length < 2) {
+    return { success: false, error: 'INVALID_NAME' };
+  }
+
+  const slug = normalizeTenantSlug(data.slug);
+  const slugErr = tenantSlugIssue(slug);
+  if (slugErr) {
+    return { success: false, error: `SLUG_${slugErr.toUpperCase()}` };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from('tenants').insert({
-    slug: data.slug,
-    name: data.name,
+    slug,
+    name,
     plan: data.plan,
+    is_active: true,
   });
-  if (error) return { success: false, error: await getPremiumAdminActionError() };
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'SLUG_TAKEN' };
+    }
+    console.error('[createTenant]', error.message);
+    return { success: false, error: await getPremiumAdminActionError() };
+  }
   return { success: true };
 }
 
@@ -137,6 +151,37 @@ export async function toggleTenantStatus(
 
   if (error) return { success: false, error: await getPremiumAdminActionError() };
   return { success: true };
+}
+
+export async function updateTenantCustomDomain(
+  tenantId: string,
+  rawDomain: string,
+): Promise<{ success: boolean; error?: string; customDomain: string | null }> {
+  await requireAdminSession();
+
+  const normalized = normalizeCustomDomainInput(rawDomain);
+  const issue = customDomainIssue(normalized);
+  if (issue) {
+    return { success: false, error: 'DOMAIN_INVALID', customDomain: null };
+  }
+
+  const customDomain = normalized.length > 0 ? normalized : null;
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from('tenants')
+    .update({ custom_domain: customDomain })
+    .eq('id', tenantId);
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'DOMAIN_TAKEN', customDomain: null };
+    }
+    console.error('[updateTenantCustomDomain]', error.message);
+    return { success: false, error: await getPremiumAdminActionError(), customDomain: null };
+  }
+
+  return { success: true, customDomain };
 }
 
 export type { AdminOverviewStats, PlatformHealth } from '../types/admin-overview';
@@ -188,7 +233,7 @@ export async function fetchAdminOverview(): Promise<AdminOverviewStats> {
     admin.from('tenants').select('id', { count: 'exact', head: true }).eq('is_active', true),
     admin.from('daily_metrics').select('spend').gte('date', since30d),
     admin.from('ad_accounts').select('id', { count: 'exact', head: true }).gte('last_synced_at', since24h),
-    admin.from('creative_assets').select('id', { count: 'exact', head: true }),
+    admin.from('creative_posts').select('id', { count: 'exact', head: true }),
     admin.from('ad_campaigns').select('id', { count: 'exact', head: true }),
     admin.from('ad_accounts').select('platform, last_synced_at').eq('is_active', true),
   ]);

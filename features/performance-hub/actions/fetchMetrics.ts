@@ -531,7 +531,7 @@ export async function fetchGscSeoMatrix(
     if (!meta) continue;
     const src = String(meta.source ?? '');
     const hasLcp = meta.lcpSeconds != null || meta.lcp != null;
-    if (src !== 'pagespeed_simulation' && !hasLcp) continue;
+    if (src !== 'pagespeed' && src !== 'pagespeed_simulation' && !hasLcp) continue;
     lcp = Number(meta.lcpSeconds ?? meta.lcp ?? 0) || null;
     cls = Number(meta.cls ?? 0) || null;
     fidMs = Number(meta.fidMs ?? meta.fid ?? 0) || null;
@@ -539,13 +539,19 @@ export async function fetchGscSeoMatrix(
     break;
   }
 
+  const { count: indexingIssueCount } = await supabase
+    .from('gsc_url_inspections')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', validatedId)
+    .neq('verdict', 'PASS');
+
   return {
     impressions,
     nonBrandImpressions: nonBrandImp,
     avgPosition:         Math.round(avgPos * 100) / 100,
     clicks,
     ctrPercent:          Math.round(ctrPct * 100) / 100,
-    indexingIssues:      null,
+    indexingIssues:      indexingIssueCount ?? 0,
     gscQueryRowCount:    gscRows?.length ?? 0,
     hasGoogleConnection: Boolean(googleAcct),
     cwv:                 { lcp, cls, fidMs, label },
@@ -702,7 +708,7 @@ export async function fetchRecentActivity(companyId: string): Promise<ActivityIt
       .order('created_at', { ascending: false })
       .limit(5),
     supabase
-      .from('creative_assets')
+      .from('creative_posts')
       .select('id, title, status, created_at')
       .eq('tenant_id', validatedId)
       .order('created_at', { ascending: false })
@@ -716,11 +722,11 @@ export async function fetchRecentActivity(companyId: string): Promise<ActivityIt
       description: log.description,
       createdAt:   log.created_at,
     })),
-    ...(creativesResult.data ?? []).map((asset) => ({
-      id:          asset.id,
+    ...(creativesResult.data ?? []).map((row) => ({
+      id:          row.id,
       type:        'creative' as ActivityItem['type'],
-      description: `Creative "${asset.title}" — status: ${asset.status}`,
-      createdAt:   asset.created_at,
+      description: `Creative "${row.title}" — status: ${row.status}`,
+      createdAt:   row.created_at,
     })),
   ];
 

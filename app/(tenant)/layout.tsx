@@ -23,7 +23,7 @@ import { loadMessages } from '@/lib/i18n/load-messages';
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
-  const slug = headersList.get('x-tenant-slug') ?? '';
+  const slug = (headersList.get('x-tenant-slug') ?? '').trim();
   const raw = slug ? await getTenantBySlug(slug) : null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const name: string = raw ? (raw as any).name ?? slug : slug;
@@ -43,19 +43,14 @@ export default async function TenantLayout({
   if (!session) redirect('/login');
 
   const headersList = await headers();
-  const headerTenantSlug = headersList.get('x-tenant-slug') ?? '';
-  const user = session.user as SessionUser;
-
-  const tenantSlug =
-    headerTenantSlug === 'localhost' || headerTenantSlug === '127.0.0.1'
-      ? (user.tenantSlug ?? '')
-      : headerTenantSlug;
+  const tenantSlug = (headersList.get('x-tenant-slug') ?? '').trim();
 
   const tenantRaw = await getTenantBySlug(tenantSlug);
   if (!tenantRaw) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tenant = tenantRaw as any;
+  const user = session.user as SessionUser;
 
   if (user.role !== 'super_admin' && user.tenantSlug && user.tenantSlug !== tenantSlug) {
     redirect('/unauthorized');

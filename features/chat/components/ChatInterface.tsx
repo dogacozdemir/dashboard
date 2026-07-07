@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
+import { useState, useEffect, useRef, useTransition, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader2, MessageSquare, AlertCircle, CheckCircle2, Info, Zap } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ensureRealtimeAuth } from '@/lib/supabase/realtime';
 import { sendMessage } from '../actions/chatActions';
+import { isMadmonosSupportSender } from '../constants';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { useVisualViewportInset } from '@/hooks/useVisualViewportInset';
@@ -62,6 +63,7 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
   const bottomRef  = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const vvInset = useVisualViewportInset();
+  const realtimeInstanceId = useId();
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -78,18 +80,31 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }, []);
 
-  /* Supabase Realtime */
+  /* Supabase Realtime — unique channel per mount; purge stale channels before subscribe */
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    let isMounted = true;
+    let cancelled = false;
+    const channelName = `chat:${companyId}:${realtimeInstanceId}`;
 
     const connect = async () => {
-      try { await ensureRealtimeAuth(); } catch { if (isMounted) setIsLive(false); }
-      if (!isMounted) return;
+      try {
+        await ensureRealtimeAuth();
+      } catch {
+        if (!cancelled) setIsLive(false);
+        return;
+      }
+      if (cancelled) return;
+
+      for (const existing of [...supabase.getChannels()]) {
+        if (existing.topic === `realtime:chat:${companyId}:${realtimeInstanceId}`) {
+          await supabase.removeChannel(existing);
+        }
+      }
+      if (cancelled) return;
 
       channel = supabase
-        .channel(`chat:${companyId}`)
+        .channel(channelName)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `tenant_id=eq.${companyId}` },
@@ -106,13 +121,28 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
               createdAt:  row.created_at as string,
             };
             setMessages((prev) => prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]);
-          }
+          },
         )
-        .subscribe((status: string) => { if (isMounted) setIsLive(status === 'SUBSCRIBED'); });
+        .subscribe((status: string) => {
+          if (!cancelled) setIsLive(status === 'SUBSCRIBED');
+        });
     };
+
     void connect();
-    return () => { isMounted = false; if (channel) supabase.removeChannel(channel); };
-  }, [companyId]);
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        void supabase.removeChannel(channel);
+        return;
+      }
+      for (const existing of supabase.getChannels()) {
+        if (existing.topic === `realtime:${channelName}`) {
+          void supabase.removeChannel(existing);
+        }
+      }
+    };
+  }, [companyId, realtimeInstanceId]);
 
   function handleSend() {
     const trimmed = input.trim();
@@ -213,9 +243,10 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
               <AnimatePresence initial={false}>
                 {group.messages.map((msg, idx) => {
                   const isMine = msg.senderName === currentUserName;
+                  const isSupport = isMadmonosSupportSender(msg.senderName);
                   const consecutive = isConsecutive(group.messages, idx);
                   const { icon: TypeIcon } = typeConfig[msg.type];
-                  const isSystem = msg.type !== 'message';
+                  const isSystem = msg.type !== 'message' && !isSupport;
 
                   return (
                     <motion.div
@@ -260,7 +291,10 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
                       >
                         {/* Sender name — only first in group */}
                         {!consecutive && !isMine && (
-                          <span className="text-[10px] text-white/35 px-1 font-medium tracking-tight">
+                          <span className={cn(
+                            'text-[10px] px-1 font-medium tracking-tight',
+                            isSupport ? 'text-[#bea042]/90' : 'text-white/35',
+                          )}>
                             {msg.senderName}
                           </span>
                         )}
@@ -277,6 +311,20 @@ export function ChatInterface({ companyId, tenantName, initialMessages, currentU
                               background: 'linear-gradient(135deg, #9c70b2 0%, #6d3b68 60%, #562c52 100%)',
                               boxShadow:
                                 '0 4px 20px rgba(156,112,178,0.25), inset -4px 0 18px -6px rgba(190,160,66,0.42)',
+                            }}
+                          >
+                            {msg.message}
+                          </div>
+                        ) : isSupport ? (
+                          <div
+                            className={cn(
+                              'px-4 py-2.5 text-sm leading-relaxed text-[#1a0f00]',
+                              'rounded-2xl',
+                              consecutive ? 'rounded-tl-2xl' : 'rounded-tl-[6px]',
+                            )}
+                            style={{
+                              background: 'linear-gradient(135deg, #e8d48a 0%, #bea042 55%, #a07b28 100%)',
+                              boxShadow: '0 0 18px rgba(190,160,66,0.22)',
                             }}
                           >
                             {msg.message}

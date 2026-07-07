@@ -23,6 +23,7 @@ const ALLOWED_HREFS = new Set([
   '/chat',
   '/mono-ai',
   '/calendar',
+  '/instagram',
   '/settings/team',
   '/profile',
 ]);
@@ -63,7 +64,7 @@ export async function searchCommandData(companyId: string, query: string): Promi
       .ilike('campaign_name', pattern)
       .limit(6),
     supabase
-      .from('creative_assets')
+      .from('creative_posts')
       .select('id, title, status')
       .eq('tenant_id', cid)
       .ilike('title', pattern)

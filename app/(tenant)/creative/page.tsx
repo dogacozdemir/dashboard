@@ -1,13 +1,14 @@
 import { auth } from '@/lib/auth/config';
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
 import { sessionHasPermission } from '@/lib/auth/session-capabilities';
-import { fetchCreativeAssets } from '@/features/creative-studio/actions/fetchAssets';
+import { fetchCreativePosts } from '@/features/creative-studio/actions/fetchAssets';
 import { MediaGrid } from '@/features/creative-studio/components/MediaGrid';
 import { CreativeUploadPanel } from '@/features/creative-studio/components/CreativeUploadPanel';
 import type { SessionUser } from '@/types/user';
 import { getTranslations } from 'next-intl/server';
 
 export default async function CreativePage() {
+  /** Subdomain/header tenant UUID — must match fetch + RLS; not the viewer’s profile tenant when super_admin. */
   const { companyId } = await requireTenantContext();
   const t = await getTranslations('Features.CreativePage');
   const session = await auth();
@@ -16,11 +17,11 @@ export default async function CreativePage() {
   const canDeleteCreative = user?.role === 'super_admin';
   const canUploadCreative = user?.role === 'super_admin';
 
-  const assets = await fetchCreativeAssets(companyId);
+  const posts = await fetchCreativePosts(companyId);
 
-  const pending  = assets.filter((a) => a.status === 'pending').length;
-  const approved = assets.filter((a) => a.status === 'approved').length;
-  const revision = assets.filter((a) => a.status === 'revision').length;
+  const pending = posts.filter((p) => p.status === 'pending').length;
+  const approved = posts.filter((p) => p.status === 'approved').length;
+  const revision = posts.filter((p) => p.status === 'revision').length;
 
   const stats = [
     {
@@ -78,6 +79,7 @@ export default async function CreativePage() {
         ))}
       </div>
 
+      {/* Upload UI is role-gated; the grid below is never gated on upload permission. */}
       {canUploadCreative ? <CreativeUploadPanel companyId={companyId} /> : null}
 
       <div>
@@ -85,10 +87,11 @@ export default async function CreativePage() {
           {t('assetsHeading')}
         </h2>
         <MediaGrid
-          assets={assets}
+          posts={posts}
           companyId={companyId}
           canApproveCreative={canApproveCreative}
           canDeleteCreative={canDeleteCreative}
+          currentUserId={user?.id ?? null}
         />
       </div>
     </div>

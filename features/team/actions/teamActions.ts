@@ -1,6 +1,7 @@
 'use server';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getInviteLoginRedirectUrl } from '@/lib/auth/invite-redirect';
 import { assertPermission } from '@/lib/auth/permissions';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 
@@ -98,10 +99,13 @@ export async function inviteTeamMember(
     return { success: false, error: 'Bu rol bu tenant için atanamaz.' };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const redirect = await getInviteLoginRedirectUrl(admin, cid);
+  if ('error' in redirect) {
+    return { success: false, error: 'Tenant bulunamadı — davet gönderilemedi.' };
+  }
 
   const { error } = await admin.auth.admin.inviteUserByEmail(trimmed, {
-    redirectTo: `${siteUrl.replace(/\/$/, '')}/login`,
+    redirectTo: redirect.redirectTo,
     data: {
       tenant_id: cid,
       role_id: roleId,
