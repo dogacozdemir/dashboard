@@ -1,19 +1,17 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { DemoShowroomBanner } from './DemoShowroomBanner';
 import type { Tenant } from '@/types/tenant';
 import type { SessionUser } from '@/types/user';
-import type { UserGamificationData } from '@/features/gamification/types';
 import { CelebrationOverlay } from '@/features/gamification/components/CelebrationOverlay';
-import type { LuxNotificationItem } from '@/features/notifications/types';
-import { CommandCenter } from '@/app/components/layout/CommandCenter';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import {
   MADMONOS_SPRING,
   madmonosLiquidPageVariants,
@@ -22,19 +20,19 @@ import {
 } from '@/lib/motion/madmonos-motion';
 
 interface DashboardShellProps {
-  tenant:          Tenant;
-  user:            SessionUser;
-  title:           string;
-  subtitle?:       string;
-  initialNotifs?:  LuxNotificationItem[];
-  gamification?:   UserGamificationData | null;
+  tenant: Tenant;
+  user: SessionUser;
+  title: string;
+  subtitle?: string;
+  sidebarSlot: ReactNode;
+  notificationSlot: ReactNode;
+  commandCenterSlot: ReactNode;
   /** Super-admin customer view (impersonation cookie). */
-  impersonation?:  { tenantName: string; exitHref: string } | null;
+  impersonation?: { tenantName: string; exitHref: string } | null;
   /** Showroom tenant — simulated analytics & gamification. */
   showroomMode?: boolean;
-  canManageTeam?:  boolean;
-  canUseNotifications?: boolean;
-  children:        React.ReactNode;
+  canManageTeam?: boolean;
+  children: ReactNode;
 }
 
 export function DashboardShell({
@@ -42,12 +40,12 @@ export function DashboardShell({
   user,
   title,
   subtitle,
-  initialNotifs = [],
-  gamification,
+  sidebarSlot,
+  notificationSlot,
+  commandCenterSlot,
   impersonation = null,
   showroomMode = false,
   canManageTeam = false,
-  canUseNotifications = false,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -79,37 +77,23 @@ export function DashboardShell({
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-[#0c070c]">
-
-      {/* ── Aurora background — light sources inside the void ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden>
-        {/* Amethyst light source — top-left */}
         <div className="aurora-orb-1 absolute -top-60 -left-40 w-[700px] h-[700px] rounded-full bg-purple-600/[0.08] blur-[130px]" />
-        {/* Gold light source — bottom-right */}
         <div className="aurora-orb-2 absolute -bottom-56 -right-32 w-[600px] h-[600px] rounded-full bg-amber-700/[0.08] blur-[140px]" />
-        {/* Soft center bloom */}
         <div className="aurora-orb-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-purple-900/[0.05] blur-[120px]" />
       </div>
 
-      {/* ── Celebration overlay (confetti + achievement toasts) ── */}
       <CelebrationOverlay />
 
-      {/* ── Desktop sidebar — floats with padding ── */}
-      <div className="relative z-10 hidden md:flex p-4">
-        <Sidebar tenant={tenant} gamification={gamification} canManageTeam={canManageTeam} />
-      </div>
+      <div className="relative z-10 hidden md:flex p-4">{sidebarSlot}</div>
 
-      {/* ── Main column ── */}
-      <div
-        className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden px-safe pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
-      >
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden px-safe pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
         <TopBar
           user={user}
-          companyId={tenant.id}
           title={title}
           subtitle={subtitle}
           brandLogoUrl={tenant.brand_logo_url ?? null}
-          initialNotifs={initialNotifs}
-          canUseNotifications={canUseNotifications}
+          notificationSlot={notificationSlot}
         />
 
         {impersonation && (
@@ -118,7 +102,6 @@ export function DashboardShell({
 
         {showroomMode ? <DemoShowroomBanner /> : null}
 
-        {/* Stable clip rect + positioning root for popLayout (exiting route is absolute). */}
         <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden">
           <AnimatePresence initial={false} mode="popLayout">
             <motion.main
@@ -137,15 +120,11 @@ export function DashboardShell({
         </div>
       </div>
 
-      {/* ── Mobile bottom navigation (hidden on md+) ── */}
-      <MobileBottomNav brandLogoUrl={tenant.brand_logo_url ?? null} />
+      <MobileBottomNav brandLogoUrl={tenant.brand_logo_url ?? null} canManageTeam={canManageTeam} />
 
-      <CommandCenter
-        companyId={tenant.id}
-        user={user}
-        totalXP={gamification?.totalXP ?? null}
-        level={gamification?.level.level ?? null}
-      />
+      <InstallPrompt />
+
+      {commandCenterSlot}
     </div>
   );
 }

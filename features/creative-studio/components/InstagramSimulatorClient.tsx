@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,7 +10,6 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   Clapperboard,
   Grid3X3,
   Heart,
@@ -19,12 +18,13 @@ import {
   Lock,
   Menu,
   MessageCircle,
+  MoreHorizontal,
   PlusSquare,
   Search,
+  Send,
   Signal,
   User,
   Wifi,
-  X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
@@ -93,26 +93,75 @@ function coverSlide(post: CreativePost): CreativeSlide | null {
   return slides[0] ?? null;
 }
 
-function PostGridThumb({ post }: { post: HybridFeedPost }) {
+/**
+ * Poster frame for a video that has no thumbnail image. `#t=0.1` makes the browser
+ * seek to the first frame and paint it, and `preload="metadata"` loads only that —
+ * a thumbnail-like still without downloading the whole video.
+ */
+function VideoPosterFrame({ url, className }: { url: string; className?: string }) {
+  return (
+    <video
+      src={`${url}#t=0.1`}
+      preload="metadata"
+      muted
+      playsInline
+      // eslint-disable-next-line jsx-a11y/media-has-caption
+      className={className}
+    />
+  );
+}
+
+/**
+ * A stored thumbnail sometimes points at the video file itself (or the slide is
+ * typed 'image' while holding an .mp4). Either way the URL must never reach an
+ * <img>, which renders it as a permanently blank tile.
+ */
+function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0].toLowerCase();
+  return /\.(mp4|mov|webm|m4v|avi|mkv)$/.test(path);
+}
+
+/**
+ * Picks what a square tile should show. Prefers a poster image (real IG never
+ * plays video in the grid) and only falls back to a non-preloading <video>.
+ * Shared by the grid and the highlights row so the two can't drift apart.
+ */
+function resolveTileMedia(post: HybridFeedPost): { poster: string | null; videoUrl: string | null } {
   const slide = coverSlide(post);
-  const src = slide?.thumbnailUrl ?? slide?.url ?? post.posterThumbnailUrl;
-  const isVideo = slide?.type === 'video' || post.contentFormat === 'reel';
+  const candidate =
+    slide?.thumbnailUrl ?? post.posterThumbnailUrl ?? (slide?.type === 'image' ? slide?.url : null) ?? null;
+
+  const poster = isVideoUrl(candidate) ? null : candidate;
+  if (poster) return { poster, videoUrl: null };
+
+  // Either the slide is typed video, or a thumbnail was stored pointing at the
+  // video file itself — both must go through <video>, never <img>.
+  const videoUrl = isVideoUrl(candidate)
+    ? candidate
+    : slide?.type === 'video' || isVideoUrl(slide?.url)
+      ? slide?.url ?? null
+      : null;
+
+  return { poster: null, videoUrl };
+}
+
+function PostGridThumb({ post }: { post: HybridFeedPost }) {
+  const { poster, videoUrl } = resolveTileMedia(post);
 
   return (
     <div className="group relative aspect-square w-full overflow-hidden bg-black/40">
-      {src ? (
-        isVideo ? (
-          <video src={slide?.url ?? src} className="h-full w-full object-cover" muted playsInline />
-        ) : (
-          <Image
-            src={src}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 33vw, 160px"
-            unoptimized
-          />
-        )
+      {poster ? (
+        <Image
+          src={poster}
+          alt=""
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 33vw, 160px"
+          unoptimized
+        />
+      ) : videoUrl ? (
+        <VideoPosterFrame url={videoUrl} className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
           <Grid3X3 className="h-7 w-7 text-white/20 md:h-8 md:w-8" />
@@ -137,126 +186,234 @@ function PostGridThumb({ post }: { post: HybridFeedPost }) {
   );
 }
 
-function PostDetailModal({
+type FeedProfile = {
+  handle: string;
+  avatarUrl: string | null;
+  verified: boolean;
+  tenantInitial: string;
+};
+
+function FeedPostAvatar({ profile }: { profile: FeedProfile }) {
+  return (
+    <div className="relative h-8 w-8 shrink-0 rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#962fbf] p-[2px]">
+      <div className="relative h-full w-full overflow-hidden rounded-full border border-black bg-white/10">
+        {profile.avatarUrl ? (
+          <Image src={profile.avatarUrl} alt="" fill className="object-cover" sizes="32px" unoptimized />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-white/70">
+            {profile.tenantInitial}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A single Instagram-style feed post: header, swipeable media, action row, caption. */
+function FeedPostCard({
   post,
-  onClose,
+  profile,
+  liked,
+  onToggleLike,
 }: {
   post: HybridFeedPost;
-  onClose: () => void;
+  profile: FeedProfile;
+  liked: boolean;
+  onToggleLike: () => void;
 }) {
   const t = useTranslations('Tenant.instagramSimulator');
   const slides = useMemo(
     () => [...(post.slides ?? [])].sort((a, b) => a.slideIndex - b.slideIndex),
     [post.slides],
   );
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
-  const current = slides[idx] ?? null;
+  const [pop, setPop] = useState(false);
+  const lastTap = useRef(0);
+
+  function syncIdx() {
+    const el = scrollRef.current;
+    if (!el || slides.length < 2) return;
+    const w = el.clientWidth;
+    if (w < 1) return;
+    setIdx(Math.max(0, Math.min(Math.round(el.scrollLeft / w), slides.length - 1)));
+  }
+
+  function doubleTapLike() {
+    if (!liked) onToggleLike();
+    setPop(true);
+    window.setTimeout(() => setPop(false), 750);
+  }
+
+  function onMediaTap() {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      doubleTapLike();
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
+    }
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.96, y: 12 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 12 }}
-        transition={spring}
-        className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl md:flex-row"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 z-20 rounded-full bg-black/50 p-2 text-white/80 hover:text-white"
-          aria-label={t('closeModal')}
+    <article data-post-id={post.id} className="border-b border-white/10">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        <FeedPostAvatar profile={profile} />
+        <span className="flex items-center gap-1 text-sm font-semibold text-white">
+          {profile.handle}
+          {profile.verified && <BadgeCheck className="h-3.5 w-3.5 fill-[#3897f0] text-black" aria-hidden />}
+        </span>
+        <MoreHorizontal className="ml-auto h-5 w-5 text-white/70" aria-hidden />
+      </div>
+
+      {/* Media — swipeable carousel + double-tap to like */}
+      <div className="relative select-none bg-black" onClick={onMediaTap}>
+        <div
+          ref={scrollRef}
+          onScroll={syncIdx}
+          className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scrollbar-none bg-black"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="relative flex min-h-[280px] flex-1 items-center justify-center bg-black md:min-h-[420px]">
-          {current ? (
-            current.type === 'video' ? (
-              <video
-                key={current.id}
-                src={current.url}
-                controls
-                className="max-h-[70vh] max-w-full object-contain"
-              />
-            ) : (
-              <div className="relative h-full min-h-[280px] w-full md:min-h-[420px]">
-                <Image
-                  src={current.url}
-                  alt=""
-                  fill
-                  className="object-contain"
-                  sizes="(max-width:768px) 100vw, 50vw"
-                  unoptimized
-                />
-              </div>
-            )
-          ) : null}
-
-          {slides.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white"
-                aria-label={t('prevSlide')}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIdx((i) => (i + 1) % slides.length)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white"
-                aria-label={t('nextSlide')}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1">
-                {slides.map((_, i) => (
-                  <span
-                    key={slides[i].id}
-                    className={cn(
-                      'h-1.5 w-1.5 rounded-full',
-                      i === idx ? 'bg-white' : 'bg-white/35',
-                    )}
+          {slides.length === 0 ? (
+            <div className="flex aspect-square w-full items-center justify-center bg-white/[0.04]">
+              <Grid3X3 className="h-10 w-10 text-white/20" />
+            </div>
+          ) : (
+            slides.map((slide) => (
+              <div key={slide.id} className="relative aspect-square w-full shrink-0 snap-center snap-always bg-black">
+                {slide.type === 'video' ? (
+                  <video
+                    src={`${slide.url}#t=0.1`}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster={slide.thumbnailUrl ?? undefined}
+                    className="h-full w-full object-cover"
                   />
-                ))}
+                ) : (
+                  <Image src={slide.thumbnailUrl ?? slide.url} alt="" fill className="object-cover" sizes="490px" unoptimized />
+                )}
               </div>
-            </>
+            ))
           )}
         </div>
 
-        <div className="flex w-full flex-col border-t border-white/10 md:w-[340px] md:border-l md:border-t-0">
-          <div className="border-b border-white/10 px-4 py-3">
-            <p className="text-sm font-semibold text-white/90">{post.title}</p>
-            <p className="mt-1 text-[11px] text-white/40">
-              {post.scheduledDate ? formatDate(post.scheduledDate) : '—'}
-              {post.scheduledTime ? ` · ${post.scheduledTime.slice(0, 5)}` : ''}
-            </p>
+        {slides.length > 1 && (
+          <div className="pointer-events-none absolute right-2.5 top-2.5 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white tabular-nums">
+            {idx + 1}/{slides.length}
           </div>
-          <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">{t('captionLabel')}</p>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/75">
-              {post.caption?.trim() || t('noCaption')}
-            </p>
-            <div className="mt-4 space-y-1 text-[11px] text-white/35">
-              <p>
-                {t('formatLabel')}: <span className="text-white/60">{post.contentFormat}</span>
-              </p>
-              <p>
-                {t('slidesLabel')}: <span className="text-white/60">{slides.length}</span>
-              </p>
-            </div>
-          </div>
+        )}
+
+        <AnimatePresence>
+          {pop && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.15, 1], opacity: [0, 1, 0.85] }}
+              exit={{ opacity: 0, scale: 1.25 }}
+              transition={{ duration: 0.5 }}
+              className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            >
+              <Heart className="h-24 w-24 fill-white text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Action row */}
+      <div className="flex items-center gap-4 px-3 pt-3">
+        <button type="button" onClick={onToggleLike} aria-label={t('likeAria')} className="press-scale">
+          <Heart
+            className={cn('h-6 w-6', liked ? 'fill-[#ed4956] text-[#ed4956]' : 'text-white')}
+            strokeWidth={liked ? 0 : 1.9}
+          />
+        </button>
+        <MessageCircle className="h-6 w-6 text-white" strokeWidth={1.9} aria-hidden />
+        <Send className="h-6 w-6 text-white" strokeWidth={1.9} aria-hidden />
+        <Bookmark className="ml-auto h-6 w-6 text-white" strokeWidth={1.9} aria-hidden />
+      </div>
+
+      {/* Carousel dots */}
+      {slides.length > 1 && (
+        <div className="flex justify-center gap-1 pt-2">
+          {slides.map((s, i) => (
+            <span key={s.id} className={cn('h-1.5 w-1.5 rounded-full', i === idx ? 'bg-[#3897f0]' : 'bg-white/25')} />
+          ))}
         </div>
-      </motion.div>
+      )}
+
+      {/* Caption */}
+      <div className="space-y-1 px-3 pb-3 pt-2">
+        <p className="text-sm leading-relaxed">
+          <span className="font-semibold text-white">{profile.handle}</span>{' '}
+          <span className="whitespace-pre-wrap text-white/75">{post.caption?.trim() || post.title}</span>
+        </p>
+        <p className="text-[10px] uppercase tracking-wide text-white/30">
+          {post.scheduledDate ? formatDate(post.scheduledDate) : '—'}
+          {post.scheduledTime ? ` · ${post.scheduledTime.slice(0, 5)}` : ''}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+/** In-phone feed: tap a grid post → scroll through all posts starting at that one. */
+function InPhoneFeedView({
+  posts,
+  startId,
+  profile,
+  onBack,
+}: {
+  posts: HybridFeedPost[];
+  startId: string;
+  profile: FeedProfile;
+  onBack: () => void;
+}) {
+  const t = useTranslations('Tenant.instagramSimulator');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [liked, setLiked] = useState<Set<string>>(() => new Set());
+
+  useLayoutEffect(() => {
+    const region = scrollRef.current;
+    if (!region) return;
+    const target = region.querySelector(`[data-post-id="${CSS.escape(startId)}"]`) as HTMLElement | null;
+    if (target) region.scrollTop = target.offsetTop;
+  }, [startId]);
+
+  function toggle(id: string) {
+    setLiked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 14 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 14 }}
+      transition={gridTransition}
+      className="flex h-full flex-col bg-black"
+    >
+      <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-3 py-2.5">
+        <button type="button" onClick={onBack} aria-label={t('backToGrid')} className="press-scale text-white">
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <span className="text-base font-semibold text-white">{t('postsHeader')}</span>
+      </div>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none">
+        {posts.map((p) => (
+          <FeedPostCard
+            key={p.id}
+            post={p}
+            profile={profile}
+            liked={liked.has(p.id)}
+            onToggleLike={() => toggle(p.id)}
+          />
+        ))}
+      </div>
     </motion.div>
   );
 }
@@ -358,6 +515,13 @@ export function InstagramSimulatorClient({
       ? formatMetric(liveProfile.mediaCount)
       : String(visiblePosts.length);
 
+  const feedProfile: FeedProfile = {
+    handle: bareHandle,
+    avatarUrl,
+    verified: isVerified,
+    tenantInitial: tenantName.slice(0, 1).toUpperCase(),
+  };
+
   const bottomNav = [
     { icon: Home, label: t('navHome'), active: true },
     { icon: Search, label: t('navSearch'), active: false },
@@ -376,15 +540,15 @@ export function InstagramSimulatorClient({
 
       {/* Phone mockup — left / center column */}
       <div className="flex w-full justify-center lg:justify-end">
-        <div className="relative w-full max-w-[420px] overflow-hidden rounded-[3rem] border-[6px] border-white/10 bg-black shadow-2xl md:max-w-[460px] lg:max-w-[490px]">
+        <div className="relative flex w-full max-w-[420px] max-h-[min(88vh,780px)] flex-col overflow-hidden rounded-[3rem] border-[6px] border-white/10 bg-black shadow-2xl md:max-w-[460px] lg:max-w-[490px]">
           <div
             className="pointer-events-none absolute left-1/2 top-3 z-20 h-7 w-32 -translate-x-1/2 rounded-full bg-black/95"
             aria-hidden
           />
 
-          <div className="bg-[#000] pb-0">
+          <div className="flex min-h-0 flex-1 flex-col bg-[#000]">
             {/* Status bar */}
-            <div className="flex items-center justify-between px-6 pt-3.5 pb-1 text-[12px] font-semibold text-white">
+            <div className="flex shrink-0 items-center justify-between px-6 pt-3.5 pb-1 text-[12px] font-semibold text-white">
               <span className="tabular-nums">{simTime.slice(0, 5)}</span>
               <div className="flex items-center gap-1.5" aria-hidden>
                 <Signal className="h-3.5 w-3.5" />
@@ -394,7 +558,7 @@ export function InstagramSimulatorClient({
             </div>
 
             {/* IG top app bar */}
-            <div className="flex items-center justify-between px-5 pb-2 pt-2">
+            <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Lock className="h-3.5 w-3.5 text-white/80 shrink-0" aria-hidden />
                 <span className="truncate text-base font-semibold text-white">{bareHandle}</span>
@@ -410,8 +574,10 @@ export function InstagramSimulatorClient({
               </div>
             </div>
 
+            {!selected && (
+              <>
             {/* Profile header */}
-            <div className="px-5 pb-3 pt-2 md:px-6">
+            <div className="shrink-0 px-5 pb-3 pt-2 md:px-6">
               <div className="flex items-center gap-5 md:gap-6">
                 <div
                   className={cn(
@@ -500,14 +666,13 @@ export function InstagramSimulatorClient({
                   <span className="w-full truncate text-center text-[11px] text-white/55">{t('storyNew')}</span>
                 </div>
                 {highlights.map((post) => {
-                  const cover = coverSlide(post);
-                  const src = cover?.thumbnailUrl ?? cover?.url ?? post.posterThumbnailUrl;
+                  const { poster: hlPoster, videoUrl: hlVideo } = resolveTileMedia(post);
                   return (
                     <div key={`hl-${post.id}`} className="flex w-16 shrink-0 flex-col items-center gap-1">
                       <div className="h-16 w-16 overflow-hidden rounded-full border border-white/15 bg-white/[0.04]">
-                        {src ? (
+                        {hlPoster ? (
                           <Image
-                            src={src}
+                            src={hlPoster}
                             alt=""
                             width={64}
                             height={64}
@@ -515,6 +680,8 @@ export function InstagramSimulatorClient({
                             sizes="64px"
                             unoptimized
                           />
+                        ) : hlVideo ? (
+                          <VideoPosterFrame url={hlVideo} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <Grid3X3 className="h-5 w-5 text-white/25" />
@@ -529,7 +696,7 @@ export function InstagramSimulatorClient({
             )}
 
             {/* Tab strip — grid / reels / tagged */}
-            <div className="flex border-y border-white/10">
+            <div className="flex shrink-0 border-y border-white/10">
               {(
                 [
                   { id: 'grid' as const, icon: Grid3X3, label: t('tabGrid') },
@@ -555,9 +722,21 @@ export function InstagramSimulatorClient({
               ))}
             </div>
 
-            {/* Grid / tab content */}
+              </>
+            )}
+
+            {/* Scrollable content — grid/reels or in-phone post viewer */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
             <AnimatePresence mode="wait">
-              {activeTab === 'tagged' ? (
+              {selected ? (
+                <InPhoneFeedView
+                  key={`feed-${selected.id}`}
+                  posts={activeTab === 'reels' ? visibleReels : visiblePosts}
+                  startId={selected.id}
+                  profile={feedProfile}
+                  onBack={() => setSelected(null)}
+                />
+              ) : activeTab === 'tagged' ? (
                 <TabEmptyState
                   key="tab-tagged"
                   motionKey="tab-tagged"
@@ -586,9 +765,10 @@ export function InstagramSimulatorClient({
                 <PostGrid posts={visiblePosts} motionKey={gridMotionKey} onSelect={setSelected} />
               )}
             </AnimatePresence>
+            </div>
 
             {/* Bottom navigation bar */}
-            <div className="mt-1 flex items-center justify-around border-t border-white/10 px-4 py-3">
+            <div className="mt-auto flex shrink-0 items-center justify-around border-t border-white/10 px-4 py-3">
               {bottomNav.map(({ icon: Icon, label, active }) => (
                 <span key={label} aria-label={label} className={active ? 'text-white' : 'text-white/45'}>
                   <Icon className="h-6 w-6" strokeWidth={active ? 2.25 : 1.75} />
@@ -639,10 +819,6 @@ export function InstagramSimulatorClient({
           </motion.p>
         </div>
       </div>
-
-      <AnimatePresence>
-        {selected ? <PostDetailModal post={selected} onClose={() => setSelected(null)} /> : null}
-      </AnimatePresence>
     </div>
   );
 }

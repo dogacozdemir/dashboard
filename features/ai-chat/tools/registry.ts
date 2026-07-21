@@ -2,6 +2,10 @@ import { webFetchTool }    from './web-fetch';
 import { webSearchTool }   from './web-search';
 import { assetSearchTool } from './asset-search';
 import { crawlUrlTool }    from './crawl-url';
+import { getPerformanceTool } from './get-performance';
+import { getCreativeContextTool } from './get-creative-context';
+import { getCalendarTool } from './get-calendar';
+import { getSiteAnalyticsTool } from './get-site-analytics';
 import type { MonoAITool } from './types';
 
 // generate_pdf is intentionally excluded here — PDF generation is triggered
@@ -13,6 +17,10 @@ export const MONO_AI_TOOLS: MonoAITool<any>[] = [
   webSearchTool,
   assetSearchTool,
   crawlUrlTool,
+  getPerformanceTool,
+  getCreativeContextTool,
+  getCalendarTool,
+  getSiteAnalyticsTool,
 ];
 
 /**

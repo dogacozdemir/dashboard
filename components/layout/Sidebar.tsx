@@ -6,95 +6,13 @@ import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard,
-  BarChart3,
-  Clapperboard,
-  Globe,
-  Shield,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  CalendarDays,
-  Brain,
-  Sparkles,
-  Trophy,
-  UsersRound,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { Tenant } from '@/types/tenant';
 import type { UserGamificationData } from '@/features/gamification/types';
 import { XPProgress } from '@/features/gamification/components/XPProgress';
 import { StreakCounter } from '@/features/gamification/components/StreakCounter';
-
-function InstagramNavIcon({
-  className,
-  strokeWidth = 2,
-}: {
-  className?: string;
-  strokeWidth?: number;
-}) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-    </svg>
-  );
-}
-
-interface NavItem {
-  href: string;
-  labelKey:
-    | 'overview'
-    | 'performanceHub'
-    | 'creativeStudio'
-    | 'seoGeo'
-    | 'brandVault'
-    | 'chat'
-    | 'monoAi'
-    | 'masteryHall'
-    | 'opsCalendar'
-    | 'instagramPreview';
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  badgeKey?: 'badgeLive' | 'badgeAi';
-  color?: string;
-}
-
-const NAV_DEF: NavItem[] = [
-  { href: '/dashboard', labelKey: 'overview', icon: LayoutDashboard },
-  { href: '/mastery', labelKey: 'masteryHall', icon: Trophy, color: 'amber' },
-  {
-    href: '/performance',
-    labelKey: 'performanceHub',
-    icon: BarChart3,
-    badgeKey: 'badgeLive',
-    color: 'cyan',
-  },
-  { href: '/creative', labelKey: 'creativeStudio', icon: Clapperboard, color: 'violet' },
-  { href: '/instagram', labelKey: 'instagramPreview', icon: InstagramNavIcon, color: 'pink' },
-  { href: '/strategy', labelKey: 'seoGeo', icon: Globe, color: 'emerald' },
-  { href: '/brand-vault', labelKey: 'brandVault', icon: Shield },
-  { href: '/chat', labelKey: 'chat', icon: MessageSquare },
-  {
-    href: '/mono-ai',
-    labelKey: 'monoAi',
-    icon: Brain,
-    badgeKey: 'badgeAi',
-    color: 'indigo',
-  },
-  { href: '/calendar', labelKey: 'opsCalendar', icon: CalendarDays },
-];
+import { TENANT_NAV } from '@/lib/navigation/tenant-nav';
 
 interface SidebarProps {
   tenant:          Tenant;
@@ -189,7 +107,7 @@ export function Sidebar({ tenant, gamification, canManageTeam = false }: Sidebar
 
       {/* ── Nav ── */}
       <nav className="relative z-10 flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
-        {NAV_DEF.map((item, idx) => {
+        {TENANT_NAV.map((item, idx) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
 

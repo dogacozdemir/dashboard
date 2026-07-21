@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { DEFAULT_CURRENCY } from '@/lib/utils/format';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -95,7 +96,7 @@ function PlatformHealthOrb({
 function formatSpend(n: number, localeTag: string) {
   return new Intl.NumberFormat(localeTag, {
     style: 'currency',
-    currency: 'USD',
+    currency: DEFAULT_CURRENCY,
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(n);

@@ -1,25 +1,59 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { fetchCapabilitiesForUser } from '@/lib/auth/capabilities';
+import {
+  CAPABILITIES_JWT_SYNC_MS,
+  applyPermissionEntryToToken,
+  getPermissionCacheEntry,
+  refreshPermissionCacheBlocking,
+  schedulePermissionCacheRefresh,
+} from '@/lib/auth/permission-cache';
+import { getSharedCookieDomain, shouldUseSecureAuthCookies } from '@/lib/auth/cookie-domain';
+import { isScopedTenantHostSlug } from '@/lib/utils/parse-tenant-host';
 import type { SessionUser, UserLocale } from '@/types/user';
 
 function normalizeUserLocale(raw: unknown): UserLocale {
   return raw === 'en' ? 'en' : 'tr';
 }
 
-const CAPABILITIES_JWT_SYNC_MS = 5 * 60_000;
+const useSecureCookies = shouldUseSecureAuthCookies();
+const sharedCookieDomain = getSharedCookieDomain();
+const cookiePrefix = useSecureCookies ? '__Secure-' : '';
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+function authCookieOptions() {
+  return {
+    httpOnly: true as const,
+    sameSite: 'lax' as const,
+    path: '/',
+    secure: useSecureCookies,
+    ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+  };
+}
+
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   trustHost: true,
   session: { strategy: 'jwt' },
+  ...(sharedCookieDomain
+    ? {
+        cookies: {
+          sessionToken: {
+            name: `${cookiePrefix}authjs.session-token`,
+            options: authCookieOptions(),
+          },
+          callbackUrl: {
+            name: `${cookiePrefix}authjs.callback-url`,
+            options: authCookieOptions(),
+          },
+        },
+      }
+    : {}),
   pages: {
     signIn: '/login',
     error: '/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const u = user as any;
@@ -34,41 +68,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token;
       }
 
+      // Profile edit (unstable_update): refresh only display fields, never touch permissions.
+      if (trigger === 'update' && session) {
+        const patch = session as { name?: string | null; image?: string | null };
+        if (patch.name !== undefined) token.name = patch.name;
+        if (patch.image !== undefined) token.picture = patch.image;
+        return token;
+      }
+
       const uid = (token.sub ?? token.id) as string | undefined;
       if (uid && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         const now = Date.now();
         const last =
           typeof token.permsSyncedAt === 'number' ? token.permsSyncedAt : 0;
-        if (now - last >= CAPABILITIES_JWT_SYNC_MS) {
-          try {
-            const admin = createSupabaseAdminClient();
-            const { data: profile } = await admin
-              .from('users')
-              .select('role, role_id, tenant_id, locale')
-              .eq('id', uid)
-              .maybeSingle();
+        const stale = now - last >= CAPABILITIES_JWT_SYNC_MS;
+        const hasJwtPayload =
+          Boolean(token.role) &&
+          Boolean(token.tenantId) &&
+          Array.isArray(token.capabilities);
 
-            if (profile?.role_id && profile.tenant_id) {
-              token.role = profile.role as SessionUser['role'];
-              token.tenantId = profile.tenant_id as string;
-              token.locale = normalizeUserLocale(
-                (profile as { locale?: string | null }).locale
-              );
-              token.capabilities = await fetchCapabilitiesForUser(
-                admin,
-                profile.role_id as string,
-                profile.tenant_id as string
-              );
-              const { data: tenant } = await admin
-                .from('tenants')
-                .select('slug')
-                .eq('id', profile.tenant_id as string)
-                .maybeSingle();
-              if (tenant?.slug) token.tenantSlug = tenant.slug as string;
-              token.permsSyncedAt = now;
+        if (stale) {
+          const cached = getPermissionCacheEntry(uid);
+          if (cached && cached.syncedAt > last) {
+            applyPermissionEntryToToken(token, cached);
+          } else if (hasJwtPayload) {
+            // Stale-while-revalidate: serve existing JWT claims; refresh cache in background.
+            schedulePermissionCacheRefresh(uid);
+          } else {
+            // First session decode without capabilities — must block once.
+            try {
+              const entry = await refreshPermissionCacheBlocking(uid);
+              if (entry) applyPermissionEntryToToken(token, entry);
+            } catch (e) {
+              console.error('[auth/jwt] permission sync failed', e);
             }
-          } catch (e) {
-            console.error('[auth/jwt] permission sync failed', e);
           }
         }
       }
@@ -94,9 +127,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        hostTenantSlug: { label: 'Host tenant', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        const hostTenantSlug =
+          typeof credentials.hostTenantSlug === 'string'
+            ? credentials.hostTenantSlug.trim().toLowerCase()
+            : '';
 
         const supabase = await createSupabaseServerClient();
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -131,6 +170,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (tenantError || !tenant) {
           console.error('[NextAuth][credentials] tenant fetch failed:', tenantError?.message);
+          return null;
+        }
+
+        const userTenantSlug = (tenant.slug as string | undefined)?.trim().toLowerCase() ?? '';
+        if (
+          profile.role !== 'super_admin' &&
+          isScopedTenantHostSlug(hostTenantSlug) &&
+          userTenantSlug !== hostTenantSlug
+        ) {
+          console.error(
+            '[NextAuth][credentials] tenant host mismatch:',
+            hostTenantSlug,
+            userTenantSlug,
+          );
           return null;
         }
 

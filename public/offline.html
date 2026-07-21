@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c070c" />
+    <title>Çevrimdışı · Madmonos</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        background: #0c070c;
+        color: rgba(255, 255, 255, 0.9);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100dvh; padding: 24px; text-align: center;
+        -webkit-font-smoothing: antialiased;
+      }
+      .glow-a, .glow-b { position: fixed; border-radius: 9999px; filter: blur(130px); pointer-events: none; }
+      .glow-a { top: -160px; left: -120px; width: 420px; height: 420px; background: rgba(156, 112, 178, 0.14); }
+      .glow-b { bottom: -160px; right: -120px; width: 380px; height: 380px; background: rgba(190, 160, 66, 0.12); }
+      .card { position: relative; z-index: 1; max-width: 380px; }
+      .logo {
+        width: 72px; height: 72px; margin: 0 auto 22px; border-radius: 22px;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(120% 120% at 28% 20%, rgba(255,255,255,0.25), rgba(255,255,255,0) 45%),
+                    linear-gradient(145deg, rgba(156,112,178,0.95), rgba(190,160,66,0.95));
+        box-shadow: 0 0 40px rgba(156,112,178,0.28);
+      }
+      .logo img { width: 44px; height: 44px; object-fit: contain; }
+      h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 10px; }
+      p { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.5); margin-bottom: 24px; }
+      button {
+        appearance: none; border: 0; cursor: pointer;
+        padding: 12px 22px; border-radius: 16px; font-size: 14px; font-weight: 600; color: #fff;
+        background: linear-gradient(90deg, #9c70b2, #bea042);
+        box-shadow: 0 10px 30px rgba(156,112,178,0.25);
+      }
+      button:active { transform: scale(0.97); }
+    </style>
+  </head>
+  <body>
+    <div class="glow-a"></div>
+    <div class="glow-b"></div>
+    <div class="card">
+      <div class="logo"><img src="/icon-192.png" alt="Madmonos" /></div>
+      <h1>Bağlantı yok</h1>
+      <p>Şu anda çevrimdışısın. Bağlantın geri geldiğinde Madmonos panonu yeniden yükleyebilirsin.</p>
+      <button onclick="location.reload()">Yeniden dene</button>
+    </div>
+  </body>
+</html>

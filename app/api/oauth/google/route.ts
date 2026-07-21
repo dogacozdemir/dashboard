@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth/config';
 import { randomBytes } from 'crypto';
 import type { SessionUser } from '@/types/user';
 import type { OAuthState } from '@/features/oauth/types';
+import { signOAuthState } from '@/lib/auth/oauth-state';
+import { getAppUrl } from '@/lib/utils/app-url';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -10,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const user     = session.user as SessionUser;
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
-  const appUrl   = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const appUrl   = getAppUrl();
 
   if (!clientId) {
     return NextResponse.json(
@@ -32,10 +34,11 @@ export async function GET(req: NextRequest) {
     scope: [
       'https://www.googleapis.com/auth/adwords',
       'https://www.googleapis.com/auth/webmasters.readonly',
+      'https://www.googleapis.com/auth/analytics.readonly',
     ].join(' '),
     access_type:   'offline',
     prompt:        'consent',
-    state:         Buffer.from(JSON.stringify(state)).toString('base64url'),
+    state:         signOAuthState(state),
   });
 
   return NextResponse.redirect(

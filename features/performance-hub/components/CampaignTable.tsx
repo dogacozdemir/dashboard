@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/shared/GlassCard';
 import { PlatformBadge } from '@/components/shared/PlatformBadge';
 import { cn } from '@/lib/utils/cn';
 import { formatCurrency, formatNumber } from '@/lib/utils/format';
+import { useTenant } from '@/hooks/useTenant';
 import { CampaignGoalBars } from '@/features/gamification/components/CampaignGoalBars';
 import type { CampaignRow } from '../types';
 
@@ -21,6 +22,8 @@ const statusStyles: Record<CampaignRow['status'], string> = {
 
 export function CampaignTable({ campaigns }: CampaignTableProps) {
   const t = useTranslations('Performance.campaignTable');
+  const { tenant } = useTenant();
+  const currency = tenant.currency ?? undefined;
   const headers = [
     t('colCampaign'),
     t('colPlatform'),
@@ -85,7 +88,7 @@ export function CampaignTable({ campaigns }: CampaignTableProps) {
                   <PlatformBadge platform={row.platform} />
                 </td>
                 <td className="px-6 py-4 text-sm text-white/70 tabular-nums">
-                  {formatCurrency(row.spend)}
+                  {formatCurrency(row.spend, currency)}
                 </td>
                 <td className="px-6 py-4 text-sm text-white/70 tabular-nums">
                   {formatNumber(row.impressions)}

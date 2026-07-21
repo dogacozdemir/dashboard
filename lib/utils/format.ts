@@ -1,9 +1,55 @@
-export function formatCurrency(value: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
+/** Product default — the platform is Turkish-first. */
+export const DEFAULT_CURRENCY = 'TRY';
+
+/** Locale used for grouping/decimal separators per currency. */
+function localeForCurrency(currency: string): string {
+  switch (currency.toUpperCase()) {
+    case 'USD':
+      return 'en-US';
+    case 'EUR':
+      return 'de-DE';
+    case 'GBP':
+      return 'en-GB';
+    default:
+      return 'tr-TR';
+  }
+}
+
+/**
+ * Formats money using the tenant's own currency. Previously this hardcoded USD +
+ * en-US, so Turkish workspaces saw "$1,234" for ₺ amounts.
+ */
+export function formatCurrency(
+  value: number,
+  currency: string = DEFAULT_CURRENCY,
+  maximumFractionDigits = 0,
+): string {
+  const code = (currency || DEFAULT_CURRENCY).toUpperCase();
+  try {
+    return new Intl.NumberFormat(localeForCurrency(code), {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits,
+    }).format(value);
+  } catch {
+    // Unknown/invalid ISO code — fall back to a plain grouped number.
+    return `${value.toLocaleString('tr-TR', { maximumFractionDigits })} ${code}`;
+  }
+}
+
+/** Just the symbol (e.g. "₺", "$") — for compact metric-card prefixes. */
+export function currencySymbol(currency: string = DEFAULT_CURRENCY): string {
+  const code = (currency || DEFAULT_CURRENCY).toUpperCase();
+  try {
+    const parts = new Intl.NumberFormat(localeForCurrency(code), {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value ?? code;
+  } catch {
+    return code;
+  }
 }
 
 export function formatNumber(value: number): string {

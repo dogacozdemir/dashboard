@@ -56,11 +56,11 @@ export default async function CreativePage() {
   return (
     <div className="space-y-6">
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.labelKey}
-            className="relative rounded-3xl p-6 overflow-hidden"
+            className="relative rounded-3xl p-4 sm:p-6 overflow-hidden"
             style={{
               background: stat.bg,
               border: `1px solid ${stat.borderColor}`,
@@ -72,7 +72,7 @@ export default async function CreativePage() {
             <p className="text-[10px] font-semibold text-white/50 uppercase tracking-[0.12em] mb-3 line-clamp-2">
               {t(stat.labelKey)}
             </p>
-            <p className={`text-4xl font-bold tabular-nums tracking-tight ${stat.color}`}>
+            <p className={`text-3xl sm:text-4xl font-bold tabular-nums tracking-tight ${stat.color}`}>
               {stat.value}
             </p>
           </div>

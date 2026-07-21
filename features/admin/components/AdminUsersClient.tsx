@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { formatDate } from '@/lib/utils/format';
 import {
+  adminCreateUserForTenant,
   adminInviteNewUser,
   adminRevokeUser,
   adminUpdateUserRole,
@@ -54,7 +55,10 @@ type Props = {
   initialTenantId?: string;
   initialSearch?: string;
   initialRoleId?: string;
+  initialInviteOpen?: boolean;
 };
+
+type AddUserMode = 'invite' | 'create';
 
 function resolveError(t: ReturnType<typeof useTranslations>, errorKey?: string, error?: string) {
   const knownKeys = [
@@ -66,6 +70,8 @@ function resolveError(t: ReturnType<typeof useTranslations>, errorKey?: string, 
     'errSuperAdminBlocked',
     'errUserNotFound',
     'errLastTenantAdmin',
+    'errWeakPassword',
+    'errUserExists',
   ] as const;
   if (errorKey && knownKeys.includes(errorKey as (typeof knownKeys)[number])) {
     return t(`errors.${errorKey}` as `errors.${(typeof knownKeys)[number]}`);
@@ -99,6 +105,7 @@ export function AdminUsersClient({
   initialTenantId = '',
   initialSearch = '',
   initialRoleId = '',
+  initialInviteOpen = false,
 }: Props) {
   const t = useTranslations('Admin.users');
   const router = useRouter();
@@ -111,8 +118,13 @@ export function AdminUsersClient({
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(initialInviteOpen);
+  const [addUserMode, setAddUserMode] = useState<AddUserMode>('create');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createFullName, setCreateFullName] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createConfirmPassword, setCreateConfirmPassword] = useState('');
   const [inviteTenantId, setInviteTenantId] = useState(initialTenantId || tenants[0]?.id || '');
   const [inviteRoleId, setInviteRoleId] = useState('');
   const [inviteRoles, setInviteRoles] = useState<AdminAssignableRole[]>([]);
@@ -172,6 +184,12 @@ export function AdminUsersClient({
   }, [inviteOpen, inviteTenantId]);
 
   useEffect(() => {
+    if (tenantFilter) {
+      setInviteTenantId(tenantFilter);
+    }
+  }, [tenantFilter]);
+
+  useEffect(() => {
     if (!roleDialogUser) {
       setRoleDialogRoles([]);
       return;
@@ -204,6 +222,48 @@ export function AdminUsersClient({
     });
   }
 
+  function onCreateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteTenantId || !inviteRoleId) return;
+
+    if (createPassword !== createConfirmPassword) {
+      showToast('err', t('createPasswordMismatch'));
+      return;
+    }
+    if (createPassword.length < 8) {
+      showToast('err', t('createPasswordShort'));
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await adminCreateUserForTenant(
+        inviteTenantId,
+        createEmail,
+        createPassword,
+        inviteRoleId,
+        createFullName,
+      );
+      if (res.success) {
+        showToast('ok', t('toastCreateOk'));
+        setInviteOpen(false);
+        setCreateEmail('');
+        setCreateFullName('');
+        setCreatePassword('');
+        setCreateConfirmPassword('');
+        reload();
+      } else {
+        showToast('err', resolveError(t, res.errorKey, res.error));
+      }
+    });
+  }
+
+  function openAddUserModal() {
+    if (tenantFilter) {
+      setInviteTenantId(tenantFilter);
+    }
+    setInviteOpen(true);
+  }
+
   function onRoleSave() {
     if (!roleDialogUser || !roleDialogRoleId) return;
 
@@ -234,6 +294,11 @@ export function AdminUsersClient({
     });
   }
 
+  const selectedTenant = tenants.find((row) => row.id === (tenantFilter || inviteTenantId));
+  const inviteButtonLabel = selectedTenant
+    ? t('tenantAddUser', { tenant: selectedTenant.name })
+    : t('globalInvite');
+
   const activeTenants = tenants.filter((row) => row.is_active);
 
   return (
@@ -255,7 +320,7 @@ export function AdminUsersClient({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               transition={spring}
-              onClick={() => setInviteOpen(true)}
+              onClick={openAddUserModal}
               className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold text-[#1a0f00]"
               style={{
                 background: 'linear-gradient(135deg, #e8d48a, #bea042)',
@@ -264,7 +329,7 @@ export function AdminUsersClient({
               }}
             >
               <UserPlus className="h-4 w-4" />
-              {t('globalInvite')}
+              {inviteButtonLabel}
             </motion.button>
           </div>
 
@@ -445,17 +510,40 @@ export function AdminUsersClient({
         </div>
       </motion.div>
 
-      {/* Global invite modal */}
+      {/* Add user modal */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent
           showCloseButton
           className="border-white/10 bg-[#1a0f1a]/95 text-white sm:max-w-md"
         >
           <DialogHeader>
-            <DialogTitle className="text-white/90">{t('inviteModalTitle')}</DialogTitle>
-            <DialogDescription className="text-white/40">{t('inviteModalDesc')}</DialogDescription>
+            <DialogTitle className="text-white/90">
+              {selectedTenant ? t('addModalTitleTenant', { tenant: selectedTenant.name }) : t('addModalTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-white/40">
+              {addUserMode === 'invite' ? t('inviteModalDesc') : t('createModalDesc')}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={onInviteSubmit} className="space-y-4">
+
+          <div className="flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+            {(['create', 'invite'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAddUserMode(mode)}
+                className={cn(
+                  'flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+                  addUserMode === mode
+                    ? 'bg-white/[0.12] text-white/90'
+                    : 'text-white/40 hover:text-white/60',
+                )}
+              >
+                {mode === 'create' ? t('tabCreateUser') : t('tabInviteUser')}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
             <div>
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
                 {t('inviteTenantLabel')}
@@ -480,58 +568,152 @@ export function AdminUsersClient({
                 )}
               </select>
             </div>
-            <div>
-              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
-                {t('inviteEmailLabel')}
-              </label>
-              <div className="relative">
-                <MailPlus className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" />
-                <input
-                  type="email"
-                  required
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder={t('inviteEmailPlaceholder')}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-2.5 pl-10 pr-3 text-sm text-white/85 outline-none placeholder:text-white/25"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
-                {t('inviteRoleLabel')}
-              </label>
-              <select
-                required
-                value={inviteRoleId}
-                onChange={(e) => setInviteRoleId(e.target.value)}
-                disabled={!inviteRoles.length}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none disabled:opacity-50"
-              >
-                {inviteRoles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.slug}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <DialogFooter className="border-white/10 bg-transparent">
-              <button
-                type="button"
-                onClick={() => setInviteOpen(false)}
-                className="rounded-xl px-4 py-2 text-sm text-white/50 hover:text-white/75"
-              >
-                {t('cancel')}
-              </button>
-              <button
-                type="submit"
-                disabled={pending || !inviteRoles.length}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e8d48a] to-[#bea042] px-4 py-2 text-sm font-semibold text-[#1a0f00] disabled:opacity-50"
-              >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {t('inviteSubmit')}
-              </button>
-            </DialogFooter>
-          </form>
+
+            {addUserMode === 'invite' ? (
+              <form onSubmit={onInviteSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('inviteEmailLabel')}
+                  </label>
+                  <div className="relative">
+                    <MailPlus className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" />
+                    <input
+                      type="email"
+                      required
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder={t('inviteEmailPlaceholder')}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-2.5 pl-10 pr-3 text-sm text-white/85 outline-none placeholder:text-white/25"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('inviteRoleLabel')}
+                  </label>
+                  <select
+                    required
+                    value={inviteRoleId}
+                    onChange={(e) => setInviteRoleId(e.target.value)}
+                    disabled={!inviteRoles.length}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none disabled:opacity-50"
+                  >
+                    {inviteRoles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.slug}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <DialogFooter className="border-white/10 bg-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setInviteOpen(false)}
+                    className="rounded-xl px-4 py-2 text-sm text-white/50 hover:text-white/75"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending || !inviteRoles.length}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e8d48a] to-[#bea042] px-4 py-2 text-sm font-semibold text-[#1a0f00] disabled:opacity-50"
+                  >
+                    {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {t('inviteSubmit')}
+                  </button>
+                </DialogFooter>
+              </form>
+            ) : (
+              <form onSubmit={onCreateSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('createFullNameLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    placeholder={t('createFullNamePlaceholder')}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none placeholder:text-white/25"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('inviteEmailLabel')}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    placeholder={t('inviteEmailPlaceholder')}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none placeholder:text-white/25"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('createPasswordLabel')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={createPassword}
+                    onChange={(e) => setCreatePassword(e.target.value)}
+                    placeholder={t('createPasswordPlaceholder')}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none placeholder:text-white/25"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('createConfirmPasswordLabel')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={createConfirmPassword}
+                    onChange={(e) => setCreateConfirmPassword(e.target.value)}
+                    placeholder={t('createPasswordPlaceholder')}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none placeholder:text-white/25"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                    {t('inviteRoleLabel')}
+                  </label>
+                  <select
+                    required
+                    value={inviteRoleId}
+                    onChange={(e) => setInviteRoleId(e.target.value)}
+                    disabled={!inviteRoles.length}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/85 outline-none disabled:opacity-50"
+                  >
+                    {inviteRoles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.slug}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <DialogFooter className="border-white/10 bg-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setInviteOpen(false)}
+                    className="rounded-xl px-4 py-2 text-sm text-white/50 hover:text-white/75"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending || !inviteRoles.length}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e8d48a] to-[#bea042] px-4 py-2 text-sm font-semibold text-[#1a0f00] disabled:opacity-50"
+                  >
+                    {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {t('createSubmit')}
+                  </button>
+                </DialogFooter>
+              </form>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

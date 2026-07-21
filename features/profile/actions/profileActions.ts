@@ -2,8 +2,9 @@
 
 import { getPremiumActionError } from '@/lib/copy/premium-copy';
 import { premiumSessionRequiredMessage } from '@/lib/i18n/premium-action-errors';
+import { changePasswordAction } from '@/lib/auth/password-actions';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { auth } from '@/lib/auth/config';
+import { auth, unstable_update } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
 
 export async function updateProfile(data: {
@@ -29,29 +30,57 @@ export async function updateProfile(data: {
     return { success: false, error: await getPremiumActionError() };
   }
 
+  // Refresh the JWT display fields so the shell (TopBar/sidebar) shows the new
+  // name/avatar without a re-login. Best-effort — the DB write is authoritative.
+  try {
+    await unstable_update({
+      name: data.fullName.trim() || null,
+      image: data.avatarUrl ?? null,
+    } as never);
+  } catch (e) {
+    console.error('[updateProfile] session refresh skipped', e);
+  }
+
   return { success: true };
 }
 
 export async function updatePassword(
   currentPassword: string,
   newPassword: string
+): Promise<{ success: boolean; error?: string; errorKey?: string }> {
+  const session = await auth();
+  if (!session) return { success: false, error: await premiumSessionRequiredMessage() };
+
+  return changePasswordAction({ currentPassword, newPassword });
+}
+
+export async function updateNotificationPrefs(
+  patch: Record<string, boolean>,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
   if (!session) return { success: false, error: await premiumSessionRequiredMessage() };
 
-  const user     = session.user as SessionUser;
+  const user = session.user as SessionUser;
   const supabase = await createSupabaseServerClient();
 
-  // Verify current password via re-auth
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email:    user.email,
-    password: currentPassword,
-  });
-  if (authError) return { success: false, error: 'Current password is incorrect' };
+  const { data: row } = await supabase
+    .from('users')
+    .select('notification_prefs')
+    .eq('id', user.id)
+    .maybeSingle();
 
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { success: false, error: await getPremiumActionError() };
+  const current = (row?.notification_prefs as Record<string, unknown> | null) ?? {};
+  const next = { ...current, ...patch };
 
+  const { error } = await supabase
+    .from('users')
+    .update({ notification_prefs: next })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('[updateNotificationPrefs]', error.message);
+    return { success: false, error: await getPremiumActionError() };
+  }
   return { success: true };
 }
 
@@ -64,7 +93,7 @@ export async function fetchProfile() {
 
   const { data } = await supabase
     .from('users')
-    .select('id, email, full_name, avatar_url, role, tenant_id, created_at')
+    .select('id, email, full_name, avatar_url, role, tenant_id, created_at, notification_prefs')
     .eq('id', user.id)
     .single();
 

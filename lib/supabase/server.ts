@@ -1,8 +1,11 @@
+import { cache } from 'react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { seedTenantIdCache } from '@/lib/auth/tenant-cache';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createSupabaseServerClient() {
+async function createSupabaseServerClientImpl() {
   const cookieStore = await cookies();
 
   return createServerClient<any>(
@@ -14,13 +17,6 @@ export async function createSupabaseServerClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          /**
-           * In Server Components, Next.js forbids cookie mutation and throws:
-           * "Cookies can only be modified in a Server Action or Route Handler".
-           *
-           * Supabase may still attempt to refresh/set cookies during read flows.
-           * We ignore those write attempts here so RSC data fetching does not crash.
-           */
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
@@ -30,19 +26,48 @@ export async function createSupabaseServerClient() {
           }
         },
       },
-    }
+    },
   );
 }
 
-export async function getTenantBySlug(slug: string) {
+/** Request-scoped Supabase client — one instance per render pass. */
+export const createSupabaseServerClient = cache(createSupabaseServerClientImpl);
+
+async function fetchTenantBySlugImpl(slug: string) {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized || normalized === 'localhost' || normalized === 'admin' || normalized === 'www') {
+    return null;
+  }
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin
+      .from('tenants')
+      .select('*')
+      .eq('slug', normalized)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!error && data) {
+      seedTenantIdCache(normalized, data.id as string);
+      return data;
+    }
+  } catch {
+    /* fall back to session-scoped client */
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('tenants')
     .select('*')
-    .eq('slug', slug)
+    .eq('slug', normalized)
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
 
-  if (error) return null;
+  if (error || !data) return null;
+  seedTenantIdCache(normalized, data.id as string);
   return data;
 }
+
+/** Request-scoped tenant row — one DB hit per slug per render pass. */
+export const getTenantBySlug = cache(fetchTenantBySlugImpl);

@@ -21,6 +21,7 @@ import {
   recordCreativeRevisionAdminTask,
   resolveCreativeAdminTasksAfterStatus,
 } from '@/features/admin/lib/adminTaskBridge';
+import { notifyAgencyCreativeEvent } from '@/lib/email/notify';
 import { extractS3Key, normalizeDuplicateTenantKey } from '@/features/creative-studio/lib/creativeS3Keys';
 
 async function signCreativeUrl(rawUrl: string | null): Promise<string | null> {
@@ -51,8 +52,10 @@ async function hydrateSlideUrls(slide: {
   type: string;
   created_at: string;
 }): Promise<CreativeSlide> {
-  const url = await signCreativeUrl(slide.url);
-  const thumbnailUrl = await signCreativeUrl(slide.thumbnail_url);
+  const [url, thumbnailUrl] = await Promise.all([
+    signCreativeUrl(slide.url),
+    signCreativeUrl(slide.thumbnail_url),
+  ]);
   return {
     id: slide.id,
     slideIndex: slide.slide_index,
@@ -90,7 +93,7 @@ export async function fetchCreativePosts(companyId: string): Promise<CreativePos
 
   const mapped: CreativePost[] = [];
 
-  const PRESIGN_CONCURRENCY = 4;
+  const PRESIGN_CONCURRENCY = 8;
   for (let i = 0; i < data.length; i += PRESIGN_CONCURRENCY) {
     const slice = data.slice(i, i + PRESIGN_CONCURRENCY);
     const part = await Promise.all(
@@ -343,6 +346,16 @@ export async function updateCreativePostStatus(
     postTitle: post.title as string,
   });
 
+  if (status === 'approved') {
+    const approver = (await auth())?.user as SessionUser | undefined;
+    void notifyAgencyCreativeEvent({
+      tenantId: companyId,
+      postTitle: post.title as string,
+      kind: 'approved',
+      byName: approver?.name ?? undefined,
+    });
+  }
+
   return { success: true, gamification };
 }
 
@@ -408,6 +421,14 @@ export async function addRevision(input: {
     postId: input.postId,
     tenantId: input.tenantId,
     postTitle: (postRow?.title as string) ?? 'Kreatif',
+  });
+
+  // Best-effort out-of-app: tell the agency a client requested a revision.
+  void notifyAgencyCreativeEvent({
+    tenantId: input.tenantId,
+    postTitle: (postRow?.title as string) ?? 'Kreatif',
+    kind: 'revision',
+    byName: (session.user as SessionUser).name ?? undefined,
   });
 
   return { success: true };

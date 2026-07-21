@@ -6,6 +6,7 @@ import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { getPublicUrl } from '@/lib/storage/s3';
 import type { SessionUser } from '@/types/user';
 import { recordCreativePendingAdminTasks } from '@/features/admin/lib/adminTaskBridge';
+import { notifyCreativePendingReview } from '@/lib/email/notify';
 import { trackActivity } from '@/features/gamification/actions/trackActivity';
 import {
   premiumDataPersistErrorMessage,
@@ -186,6 +187,9 @@ export async function POST(request: NextRequest) {
       title:     postRow.title as string,
     },
   ]);
+
+  // Best-effort out-of-app delivery: email the client team that a creative awaits review.
+  void notifyCreativePendingReview({ tenantId: companyId, postTitle: postRow.title as string });
 
   try {
     await trackActivity('creative_uploaded', { batchCount: 1 });

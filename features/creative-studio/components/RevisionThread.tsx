@@ -1541,7 +1541,10 @@ export function RevisionThread({
   );
 
   const approveDialog = (
-      <Dialog open={canApprove && showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+      <Dialog
+        open={canApprove && showApproveConfirm}
+        onOpenChange={(open) => setShowApproveConfirm(open)}
+      >
         <DialogContent
           className="max-w-md border-white/[0.12] text-white/90 rounded-3xl overflow-hidden"
           style={{
@@ -1597,7 +1600,6 @@ export function RevisionThread({
                     }
                     onStatusChange?.(post.id, 'approved');
                     setShowApproveConfirm(false);
-                    onClose();
                   }
                 });
               }}

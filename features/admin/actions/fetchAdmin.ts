@@ -8,6 +8,7 @@ import type { TenantWithStats } from '../types';
 import type { AdminOverviewStats, PlatformHealth } from '../types/admin-overview';
 import { normalizeTenantSlug, tenantSlugIssue } from '../lib/tenant-slug';
 import { customDomainIssue, normalizeCustomDomainInput } from '../lib/custom-domain';
+import { isSupportedCurrency } from '../lib/currencies';
 
 function aggregateLastActivity(
   tenantId: string,
@@ -34,7 +35,7 @@ export async function fetchAllTenants(): Promise<TenantWithStats[]> {
 
   const { data, error } = await supabase
     .from('tenants')
-    .select('id, slug, name, logo_url, custom_domain, plan, primary_color, is_active, created_at')
+    .select('id, slug, name, logo_url, custom_domain, currency, plan, primary_color, is_active, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -119,7 +120,14 @@ export async function createTenant(data: {
     return { success: false, error: `SLUG_${slugErr.toUpperCase()}` };
   }
 
-  const supabase = await createSupabaseServerClient();
+  let admin: ReturnType<typeof createSupabaseAdminClient> | null = null;
+  try {
+    admin = createSupabaseAdminClient();
+  } catch {
+    admin = null;
+  }
+
+  const supabase = admin ?? (await createSupabaseServerClient());
   const { error } = await supabase.from('tenants').insert({
     slug,
     name,
@@ -182,6 +190,27 @@ export async function updateTenantCustomDomain(
   }
 
   return { success: true, customDomain };
+}
+
+export async function updateTenantCurrency(
+  tenantId: string,
+  currency: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdminSession();
+
+  const code = currency.trim().toUpperCase();
+  if (!isSupportedCurrency(code)) {
+    return { success: false, error: 'CURRENCY_INVALID' };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from('tenants').update({ currency: code }).eq('id', tenantId);
+
+  if (error) {
+    console.error('[updateTenantCurrency]', error.message);
+    return { success: false, error: await getPremiumAdminActionError() };
+  }
+  return { success: true };
 }
 
 export type { AdminOverviewStats, PlatformHealth } from '../types/admin-overview';

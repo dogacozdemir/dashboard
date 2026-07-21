@@ -10,8 +10,26 @@ export type BrandChunkMatch = {
   asset_name:     string;
 };
 
+export type ExternalChunkMatch = {
+  id:          string;
+  source_url:  string;
+  chunk_index: number;
+  content:     string;
+  similarity:  number;
+};
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 /**
- * Returns markdown block for system/user augmentation, or null if no hits / embeddings unavailable.
+ * Returns a markdown block for system/user augmentation, or null if no hits /
+ * embeddings unavailable. Pulls from BOTH uploaded Brand Vault documents and the
+ * tenant's crawled site/external knowledge — all strictly tenant-scoped by the RPCs.
  */
 export async function retrieveBrandVaultContext(
   supabase: SupabaseClient,
@@ -30,30 +48,55 @@ export async function retrieveBrandVaultContext(
 
   const literal = embeddingToPgLiteral(embedding);
 
-  const { data, error } = await supabase.rpc('match_brand_knowledge_chunks', {
-    query_embedding: literal,
-    p_tenant_id:     tenantId,
-    match_count:     8,
-  });
+  const [brandRes, extRes] = await Promise.all([
+    supabase.rpc('match_brand_knowledge_chunks', {
+      query_embedding: literal,
+      p_tenant_id:     tenantId,
+      match_count:     6,
+    }),
+    supabase.rpc('match_external_knowledge_chunks', {
+      query_embedding: literal,
+      p_tenant_id:     tenantId,
+      match_count:     6,
+    }),
+  ]);
 
-  if (error) {
-    console.error('[retrieveBrandVaultContext] rpc', error.message);
-    return null;
+  if (brandRes.error) console.error('[retrieveBrandVaultContext] brand rpc', brandRes.error.message);
+  if (extRes.error) console.error('[retrieveBrandVaultContext] external rpc', extRes.error.message);
+
+  const brandRows = (brandRes.data ?? []) as BrandChunkMatch[];
+  const extRows = ((extRes.data ?? []) as ExternalChunkMatch[]).filter((r) => r.similarity >= 0.2);
+
+  if (brandRows.length === 0 && extRows.length === 0) return null;
+
+  const sections: string[] = [];
+
+  if (brandRows.length > 0) {
+    sections.push(
+      '**Brand Vault — yüklenen marka dökümanları:**\n\n' +
+        brandRows
+          .map((row, i) => {
+            const pct = Math.min(100, Math.max(0, row.similarity * 100));
+            return `### Alıntı ${i + 1} — **${row.asset_name}** (~${pct.toFixed(0)}%)\n${row.content.trim()}`;
+          })
+          .join('\n\n'),
+    );
   }
 
-  const rows = (data ?? []) as BrandChunkMatch[];
-  if (rows.length === 0) return null;
-
-  const blocks = rows.map((row, i) => {
-    const pct = Math.min(100, Math.max(0, row.similarity * 100));
-    return (
-      `### Alıntı ${i + 1} — **${row.asset_name}** (benzerlik ~${pct.toFixed(0)}%)\n` +
-      row.content.trim()
+  if (extRows.length > 0) {
+    sections.push(
+      '**Site & harici içerik (taranmış):**\n\n' +
+        extRows
+          .map((row, i) => {
+            const pct = Math.min(100, Math.max(0, row.similarity * 100));
+            return `### Kaynak ${i + 1} — **${hostOf(row.source_url)}** (~${pct.toFixed(0)}%)\n${row.content.trim()}`;
+          })
+          .join('\n\n'),
     );
-  });
+  }
 
   return (
-    '**Brand Vault (RAG) — yalnızca aşağıdaki alıntılara dayanarak müşteri markası hakkında cevap ver; uydurma.**\n\n' +
-    blocks.join('\n\n')
+    '**Aşağıdaki alıntılara dayanarak müşteri markası hakkında cevap ver; uydurma.**\n\n' +
+    sections.join('\n\n')
   );
 }

@@ -2,8 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getTenantDashboardUrl } from '@/lib/utils/tenant-urls';
 
 /**
- * Builds a tenant-subdomain login URL for Supabase Auth invite `redirectTo`.
- * Invited users land on `{slug}.{ROOT_DOMAIN}/login`, not the apex host.
+ * Builds a tenant-subdomain set-password URL for Supabase Auth invite `redirectTo`.
+ * Invited users land on `{slug}.{ROOT_DOMAIN}/set-password`, where they consume
+ * the invite token and choose their first password before entering the app.
  */
 export async function getInviteLoginRedirectUrl(
   admin: SupabaseClient,
@@ -24,5 +25,5 @@ export async function getInviteLoginRedirectUrl(
     return { error: 'TENANT_NOT_FOUND' };
   }
 
-  return { redirectTo: getTenantDashboardUrl(tenant.slug as string, '/login') };
+  return { redirectTo: getTenantDashboardUrl(tenant.slug as string, '/set-password') };
 }

@@ -6,13 +6,18 @@ import { fetchAiHistory } from '@/features/ai-chat/actions/aiChatActions';
 import { AiChatInterface } from '@/features/ai-chat/components/AiChatInterface';
 import type { SessionUser } from '@/types/user';
 
-export default async function MonoAiPage() {
+export default async function MonoAiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const session = await auth();
   const user = session?.user as SessionUser | undefined;
   if (!sessionHasPermission(user, 'ai.mono_chat')) redirect('/unauthorized');
 
   const { companyId, tenant } = await requireTenantContext();
-  const aiHistory = await fetchAiHistory(companyId);
+  const [aiHistory, params] = await Promise.all([fetchAiHistory(companyId), searchParams]);
+  const initialInput = typeof params.q === 'string' ? params.q.slice(0, 500) : undefined;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -28,6 +33,7 @@ export default async function MonoAiPage() {
           companyId={companyId}
           tenantName={tenant.name}
           initialHistory={aiHistory}
+          initialInput={initialInput}
         />
       </div>
     </div>

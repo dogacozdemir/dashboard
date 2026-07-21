@@ -8,8 +8,9 @@ interface RealtimeTokenResponse {
 
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
+let inFlightTokenFetch: Promise<void> | null = null;
 
-export async function ensureRealtimeAuth(): Promise<void> {
+async function fetchRealtimeToken(): Promise<void> {
   const now = Date.now();
   if (cachedToken && now < tokenExpiresAt - 20_000) {
     return;
@@ -31,10 +32,22 @@ export async function ensureRealtimeAuth(): Promise<void> {
   supabase.realtime.setAuth(cachedToken);
 }
 
+export async function ensureRealtimeAuth(): Promise<void> {
+  if (inFlightTokenFetch) {
+    return inFlightTokenFetch;
+  }
+
+  inFlightTokenFetch = fetchRealtimeToken().finally(() => {
+    inFlightTokenFetch = null;
+  });
+
+  return inFlightTokenFetch;
+}
+
 export async function subscribeWithRealtimeAuth(
   channelName: string,
   setup: (channel: RealtimeChannel) => RealtimeChannel,
-  options?: RealtimeChannelOptions
+  options?: RealtimeChannelOptions,
 ): Promise<RealtimeChannel> {
   await ensureRealtimeAuth();
   const supabase = createSupabaseBrowserClient();

@@ -23,9 +23,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatRelativeFromMessages } from '@/lib/i18n/format-relative-from-messages';
 import { cn } from '@/lib/utils/cn';
-import { getTenantDashboardUrl } from '@/lib/utils/tenant-urls';
+import { navigateToTenantAsCustomer } from '@/lib/auth/impersonate-navigate';
 import { useTranslations } from 'next-intl';
-import { toggleTenantStatus } from '../actions/fetchAdmin';
+import { toggleTenantStatus, updateTenantCurrency } from '../actions/fetchAdmin';
+import { SUPPORTED_CURRENCIES } from '../lib/currencies';
+import { DEFAULT_CURRENCY, currencySymbol } from '@/lib/utils/format';
 import { CreateTenantButton, CreateTenantDialog } from './CreateTenantDialog';
 import type { TenantWithStats } from '../types';
 
@@ -36,6 +38,39 @@ const planColors: Record<string, string> = {
   growth: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   enterprise: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
 };
+
+/**
+ * Reporting currency per tenant — every money surface (dashboard, reports, PDFs,
+ * e-mails) formats against it, so the agency sets it here.
+ */
+function CurrencyPicker({ tenantId, value }: { tenantId: string; value: string }) {
+  const [current, setCurrent] = useState(value);
+  const [saving, startSaving] = useTransition();
+
+  return (
+    <select
+      value={current}
+      disabled={saving}
+      aria-label="Currency"
+      onChange={(e) => {
+        const next = e.target.value;
+        const previous = current;
+        setCurrent(next);
+        startSaving(async () => {
+          const res = await updateTenantCurrency(tenantId, next);
+          if (!res.success) setCurrent(previous);
+        });
+      }}
+      className="cursor-pointer rounded-lg border border-white/[0.10] bg-white/[0.03] px-2 py-1 text-[10px] font-medium text-white/60 outline-none transition-colors hover:bg-white/[0.06] focus:border-[#9c70b2]/50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {SUPPORTED_CURRENCIES.map((c) => (
+        <option key={c} value={c} className="bg-[#161018] text-white/80">
+          {currencySymbol(c)} {c}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export type PlanSegment = 'all' | 'enterprise' | 'growth';
 
@@ -99,17 +134,7 @@ function ImpersonateButton({ slug, label }: { slug: string; label: string }) {
 
   function onClick() {
     startTransition(async () => {
-      try {
-        const res = await fetch('/api/admin/impersonate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug }),
-        });
-        if (!res.ok) return;
-        window.location.href = getTenantDashboardUrl(slug, '/dashboard');
-      } catch {
-        /* noop */
-      }
+      await navigateToTenantAsCustomer(slug, '/dashboard');
     });
   }
 
@@ -290,14 +315,20 @@ export function TenantTable({ tenants }: TenantTableProps) {
                         )}
                       </td>
                       <td className="px-6 py-4 align-middle">
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium capitalize',
-                            planColors[tenant.plan],
-                          )}
-                        >
-                          {tenant.plan}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium capitalize',
+                              planColors[tenant.plan],
+                            )}
+                          >
+                            {tenant.plan}
+                          </span>
+                          <CurrencyPicker
+                            tenantId={tenant.id}
+                            value={tenant.currency ?? DEFAULT_CURRENCY}
+                          />
+                        </div>
                       </td>
                       <td className="px-6 py-4 align-middle">
                         <Link
@@ -358,6 +389,12 @@ export function TenantTable({ tenants }: TenantTableProps) {
                               align="end"
                               className="rounded-2xl border-white/[0.10] bg-[#161018]/95 text-xs text-white/80 backdrop-blur-xl"
                             >
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/users?tenantId=${tenant.id}&invite=1`)}
+                                className="cursor-pointer rounded-xl"
+                              >
+                                {t('menuAddUser')}
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled
                                 className="cursor-not-allowed rounded-xl text-white/30"

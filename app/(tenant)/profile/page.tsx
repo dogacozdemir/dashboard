@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { fetchProfile } from '@/features/profile/actions/profileActions';
 import { ProfileForm } from '@/features/profile/components/ProfileForm';
+import { NotificationSettings } from '@/features/profile/components/NotificationSettings';
 import { ProfileSettingsShell } from './ProfileSettingsShell';
 import { RestartTourButton } from '@/features/onboarding/components/MagicTour';
 import { User, Compass } from 'lucide-react';
@@ -28,6 +29,10 @@ export default async function ProfilePage() {
         </div>
 
         <ProfileForm profile={profile} />
+
+        <NotificationSettings
+          initialPrefs={(profile.notification_prefs as Record<string, unknown> | null) ?? {}}
+        />
 
         {/* Product tour */}
         <div className="glass rounded-2xl p-5 border border-white/[0.06]">

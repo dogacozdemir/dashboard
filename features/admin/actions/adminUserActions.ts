@@ -298,6 +298,64 @@ export async function adminInviteNewUser(
   return { success: true };
 }
 
+export async function adminCreateUserForTenant(
+  tenantId: string,
+  email: string,
+  password: string,
+  roleId: string,
+  fullName?: string,
+): Promise<{ success: boolean; error?: string; errorKey?: string }> {
+  await requireAdminSession();
+
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed || !trimmed.includes('@')) {
+    return { success: false, errorKey: 'errInvalidEmail' };
+  }
+
+  if (password.length < 8) {
+    return { success: false, errorKey: 'errWeakPassword' };
+  }
+
+  const admin = getAdminServiceClient();
+  if (!admin) {
+    return { success: false, errorKey: 'errServiceUnavailable' };
+  }
+
+  const { data: tenantRow } = await admin.from('tenants').select('id').eq('id', tenantId).maybeSingle();
+  if (!tenantRow) {
+    return { success: false, errorKey: 'errTenantNotFound' };
+  }
+
+  const allowed = await listAssignableRolesForTenantAdmin(admin, tenantId);
+  if (!allowed.some((r) => r.id === roleId)) {
+    return { success: false, errorKey: 'errRoleNotAssignable' };
+  }
+
+  const displayName = fullName?.trim() || trimmed.split('@')[0];
+
+  const { error } = await admin.auth.admin.createUser({
+    email: trimmed,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      tenant_id: tenantId,
+      role_id: roleId,
+      full_name: displayName,
+    },
+  });
+
+  if (error) {
+    console.error('[adminCreateUserForTenant]', error.message);
+    if (/already|registered|exists/i.test(error.message)) {
+      return { success: false, errorKey: 'errUserExists' };
+    }
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/users');
+  return { success: true };
+}
+
 export async function adminUpdateUserRole(
   userId: string,
   targetRoleId: string,

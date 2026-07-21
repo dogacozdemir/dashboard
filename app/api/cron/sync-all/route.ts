@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { runSyncAdPlatformForTenant, runSyncSEOForTenant } from '@/features/oauth/actions/syncPlatformData';
 import { runGenerateGeoReportForTenant } from '@/features/strategy/actions/generateGeoReport';
+import { detectAndNotifyAnomalies } from '@/lib/alerts/anomaly';
+import { runTenantSiteCrawl } from '@/lib/ai/site-crawl';
 import type { AdPlatform } from '@/features/oauth/types';
 
 /**
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = createSupabaseAdminClient();
 
-    const { data: tenants, error: tErr } = await supabase.from('tenants').select('id, name').eq('is_active', true);
+    const { data: tenants, error: tErr } = await supabase.from('tenants').select('id, name, slug, is_demo, custom_domain').eq('is_active', true);
     if (tErr) {
       return NextResponse.json({ ok: false, error: tErr.message }, { status: 500 });
     }
@@ -75,6 +77,26 @@ export async function GET(req: NextRequest) {
       const ads: Record<string, { success: boolean; error?: string }> = {};
       for (const p of platforms) {
         ads[p] = await runSyncAdPlatformForTenant(tid, p, supabase);
+      }
+
+      // Proactive anomaly alerts on freshly synced paid data (skip demo tenants).
+      const isDemo = Boolean((row as { is_demo?: boolean }).is_demo);
+      if (!isDemo && platforms.length > 0) {
+        try {
+          await detectAndNotifyAnomalies(supabase, tid, tname, (row as { slug?: string }).slug ?? '');
+        } catch (e) {
+          console.error('[cron/sync-all] anomaly', tid, e instanceof Error ? e.message : e);
+        }
+      }
+
+      // Keep MonoAI's per-tenant brand knowledge fresh: crawl the client's own site
+      // into external_knowledge_chunks (throttled ~7 days; skips demo / no domain).
+      if (!isDemo) {
+        try {
+          await runTenantSiteCrawl(supabase, tid, (row as { custom_domain?: string | null }).custom_domain ?? null);
+        } catch (e) {
+          console.error('[cron/sync-all] site-crawl', tid, e instanceof Error ? e.message : e);
+        }
       }
 
       summary[tid] = { seo, geoAi, ads };

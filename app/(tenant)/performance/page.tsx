@@ -21,8 +21,10 @@ import { ConnectedAccountsStrip } from '@/features/performance-hub/components/Co
 import { ChannelGlassIcon } from '@/features/performance-hub/components/ChannelGlassIcon';
 import { PlatformComparisonMatrix } from '@/features/performance-hub/components/PlatformComparisonMatrix';
 import { SeoGscMatrix } from '@/features/performance-hub/components/SeoGscMatrix';
+import { Ga4SiteMatrix } from '@/features/performance-hub/components/Ga4SiteMatrix';
 import { MetricCardSkeleton, ChartSkeleton } from '@/components/shared/LoadingSkeleton';
 import { DollarSign, Eye, MousePointer, TrendingUp, Percent } from 'lucide-react';
+import { currencySymbol } from '@/lib/utils/format';
 import type { TimeRange } from '@/features/performance-hub/actions/fetchMetrics';
 import type { Tenant, DashboardGoal } from '@/types/tenant';
 import { parseCockpitPlatform, type CockpitPlatform } from '@/features/performance-hub/lib/cockpit-platform';
@@ -99,6 +101,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
                 dashboardGoal={dashboardGoal}
                 spotlightMetric={spotlightMetric}
                 cockpitPlatform={cockpit}
+                currency={tenant.currency ?? null}
               />
             </Suspense>
           </CockpitStaggerSection>
@@ -118,7 +121,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
           {paidSurface ? (
             <CockpitStaggerSection>
               <Suspense fallback={<ChartSkeleton height={120} />}>
-                <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} />
+                <PlatformBreakdown companyId={companyId} range={range} cockpit={cockpit} currency={tenant.currency ?? null} />
               </Suspense>
             </CockpitStaggerSection>
           ) : null}
@@ -138,9 +141,14 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       </CockpitMetricsCrossfade>
 
       {cockpit === 'all' || cockpit === 'seo' ? (
-        <Suspense fallback={<ChartSkeleton height={200} />}>
-          <SeoGscMatrix companyId={companyId} tenantBrandName={tenant.name ?? null} />
-        </Suspense>
+        <>
+          <Suspense fallback={<ChartSkeleton height={200} />}>
+            <SeoGscMatrix companyId={companyId} tenantBrandName={tenant.name ?? null} />
+          </Suspense>
+          <Suspense fallback={<ChartSkeleton height={200} />}>
+            <Ga4SiteMatrix companyId={companyId} currency={tenant.currency ?? null} />
+          </Suspense>
+        </>
       ) : null}
     </div>
   );
@@ -150,10 +158,12 @@ async function PlatformBreakdown({
   companyId,
   range,
   cockpit,
+  currency,
 }: {
   companyId: string;
   range: TimeRange;
   cockpit: CockpitPlatform;
+  currency?: string | null;
 }) {
   if (cockpit === 'seo') return null;
 
@@ -176,7 +186,7 @@ async function PlatformBreakdown({
             </div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <MetricCard label={tPerf('performancePage.metricSpend')} metric={m.spend} prefix="$" decimals={0} icon={<DollarSign className="w-3.5 h-3.5" />} index={platformIdx * 5} trendSemantics="growth" />
+            <MetricCard label={tPerf('performancePage.metricSpend')} metric={m.spend} prefix={currencySymbol(currency ?? undefined)} decimals={0} icon={<DollarSign className="w-3.5 h-3.5" />} index={platformIdx * 5} trendSemantics="growth" />
             <MetricCard label={tPerf('performancePage.metricImpressions')} metric={m.impressions} decimals={0} icon={<Eye className="w-3.5 h-3.5" />} index={platformIdx * 5 + 1} trendSemantics="growth" />
             <MetricCard label={tPerf('performancePage.metricClicks')} metric={m.clicks} decimals={0} icon={<MousePointer className="w-3.5 h-3.5" />} index={platformIdx * 5 + 2} trendSemantics="growth" />
             <MetricCard label={tPerf('performancePage.metricRoas')} metric={m.roas} suffix="x" decimals={2} icon={<TrendingUp className="w-3.5 h-3.5" />} index={platformIdx * 5 + 3} trendSemantics="efficiency" />

@@ -1,32 +1,33 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
-import { headers } from 'next/headers';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth/config';
+import { getCachedSession } from '@/lib/auth/cached-auth';
+import { getTenantContext } from '@/lib/auth/tenant-guard';
 import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
-import { getTenantBySlug, createSupabaseServerClient } from '@/lib/supabase/server';
+import { isScopedTenantHostSlug } from '@/lib/utils/parse-tenant-host';
 import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 import { getAdminTenantsUrl } from '@/lib/utils/tenant-urls';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { TenantProvider } from '@/hooks/useTenant';
-import { fetchUserGamification } from '@/features/gamification/actions/fetchGamification';
 import { ActivityTracker } from '@/features/gamification/components/ActivityTracker';
 import { MagicTour } from '@/features/onboarding/components/MagicTour';
+import { LayoutSidebarGamification } from '@/features/gamification/components/LayoutSidebarGamification';
+import { LayoutSidebarGamificationSkeleton } from '@/features/gamification/components/LayoutSidebarGamificationSkeleton';
+import { LayoutCommandCenterGamification } from '@/features/gamification/components/LayoutCommandCenterGamification';
+import { LayoutInitialNotifications } from '@/features/notifications/components/LayoutInitialNotifications';
+import { NotificationBellSkeleton } from '@/features/notifications/components/NotificationBellSkeleton';
 import type { SessionUser } from '@/types/user';
-import { mapRowToLuxNotification } from '@/features/notifications/lib/mapNotificationRow';
-import type { LuxNotificationItem } from '@/features/notifications/types';
 import { resolveEffectiveLocale } from '@/lib/i18n/resolve-effective-locale';
 import { loadMessages } from '@/lib/i18n/load-messages';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers();
-  const slug = (headersList.get('x-tenant-slug') ?? '').trim();
-  const raw = slug ? await getTenantBySlug(slug) : null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const name: string = raw ? (raw as any).name ?? slug : slug;
+  const ctx = await getTenantContext();
+  const slug = ctx?.tenant.slug ?? '';
+  const name: string = ctx?.tenant.name ?? slug;
   return {
     title: name
       ? { template: `%s — ${name}`, default: `${name} — Madmonos` }
@@ -39,58 +40,31 @@ export default async function TenantLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const [session, ctx, cookieStore] = await Promise.all([
+    getCachedSession(),
+    getTenantContext(),
+    cookies(),
+  ]);
+
   if (!session) redirect('/login');
+  if (!ctx) notFound();
 
-  const headersList = await headers();
-  const tenantSlug = (headersList.get('x-tenant-slug') ?? '').trim();
-
-  const tenantRaw = await getTenantBySlug(tenantSlug);
-  if (!tenantRaw) notFound();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tenant = tenantRaw as any;
+  const tenant = ctx.tenant;
   const user = session.user as SessionUser;
+  const tenantSlug = tenant.slug;
 
   if (user.role !== 'super_admin' && user.tenantSlug && user.tenantSlug !== tenantSlug) {
     redirect('/unauthorized');
   }
 
-  // Fetch gamification data (non-blocking — returns null on error)
-  const gamification = await fetchUserGamification();
-
   const canUseNotifications =
     sessionHasPermission(user, 'notifications.view') || sessionHasPermission(user, 'chat.send');
 
-  const supabase = await createSupabaseServerClient();
-  let initialNotifs: LuxNotificationItem[] = [];
-  if (canUseNotifications) {
-    const { data: notifRows } = await supabase
-      .from('notifications')
-      .select('id, message, type, sender_name, is_read, created_at, category, action_url, action_label')
-      .eq('tenant_id', tenant.id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-
-    initialNotifs = (notifRows ?? []).map((n) =>
-      mapRowToLuxNotification({
-        id: n.id,
-        message: n.message,
-        type: n.type,
-        sender_name: n.sender_name,
-        is_read: n.is_read,
-        created_at: n.created_at,
-        category: (n as { category?: string | null }).category,
-        action_url: (n as { action_url?: string | null }).action_url,
-        action_label: (n as { action_label?: string | null }).action_label,
-      })
-    );
-  }
-
-  const cookieStore = await cookies();
-  const impSlug = cookieStore.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim() ?? '';
+  const impSlug = cookieStore.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim().toLowerCase() ?? '';
   const isImpersonating =
-    user.role === 'super_admin' && impSlug.length > 0 && impSlug === tenant.slug;
+    user.role === 'super_admin' &&
+    tenant.slug !== user.tenantSlug &&
+    (impSlug === tenant.slug || isScopedTenantHostSlug(tenantSlug));
 
   const impersonation = isImpersonating
     ? { tenantName: String(tenant.name), exitHref: getAdminTenantsUrl() }
@@ -103,6 +77,24 @@ export default async function TenantLayout({
   const messages = loadMessages(locale);
   const tDash = await getTranslations({ locale, namespace: 'Dashboard' });
 
+  const sidebarSlot = (
+    <Suspense fallback={<LayoutSidebarGamificationSkeleton tenant={tenant} canManageTeam={canManageTeam} />}>
+      <LayoutSidebarGamification tenant={tenant} canManageTeam={canManageTeam} />
+    </Suspense>
+  );
+
+  const notificationSlot = (
+    <Suspense fallback={<NotificationBellSkeleton />}>
+      <LayoutInitialNotifications companyId={tenant.id} enabled={canUseNotifications} />
+    </Suspense>
+  );
+
+  const commandCenterSlot = (
+    <Suspense fallback={null}>
+      <LayoutCommandCenterGamification companyId={tenant.id} user={user} />
+    </Suspense>
+  );
+
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <TenantProvider value={{ tenant, companyId: tenant.id }}>
@@ -113,12 +105,12 @@ export default async function TenantLayout({
           user={user}
           title={tenant.name}
           subtitle={tDash('shell.subtitle')}
-          initialNotifs={initialNotifs}
-          gamification={gamification}
+          sidebarSlot={sidebarSlot}
+          notificationSlot={notificationSlot}
+          commandCenterSlot={commandCenterSlot}
           impersonation={impersonation}
           showroomMode={Boolean(tenant.is_demo)}
           canManageTeam={canManageTeam}
-          canUseNotifications={canUseNotifications}
         >
           {children}
         </DashboardShell>

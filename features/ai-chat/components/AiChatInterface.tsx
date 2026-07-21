@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Send, Loader2, Trash2, Zap, AlertCircle,
-  FileText, Globe, Search, FolderSearch, Sparkles,
+  FileText, Globe, Search, FolderSearch, Sparkles, Check, X,
 } from 'lucide-react';
 import { sendAiMessage, clearAiHistory } from '../actions/aiChatActions';
+import { executeProposedAction, type ProposedAction } from '../actions/proposedActions';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { useVisualViewportInset } from '@/hooks/useVisualViewportInset';
@@ -17,6 +18,8 @@ interface AiChatInterfaceProps {
   companyId:      string;
   tenantName:     string;
   initialHistory: AiMessage[];
+  /** Pre-filled question (e.g. from a dashboard suggestion link `?q=`). */
+  initialInput?:  string;
 }
 
 type ToolHintKey = 'generate_pdf' | 'web_fetch' | 'web_search' | 'search_assets';
@@ -31,6 +34,82 @@ const TOOL_ICONS: Record<ToolHintKey, React.ElementType> = {
 };
 
 const bubbleSpring = { type: 'spring' as const, stiffness: 280, damping: 26, mass: 0.9 };
+
+/**
+ * MonoAI proposes; the user disposes. Nothing mutates until this card is
+ * confirmed — the assistant has no path to a write on its own.
+ */
+function ProposedActionCard({
+  action,
+  companyId,
+  onDismiss,
+}: {
+  action: ProposedAction;
+  companyId: string;
+  onDismiss: () => void;
+}) {
+  const t = useTranslations('Features.MonoAi.proposedActions');
+  const [state, setState] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
+  const [resultText, setResultText] = useState('');
+
+  if (state === 'done' || state === 'failed') {
+    return (
+      <div
+        className={cn(
+          'mt-2 flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px]',
+          state === 'done'
+            ? 'border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300/90'
+            : 'border-red-500/20 bg-red-500/[0.07] text-red-300/90',
+        )}
+      >
+        {state === 'done' ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0" />}
+        <span className="min-w-0 leading-snug">{resultText}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-2 rounded-2xl border border-[#bea042]/25 px-3.5 py-3"
+      style={{
+        background: 'linear-gradient(135deg, rgba(190,160,66,0.10), rgba(156,112,178,0.06))',
+        backdropFilter: 'blur(16px)',
+      }}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bea042]/80">
+        {t('eyebrow')}
+      </p>
+      <p className="mt-1 text-[12px] leading-relaxed text-white/78">{action.description}</p>
+      <div className="mt-2.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={state === 'running'}
+          onClick={async () => {
+            setState('running');
+            const res = await executeProposedAction(companyId, action.kind, action.targetId);
+            setResultText(res.message);
+            setState(res.success ? 'done' : 'failed');
+          }}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#bea042]/35 bg-[#bea042]/15 px-3 py-1.5 text-[11px] font-medium text-[#e5cf8f] transition-colors hover:bg-[#bea042]/25 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {state === 'running'
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <Check className="h-3.5 w-3.5" />}
+          {action.label}
+        </button>
+        <button
+          type="button"
+          disabled={state === 'running'}
+          onClick={onDismiss}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-1.5 text-[11px] text-white/45 transition-colors hover:bg-white/[0.05] hover:text-white/70 disabled:opacity-50"
+        >
+          <X className="h-3.5 w-3.5" />
+          {t('dismiss')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ── Markdown-link renderer ── */
 interface Segment { type: 'text' | 'link' | 'bold'; text: string; href?: string; }
@@ -133,10 +212,10 @@ function ThinkingIndicator({
 }
 
 /* ── Main component ── */
-export function AiChatInterface({ companyId, tenantName, initialHistory }: AiChatInterfaceProps) {
+export function AiChatInterface({ companyId, tenantName, initialHistory, initialInput }: AiChatInterfaceProps) {
   const t = useTranslations('Features.MonoAi');
   const [messages,   setMessages]   = useState<AiMessage[]>(initialHistory);
-  const [input,      setInput]      = useState('');
+  const [input,      setInput]      = useState(initialInput ?? '');
   const [error,      setError]      = useState<string | null>(null);
   const [toolHint,   setToolHint]   = useState<string | null>(null);
   const [isThinking, startTransition] = useTransition();
@@ -185,7 +264,11 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
       const result = await sendAiMessage(companyId, content, tenantName);
       if (result.error) { setError(result.error); return; }
       setMessages((prev) => [...prev, {
-        id: `a-${Date.now()}`, role: 'assistant', content: result.reply, createdAt: new Date().toISOString(),
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: result.reply,
+        createdAt: new Date().toISOString(),
+        proposedActions: result.proposedActions,
       }]);
     });
   }, [input, isThinking, companyId, tenantName]);
@@ -383,6 +466,26 @@ export function AiChatInterface({ companyId, tenantName, initialHistory }: AiCha
                         <MessageContent content={msg.content} />
                       </div>
                     )}
+                    {msg.role === 'assistant' && msg.proposedActions?.length ? (
+                      <div className="w-full">
+                        {msg.proposedActions.map((a) => (
+                          <ProposedActionCard
+                            key={a.id}
+                            action={a}
+                            companyId={companyId}
+                            onDismiss={() =>
+                              setMessages((prev) =>
+                                prev.map((m) =>
+                                  m.id === msg.id
+                                    ? { ...m, proposedActions: m.proposedActions?.filter((x) => x.id !== a.id) }
+                                    : m,
+                                ),
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                     <span className="text-[9px] text-white/20 px-1">
                       {formatRelativeTime(msg.createdAt)}
                     </span>

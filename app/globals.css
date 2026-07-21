@@ -491,3 +491,17 @@
   /* ── Active press on mobile ──────────────────────────────────────────── */
   .press-scale:active { transform: scale(0.95); }
 }
+
+/* ── Print isolation: the board report prints clean, without app chrome ── */
+@media print {
+  body * { visibility: hidden !important; }
+  .board-report, .board-report * { visibility: visible !important; }
+  .board-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  .no-print { display: none !important; }
+}

@@ -1,9 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
-import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
+import {
+  IMPERSONATE_TENANT_COOKIE,
+  IMPERSONATE_TENANT_ID_COOKIE,
+} from '@/lib/auth/constants';
+import { resolveTenantIdBySlug } from '@/lib/auth/resolve-tenant-id';
+import { isScopedTenantHostSlug, parseTenantSlugFromHost } from '@/lib/utils/parse-tenant-host';
+import { absoluteUrl } from '@/lib/utils/request-origin';
 import type { SessionUser } from '@/types/user';
 
-const PUBLIC_PATHS = ['/login', '/api/auth', '/_next', '/manifest.json', '/not-found', '/unauthorized'];
+// `/api/cron/*` gates itself on a CRON_SECRET bearer token. Schedulers send that
+// header and no session cookie, so leaving it behind the session check redirects
+// every scheduled run to /login — the job silently never executes.
+const PUBLIC_PATHS = ['/login', '/set-password', '/api/auth', '/api/cron', '/_next', '/manifest.json', '/not-found', '/unauthorized'];
 const PUBLIC_ASSET_PATHS = new Set([
   '/favicon.ico',
   '/favicon-16x16.png',
@@ -13,49 +22,26 @@ const PUBLIC_ASSET_PATHS = new Set([
   '/icon-512.png',
   '/madmonos-logo.png',
   '/madmonos-logo-optimized.png',
+  // PWA shell. A service worker script served via redirect is rejected outright
+  // by the browser, which silently kills offline support and push notifications.
+  '/sw.js',
+  '/offline.html',
+  '/manifest.json',
 ]);
-
-// e.g. "madmonos.nerdyreptile.com" — must be set in .env.local on the server
-const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000').split(':')[0];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-}
-
-/**
- * Extracts the tenant slug from the hostname.
- *
- * Examples (ROOT_DOMAIN = madmonos.nerdyreptile.com):
- *   acme.madmonos.nerdyreptile.com  →  "acme"
- *   admin.madmonos.nerdyreptile.com →  "admin"
- *   madmonos.nerdyreptile.com       →  "localhost"  (root domain → fall back to JWT tenantSlug)
- *   localhost                       →  "localhost"
- */
-function parseSubdomain(host: string): string {
-  const withoutPort = host.split(':')[0];
-
-  if (withoutPort.endsWith(`.${ROOT_DOMAIN}`)) {
-    return withoutPort.slice(0, -(ROOT_DOMAIN.length + 1));
-  }
-
-  // Host IS the root domain itself, or localhost → treat as local dev
-  return 'localhost';
 }
 
 function isLocalDevHost(subdomain: string): boolean {
   return subdomain === 'localhost' || subdomain === '127.0.0.1';
 }
 
-/**
- * Validates callbackUrl is a same-origin relative path.
- * Prevents open-redirect attacks where attacker sets callbackUrl=https://evil.com
- */
-function sanitizeCallbackUrl(raw: string | null, requestUrl: string): string {
+function sanitizeCallbackUrl(raw: string | null, origin: string): string {
   if (!raw) return '/dashboard';
   try {
-    const base = new URL(requestUrl);
+    const base = new URL(origin);
     const cb = new URL(raw, base.origin);
-    // Only allow same origin
     if (cb.origin !== base.origin) return '/dashboard';
     return cb.pathname + cb.search;
   } catch {
@@ -63,12 +49,19 @@ function sanitizeCallbackUrl(raw: string | null, requestUrl: string): string {
   }
 }
 
-/** Next.js 16+ request proxy (replaces deprecated middleware). No `export const config` here — matcher logic is inlined. */
-export default async function proxy(request: NextRequest) {
+/**
+ * Multi-tenant proxy.
+ * - Tenant scope from Host subdomain (retroline.madmonos.com → retroline)
+ * - Redirects preserve the incoming Host (never NEXTAUTH_URL / nerdyreptile)
+ * - Super-admin impersonation via cookies
+ */
+export default auth(async (request) => {
   const pathname = request.nextUrl.pathname;
+  const session = request.auth;
+  const origin = absoluteUrl(request, '/').origin;
+
   if (pathname === '/favicon.ico') {
-    // Force browser tab favicon to use branded icon asset.
-    return NextResponse.rewrite(new URL('/favicon-32x32.png', request.url));
+    return NextResponse.rewrite(absoluteUrl(request, '/favicon-32x32.png'));
   }
 
   if (
@@ -81,59 +74,86 @@ export default async function proxy(request: NextRequest) {
   }
 
   const host = request.headers.get('host') ?? '';
-  const subdomain = parseSubdomain(host);
+  const subdomain = parseTenantSlugFromHost(host);
 
-  // Tenant hosts must not serve `/` as the admin shell route — only `admin.*` uses `(admin)/page.tsx` at `/`.
   if (pathname === '/' && subdomain !== 'admin') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(absoluteUrl(request, '/dashboard'));
   }
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-tenant-slug', subdomain);
   requestHeaders.set('x-pathname', pathname);
 
+  if (pathname === '/login' && session) {
+    return NextResponse.redirect(absoluteUrl(request, '/dashboard'));
+  }
+
   if (isPublicPath(pathname)) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Auth check with error boundary
-  let session;
-  try {
-    session = await auth();
-  } catch (err) {
-    console.error('[proxy] auth() error:', err);
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
   if (!session) {
-    const loginUrl = new URL('/login', request.url);
-    const safeCallback = sanitizeCallbackUrl(request.url, request.url);
+    const loginUrl = absoluteUrl(request, '/login');
+    const safeCallback = sanitizeCallbackUrl(
+      request.nextUrl.pathname + request.nextUrl.search,
+      origin,
+    );
     loginUrl.searchParams.set('callbackUrl', safeCallback);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Admin subdomain guard
   if (subdomain === 'admin') {
     const role = (session.user as SessionUser).role;
     if (role !== 'super_admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+      return NextResponse.redirect(absoluteUrl(request, '/unauthorized'));
     }
   }
 
-  // Inject tenant context headers for RSCs
-  // session.user can be undefined if AUTH_SECRET is missing or JWT is malformed
-  const sessionUser = (session?.user ?? {}) as Partial<SessionUser>;
-  const impersonateSlug = request.cookies.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim() ?? '';
+  const sessionUser = (session.user ?? {}) as Partial<SessionUser>;
+  const impersonateSlug = request.cookies.get(IMPERSONATE_TENANT_COOKIE)?.value?.trim().toLowerCase() ?? '';
+  const impersonateTenantId = request.cookies.get(IMPERSONATE_TENANT_ID_COOKIE)?.value?.trim() ?? '';
 
-  if (subdomain !== 'admin' && sessionUser.role === 'super_admin' && impersonateSlug) {
-    requestHeaders.set('x-tenant-slug', impersonateSlug);
+  let effectiveSlug = subdomain;
+
+  if (isScopedTenantHostSlug(subdomain)) {
+    effectiveSlug = subdomain;
+  } else if (sessionUser.role === 'super_admin' && impersonateSlug) {
+    effectiveSlug = impersonateSlug;
   } else if (isLocalDevHost(subdomain) && sessionUser.tenantSlug) {
-    // Local dev has no real subdomain. Use session tenant slug instead of "localhost".
-    requestHeaders.set('x-tenant-slug', sessionUser.tenantSlug);
+    effectiveSlug = sessionUser.tenantSlug;
   }
-  requestHeaders.set('x-company-id', sessionUser.tenantId ?? '');
+
+  requestHeaders.set('x-tenant-slug', effectiveSlug);
+
+  if (isScopedTenantHostSlug(effectiveSlug)) {
+    let scopedCompanyId: string | null = null;
+
+    if (
+      sessionUser.role === 'super_admin' &&
+      impersonateSlug === effectiveSlug &&
+      impersonateTenantId
+    ) {
+      scopedCompanyId = impersonateTenantId;
+    } else {
+      scopedCompanyId = await resolveTenantIdBySlug(effectiveSlug);
+    }
+
+    requestHeaders.set('x-company-id', scopedCompanyId ?? '');
+  } else {
+    requestHeaders.set('x-company-id', sessionUser.tenantId ?? '');
+  }
+
   requestHeaders.set('x-user-role', sessionUser.role ?? '');
 
   return NextResponse.next({ request: { headers: requestHeaders } });
-}
+});
+
+export const config = {
+  matcher: [
+    /*
+     * Skip static assets, NextAuth, and lightweight API routes that only need
+     * route-handler auth (no subdomain tenant stamping).
+     */
+    '/((?!_next/static|_next/image|favicon\\.ico|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|icon-192\\.png|icon-512\\.png|madmonos-logo\\.png|madmonos-logo-optimized\\.png|manifest\\.json|sw\\.js|offline\\.html|api/auth|api/cron|api/realtime-token).*)',
+  ],
+};

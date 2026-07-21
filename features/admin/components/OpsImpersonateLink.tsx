@@ -4,7 +4,7 @@ import { useTransition } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { getTenantDashboardUrl } from '@/lib/utils/tenant-urls';
+import { navigateToTenantAsCustomer } from '@/lib/auth/impersonate-navigate';
 
 const spring = { type: 'spring' as const, stiffness: 280, damping: 26 };
 
@@ -30,17 +30,10 @@ export function OpsImpersonateLink({
 
   function onClick() {
     startTransition(async () => {
-      try {
-        const res = await fetch('/api/admin/impersonate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug: tenantSlug }),
-        });
-        if (!res.ok) return;
-        window.location.href = getTenantDashboardUrl(tenantSlug, path.startsWith('/') ? path : `/${path}`);
-      } catch {
-        /* noop */
-      }
+      await navigateToTenantAsCustomer(
+        tenantSlug,
+        path.startsWith('/') ? path : `/${path}`,
+      );
     });
   }
 

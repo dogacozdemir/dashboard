@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
+import { useTenant } from '@/hooks/useTenant';
+import { DEFAULT_CURRENCY } from '@/lib/utils/format';
 import type { ExecutiveTrendPoint } from '../actions/fetchMetrics';
 
 interface ExecutiveTrendChartProps {
@@ -20,6 +22,8 @@ interface ExecutiveTrendChartProps {
 
 export function ExecutiveTrendChart({ data }: ExecutiveTrendChartProps) {
   const t = useTranslations('Performance.cockpit.executiveTrend');
+  const { tenant } = useTenant();
+  const money = tenant.currency ?? DEFAULT_CURRENCY;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export function ExecutiveTrendChart({ data }: ExecutiveTrendChartProps) {
                           {t('tooltipSpend', {
                             amount: new Intl.NumberFormat(undefined, {
                               style: 'currency',
-                              currency: 'USD',
+                              currency: money,
                               maximumFractionDigits: 0,
                             }).format(spend ?? 0),
                           })}
@@ -94,7 +98,7 @@ export function ExecutiveTrendChart({ data }: ExecutiveTrendChartProps) {
                           {t('tooltipRevenue', {
                             amount: new Intl.NumberFormat(undefined, {
                               style: 'currency',
-                              currency: 'USD',
+                              currency: money,
                               maximumFractionDigits: 0,
                             }).format(revenue ?? 0),
                           })}

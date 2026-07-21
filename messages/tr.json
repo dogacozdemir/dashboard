@@ -54,6 +54,7 @@
       "masteryHall": "Mastery",
       "opsCalendar": "Ops Takvim",
       "instagramPreview": "Instagram Önizleme",
+      "boardReport": "Yönetim Raporu",
       "badgeLive": "Canlı",
       "badgeAi": "AI",
       "brandLabel": "Marka",
@@ -71,7 +72,10 @@
       "mono": "Mono",
       "chat": "Sohbet",
       "mainNavAria": "Ana gezinme",
-      "stackMastery": "XP · rozetler · seviye"
+      "stackMastery": "XP · rozetler · seviye",
+      "stackHint": "Tüm sayfalar burada",
+      "openStack": "Tüm sayfaları aç",
+      "closeStack": "Menüyü kapat"
     },
     "mobileDrawer": {
       "openAria": "Gezinmeyi aç",
@@ -168,6 +172,31 @@
           "lcpHealthy": "LCP {lcp} sn sağlıklı bir banda yakın — yeni sayfa yayınlarında performans bütçesini koruyun.",
           "queriesQueued": "Sorgu satırları işleniyor — ilk GSC anlık görüntüsü geldiğinde matris dolacak."
         }
+      },
+      "ga4Matrix": {
+        "sectionTitle": "Site Analitiği (GA4)",
+        "sectionSubtitle": "Reklam harcamasının site tarafındaki karşılığı: tıklamadan sonra gerçekte ne oldu.",
+        "sectionSubtitleNamed": "{property} · son 30 günde tıklamadan sonra sitede gerçekte ne olduğu.",
+        "empty": "Google Analytics 4 henüz bağlı değil. Google hesabını bağladığında site davranışı burada görünür.",
+        "emptyConnected": "GA4 mülkü bağlandı, ilk veri seti henüz senkronize edilmedi. Bir sonraki senkronda burada görünecek.",
+        "sessionsTitle": "Oturum",
+        "sessionsHint": "Son 30 günde sitede başlayan ziyaret sayısı.",
+        "usersTitle": "Aktif Kullanıcı",
+        "usersHint": "Dönem içinde siteyle etkileşen benzersiz kişi sayısı.",
+        "newUsersTitle": "Yeni Kullanıcı",
+        "newUsersHint": "Siteyi ilk kez ziyaret edenler — kitle büyümesinin göstergesi.",
+        "engagementTitle": "Etkileşim Oranı",
+        "engagementHint": "Anlamlı şekilde etkileşen oturumların payı; düşükse açılış sayfası uyumunu gözden geçir.",
+        "durationTitle": "Ort. Oturum Süresi",
+        "durationHint": "Ziyaretçilerin sitede geçirdiği ortalama süre.",
+        "conversionsTitle": "Dönüşüm",
+        "conversionsHint": "GA4'te dönüşüm olarak işaretlenmiş etkinliklerin toplamı.",
+        "channelsTitle": "Kanal Kırılımı",
+        "channelsSubtitle": "Trafiğin ve gelirin hangi kanaldan geldiği (GA4 varsayılan kanal gruplaması).",
+        "colChannel": "Kanal",
+        "colSessions": "Oturum",
+        "colConversions": "Dönüşüm",
+        "colRevenue": "Gelir"
       },
       "comparison": {
         "title": "Kanal karşılaştırması",
@@ -280,7 +309,6 @@
     "integrationGsc": "Arama Konsolu verisi alınamadı. Google bağlantınızı ve site doğrulamasını kontrol edip tekrar deneyin.",
     "integrationNetwork": "Ağ bağlantısı kesildi. İnternetinizi kontrol edip kısa bir süre sonra tekrar deneyin."
   },
-  "SEO_GEO": {},
   "Pages": {
     "notFound": {
       "title": "Sayfa bulunamadı",
@@ -306,7 +334,9 @@
     },
     "profile": {
       "settingsTitle": "Profil ayarları",
-      "settingsSubtitle": "Hesabınızı ve tercihlerinizi yönetin"
+      "settingsSubtitle": "Hesabınızı ve tercihlerinizi yönetin",
+      "tourHeading": "Ürün turu",
+      "tourSubtitle": "Temel özellikleri yeniden keşfetmek için rehberli turu tekrar başlat."
     },
     "calendar": {
       "title": "Operasyon takvimi",
@@ -406,6 +436,21 @@
       "heading": "Global kullanıcı dizini",
       "subheading": "Tüm tenantlarda {count} kullanıcı · God Mode",
       "globalInvite": "Kullanıcı davet et",
+      "tenantAddUser": "{tenant} tenant'ına kullanıcı ekle",
+      "addModalTitle": "Tenant'a kullanıcı ekle",
+      "addModalTitleTenant": "{tenant} tenant'ına kullanıcı ekle",
+      "tabCreateUser": "Şifre ile oluştur",
+      "tabInviteUser": "Davet gönder",
+      "createModalDesc": "E-posta ve şifre ile hesabı hemen oluşturun. Kullanıcı anında giriş yapabilir.",
+      "createFullNameLabel": "Ad soyad",
+      "createFullNamePlaceholder": "İsteğe bağlı görünen ad",
+      "createPasswordLabel": "Şifre",
+      "createConfirmPasswordLabel": "Şifre tekrar",
+      "createPasswordPlaceholder": "••••••••",
+      "createSubmit": "Kullanıcı oluştur",
+      "createPasswordMismatch": "Şifreler eşleşmiyor.",
+      "createPasswordShort": "Şifre en az 8 karakter olmalı.",
+      "toastCreateOk": "Kullanıcı oluşturuldu — hemen giriş yapabilir.",
       "searchPlaceholder": "E-posta veya isim ara…",
       "filterAllTenants": "Tüm tenantlar",
       "filterAllRoles": "Tüm roller",
@@ -449,7 +494,9 @@
         "errTenantLookup": "Davet yönlendirmesi için tenant alt alan adı çözülemedi.",
         "errSuperAdminBlocked": "Super admin hesapları bu panelden değiştirilemez.",
         "errUserNotFound": "Kullanıcı bulunamadı.",
-        "errLastTenantAdmin": "Son tenant yöneticisi düşürülemez veya silinemez."
+        "errLastTenantAdmin": "Son tenant yöneticisi düşürülemez veya silinemez.",
+        "errWeakPassword": "Şifre en az 8 karakter olmalı.",
+        "errUserExists": "Bu e-posta ile kayıtlı bir kullanıcı zaten var."
       }
     },
     "subdomainsPage": {
@@ -514,6 +561,7 @@
       "statusActive": "Aktif",
       "statusInactive": "Pasif",
       "impersonate": "Müşteri gözüyle gör",
+      "menuAddUser": "Kullanıcı ekle",
       "menuEdit": "Tenant düzenle",
       "menuDeactivate": "Pasifleştir",
       "menuActivate": "Aktifleştir",
@@ -605,7 +653,6 @@
       "vaultMissingBodyChunks": "brand_knowledge_chunks boş — indeksleme / chunk pipeline kontrol edilmeli."
     }
   },
-  "AI_Chat": {},
   "Auth": {
     "brandTitle": "madmonos",
     "tagline": "AI-Öncelikli Pazarlama Ajansı",
@@ -616,7 +663,47 @@
     "placeholderPassword": "••••••••",
     "submit": "Panele gir",
     "invalidCredentials": "Geçersiz bilgiler. Lütfen tekrar deneyin.",
+    "sessionNotPersisted": "Giriş başarılı oldu ancak oturum kaydedilemedi. Yerelde npm run dev kullanın veya production'da HTTPS gereklidir.",
+    "tenantAccessDenied": "Bu çalışma alanı için hesap bulunamadı. Kendi firmanızın alt alan adından giriş yapın.",
+    "tabSignIn": "Giriş yap",
+    "tabChangePassword": "Şifre değiştir",
+    "passwordChange": {
+      "subtitle": "Şifrenizi güvenle güncelleyin",
+      "email": "E-posta",
+      "placeholderEmail": "senin@marka.com",
+      "currentPassword": "Eski şifre",
+      "newPassword": "Yeni şifre",
+      "confirmPassword": "Yeni şifre (tekrar)",
+      "placeholderPassword": "••••••••",
+      "submit": "Şifreyi güncelle",
+      "toastPwOk": "Şifre başarıyla güncellendi",
+      "toastPwFail": "Şifre güncellenemedi",
+      "toastPwMismatch": "Yeni şifreler eşleşmiyor",
+      "toastPwShort": "Şifre en az 8 karakter olmalı",
+      "wrongCurrentPassword": "Eski şifre hatalı",
+      "sessionRequired": "Şifre değiştirmek için giriş yapın veya e-postanızı girin"
+    },
+    "setPasswordTitle": "Şifreni belirle",
+    "setPasswordSubtitle": "Hesabını etkinleştirmek için bir şifre oluştur",
+    "newPassword": "Yeni şifre",
+    "confirmPassword": "Şifre (tekrar)",
+    "submitSetPassword": "Şifreyi belirle ve giriş yap",
+    "checkingLink": "Davet bağlantın doğrulanıyor…",
+    "invalidLinkTitle": "Bu bağlantı geçersiz veya süresi dolmuş",
+    "invalidLinkHint": "Yöneticinden yeni bir davet göndermesini iste.",
+    "backToLogin": "Girişe dön",
+    "pwMismatch": "Şifreler eşleşmiyor.",
+    "pwTooShort": "Şifre en az 8 karakter olmalı.",
+    "setPasswordError": "Şifre belirlenemedi. Bağlantının süresi dolmuş olabilir.",
     "footer": "Madmonos Mühendislik Kapasitesi ile güçlendirilmiştir™"
+  },
+  "Pwa": {
+    "installTitle": "Uygulamayı yükle",
+    "installBody": "Madmonos'u ana ekranına ekle; tam ekran ve daha hızlı erişim.",
+    "installCta": "Yükle",
+    "dismiss": "Şimdi değil",
+    "iosTitle": "Ana Ekrana Ekle",
+    "iosBody": "Paylaş simgesine dokun, ardından “Ana Ekrana Ekle”yi seç."
   },
   "Features": {
     "Gamification": {
@@ -1028,9 +1115,38 @@
         "web_fetch": "Sayfa",
         "web_search": "Arama",
         "search_assets": "Dosyalar"
+      },
+      "proposedActions": {
+        "eyebrow": "Onayın bekleniyor",
+        "dismiss": "Vazgeç"
       }
     },
+    "MonoAiSuggestions": {
+      "heading": "monoAI'ya sor",
+      "subtitle": "Cevaplar kendi verinden üretilir.",
+      "p1": "Bu haftanın performansını özetle ve 3 aksiyon öner",
+      "p2": "ROAS son 30 günde neden değişti?",
+      "p3": "İnceleme bekleyen kreatifleri özetle",
+      "p4": "Önümüzdeki 30 günün yayın planında boşluk var mı?"
+    },
+    "BoardReport": {
+      "print": "Yazdır / PDF",
+      "email": "E-posta gönder",
+      "recipientPlaceholder": "alici@eposta.com",
+      "sendCta": "Gönder",
+      "sent": "Rapor gönderildi.",
+      "sendFail": "Rapor gönderilemedi."
+    },
     "Profile": {
+      "notifications": {
+        "heading": "Bildirimler",
+        "subtitle": "Madmonos sana nasıl ulaşsın, sen seç.",
+        "emailCreativeReview": "E-posta — incelenecek yeni kreatif",
+        "emailWeeklyDigest": "E-posta — haftalık performans özeti",
+        "emailAnomaly": "E-posta — performans uyarıları",
+        "push": "Bu cihazda push bildirimleri",
+        "pushUnavailable": "Burada kullanılamıyor"
+      },
       "fullNamePlaceholder": "Ad soyad",
       "passwordPlaceholder": "••••••••",
       "profileInfoHeading": "Profil bilgisi",
@@ -1338,6 +1454,11 @@
       "closeModal": "Kapat",
       "prevSlide": "Önceki slayt",
       "nextSlide": "Sonraki slayt",
+      "backToGrid": "Gönderilere dön",
+      "postsHeader": "Gönderiler",
+      "likeAria": "Beğen",
+      "carouselScrollHint": "Tüm {count} kreatifi görmek için kaydırın",
+      "carouselDot": "Slayt {n}",
       "verified": "Doğrulanmış",
       "accountMenu": "Menü",
       "createAria": "Oluştur",

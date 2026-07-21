@@ -431,6 +431,43 @@ export function showroomGscSeoMatrix(): ShowroomGscMatrix {
   };
 }
 
+export interface ShowroomGa4Snapshot {
+  connected: boolean;
+  propertyName: string | null;
+  sessions: number;
+  activeUsers: number;
+  newUsers: number;
+  engagementRatePct: number;
+  avgSessionSecs: number;
+  conversions: number;
+  revenue: number;
+  channels: Array<{ channel: string; sessions: number; conversions: number; revenue: number }>;
+}
+
+/** Showroom GA4 mirror of the paid story (demo tenants only). */
+export function showroomGa4Snapshot(): ShowroomGa4Snapshot {
+  const channels = [
+    { channel: 'Paid Social', sessions: 48_200, conversions: 1_840, revenue: 412_000 },
+    { channel: 'Organic Search', sessions: 31_400, conversions: 980, revenue: 236_500 },
+    { channel: 'Paid Search', sessions: 27_800, conversions: 1_310, revenue: 318_400 },
+    { channel: 'Direct', sessions: 14_600, conversions: 420, revenue: 96_200 },
+    { channel: 'Referral', sessions: 6_900, conversions: 180, revenue: 41_300 },
+  ];
+  const sessions = channels.reduce((n, c) => n + c.sessions, 0);
+  return {
+    connected: true,
+    propertyName: 'Lux Cosmetics — GA4',
+    sessions,
+    activeUsers: Math.round(sessions * 0.78),
+    newUsers: Math.round(sessions * 0.46),
+    engagementRatePct: 62.4,
+    avgSessionSecs: 118,
+    conversions: channels.reduce((n, c) => n + c.conversions, 0),
+    revenue: channels.reduce((n, c) => n + c.revenue, 0),
+    channels,
+  };
+}
+
 export function showroomConnectedAdAccounts(): ConnectedAdAccount[] {
   const now = new Date().toISOString();
   return [

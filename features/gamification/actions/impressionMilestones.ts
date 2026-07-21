@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@/lib/auth/config';
+import { getCachedSession } from '@/lib/auth/cached-auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
 import type { GamificationTrackResult } from '../types';
@@ -18,7 +18,7 @@ const empty: GamificationTrackResult = {
  * Call once per meaningful surface (dashboard load, post-sync); idempotent.
  */
 export async function evaluateImpressionMilestone(tenantId: string): Promise<GamificationTrackResult> {
-  const session = await auth();
+  const session = await getCachedSession();
   if (!session?.user) return empty;
 
   if (await isDemoTenant(tenantId)) return empty;

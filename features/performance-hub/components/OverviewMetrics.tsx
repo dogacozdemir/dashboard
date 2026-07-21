@@ -14,6 +14,7 @@ import {
   Target,
   Banknote,
 } from 'lucide-react';
+import { currencySymbol } from '@/lib/utils/format';
 import { DataDisconnectedCard } from '@/components/shared/DataDisconnectedCard';
 import {
   BentoBlueprintSlot,
@@ -44,6 +45,8 @@ interface OverviewMetricsProps {
   spotlightMetric?: MetricId | null;
   /** Unified Cockpit URL filter — scopes aggregates to one paid channel or organic SEO. */
   cockpitPlatform?: CockpitPlatform;
+  /** Tenant ISO-4217 code; money prefixes follow it instead of a hardcoded "$". */
+  currency?: string | null;
 }
 
 const DEFAULT_ORDER: MetricId[] = [
@@ -69,7 +72,9 @@ export async function OverviewMetrics({
   dashboardGoal = null,
   spotlightMetric = null,
   cockpitPlatform = 'all',
+  currency = null,
 }: OverviewMetricsProps) {
+  const money = currencySymbol(currency ?? undefined);
   const t = await getTranslations('Performance');
   const [agg, connected] = await Promise.all([
     fetchAggregateMetrics(companyId, range, cockpitPlatform),
@@ -93,7 +98,7 @@ export async function OverviewMetrics({
     spend: {
       label: t('metrics.totalSpend'),
       metric: agg.spend,
-      prefix: '$',
+      prefix: money,
       decimals: 0,
       icon: <DollarSign className="w-4 h-4" />,
       trendSemantics: 'growth',
@@ -101,7 +106,7 @@ export async function OverviewMetrics({
     revenue: {
       label: t('metrics.revenue'),
       metric: agg.revenue,
-      prefix: '$',
+      prefix: money,
       decimals: 0,
       icon: <Banknote className="w-4 h-4" />,
       trendSemantics: 'growth',
@@ -117,7 +122,7 @@ export async function OverviewMetrics({
     cpa: {
       label: t('metrics.cpa'),
       metric: agg.cpa,
-      prefix: '$',
+      prefix: money,
       decimals: 2,
       icon: <Target className="w-4 h-4" />,
       trendSemantics: 'cost',

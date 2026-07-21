@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { formatNumber, formatCurrency } from '@/lib/utils/format';
+import { useTenant } from '@/hooks/useTenant';
 
 interface GoalBarProps {
   label:    string;
@@ -10,6 +11,7 @@ interface GoalBarProps {
   goal:     number;
   format?:  'number' | 'currency';
   color:    string;
+  currency?: string;
 }
 
 const BAR_COLORS: Record<string, string> = {
@@ -18,10 +20,10 @@ const BAR_COLORS: Record<string, string> = {
   emerald: 'from-emerald-500 to-emerald-400',
 };
 
-function GoalBar({ label, current, goal, format = 'number', color }: GoalBarProps) {
+function GoalBar({ label, current, goal, format = 'number', color, currency }: GoalBarProps) {
   const pct    = Math.min(100, goal > 0 ? Math.round((current / goal) * 100) : 0);
   const done   = pct >= 100;
-  const fmt    = (v: number) => format === 'currency' ? formatCurrency(v) : formatNumber(v);
+  const fmt    = (v: number) => format === 'currency' ? formatCurrency(v, currency) : formatNumber(v);
   const gradient = BAR_COLORS[color] ?? BAR_COLORS.cyan;
 
   return (
@@ -60,6 +62,7 @@ interface CampaignGoalBarsProps {
 
 export function CampaignGoalBars({ impressions, clicks, spend, goals }: CampaignGoalBarsProps) {
   const t = useTranslations('Features.Gamification');
+  const { tenant } = useTenant();
   const hasGoals = goals.goalImpressions || goals.goalClicks || goals.goalSpend;
   if (!hasGoals) return null;
 
@@ -72,7 +75,7 @@ export function CampaignGoalBars({ impressions, clicks, spend, goals }: Campaign
         <GoalBar label={t('goalClicks')} current={clicks} goal={goals.goalClicks} color="indigo" />
       )}
       {goals.goalSpend != null && (
-        <GoalBar label={t('goalSpend')} current={spend} goal={goals.goalSpend} format="currency" color="emerald" />
+        <GoalBar label={t('goalSpend')} current={spend} goal={goals.goalSpend} format="currency" currency={tenant.currency ?? undefined} color="emerald" />
       )}
     </div>
   );

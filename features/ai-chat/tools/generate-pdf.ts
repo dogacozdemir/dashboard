@@ -9,30 +9,38 @@
  * clean typography, section callouts, and a branded footer.
  */
 
-import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from 'pdf-lib';
+import { PDFDocument, StandardFonts, type PDFPage, type PDFFont } from 'pdf-lib';
+import { embedUnicodeFonts } from '@/features/mono-report/lib/pdf-fonts';
+import { PDF_THEME } from '@/features/mono-report/lib/pdf-theme';
 import { buildS3Key, putS3Object, createPresignedDownloadUrl } from '@/lib/storage/s3';
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 
+/**
+ * Mapped onto the shared Madmonos document theme so a chat-generated document
+ * looks like the rest of the product (deep plum canvas, gold + violet accents)
+ * instead of the old light indigo/teal styling.
+ */
 const C = {
-  headerBg:    rgb(0.039, 0.055, 0.102),   // #0A0E1A  deep navy
-  headerText:  rgb(1,     1,     1),        // #FFFFFF
-  headerSub:   rgb(0.600, 0.671, 0.776),   // #99ABBF  muted
-  accentBar:   rgb(0.388, 0.400, 0.945),   // #6366F1  indigo
-  accentTeal:  rgb(0.039, 0.769, 0.627),   // #0AC4A0  teal
-  sectionBg:   rgb(0.953, 0.965, 0.988),   // #F3F6FC  very light blue
-  calloutBg:   rgb(0.933, 0.941, 0.996),   // #EEF0FE  indigo tint
-  calloutBdr:  rgb(0.388, 0.400, 0.945),   // indigo
-  white:       rgb(1,     1,     1),
-  textDark:    rgb(0.082, 0.118, 0.176),   // #151E2D
-  textMid:     rgb(0.337, 0.392, 0.463),   // #566376
-  textLight:   rgb(0.561, 0.612, 0.675),   // #8F9CAC
-  border:      rgb(0.859, 0.886, 0.918),   // #DBE2EB
-  bullet:      rgb(0.388, 0.400, 0.945),   // indigo dot
-  footerBg:    rgb(0.063, 0.082, 0.118),   // #101523
-  footerText:  rgb(0.561, 0.612, 0.675),   // muted
-  h1Accent:    rgb(0.039, 0.769, 0.627),   // teal line under H1
-  h2Accent:    rgb(0.388, 0.400, 0.945),   // indigo line under H2
+  headerBg:    PDF_THEME.surface,
+  headerText:  PDF_THEME.text,
+  headerSub:   PDF_THEME.muted,
+  accentBar:   PDF_THEME.gold,
+  accentTeal:  PDF_THEME.violet,
+  sectionBg:   PDF_THEME.surfaceAlt,
+  calloutBg:   PDF_THEME.surfaceAlt,
+  calloutBdr:  PDF_THEME.gold,
+  /** Page canvas (name kept for call-site compatibility). */
+  white:       PDF_THEME.bg,
+  textDark:    PDF_THEME.text,
+  textMid:     PDF_THEME.muted,
+  textLight:   PDF_THEME.muted,
+  border:      PDF_THEME.line,
+  bullet:      PDF_THEME.gold,
+  footerBg:    PDF_THEME.footerBg,
+  footerText:  PDF_THEME.muted,
+  h1Accent:    PDF_THEME.gold,
+  h2Accent:    PDF_THEME.violet,
 };
 
 const PAGE_W  = 595;   // A4 width  (points)
@@ -65,10 +73,17 @@ function toWinAnsi(text: string): string {
     .replace(/[\uFF5C\u007C]/g,         '|')
     .replace(/\u2022/g,                 '*')
     .replace(/[\u2192\u2794]/g,         '->')
-    .replace(/[^\x20-\xFF\n\r\t]/g,    '');
+    .replace(unicodeFontsActive ? /(?!)/g : /[^\x20-\xFF\n\r\t]/g, '');
 }
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
+
+/**
+ * Set per render: true when Unicode TTFs are embedded, so Turkish characters
+ * outside Latin-1 (dotless i, dotted I, s-cedilla, g-breve) are kept instead of
+ * being stripped by the WinAnsi fallback in `toWinAnsi`.
+ */
+let unicodeFontsActive = false;
 
 interface Ctx {
   doc:      PDFDocument;
@@ -88,6 +103,9 @@ function newPage(ctx: Ctx): void {
   ctx.page = ctx.doc.addPage([PAGE_W, PAGE_H]);
   ctx.pages.push(ctx.page);
   ctx.y = PAGE_H - MARGIN;
+
+  // Dark brand canvas (PDF pages default to white).
+  ctx.page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: C.white });
 
   // Subtle top stripe on continuation pages
   ctx.page.drawRectangle({
@@ -408,15 +426,21 @@ function parseBlocks(markdown: string): Block[] {
 
 async function buildPdfBytes(title: string, body: string): Promise<Uint8Array> {
   const doc      = await PDFDocument.create();
+
+  // Embed Unicode fonts first so Turkish characters survive (see toWinAnsi).
+  const unicodeFonts = await embedUnicodeFonts(doc);
+  unicodeFontsActive = Boolean(unicodeFonts);
+
   doc.setTitle(toWinAnsi(title));
   doc.setProducer('monoAI v1 — Madmonos');
   doc.setCreationDate(new Date());
 
-  const regular = await doc.embedFont(StandardFonts.Helvetica);
-  const bold    = await doc.embedFont(StandardFonts.HelveticaBold);
-  const oblique = await doc.embedFont(StandardFonts.HelveticaOblique);
+  const regular = unicodeFonts?.regular ?? (await doc.embedFont(StandardFonts.Helvetica));
+  const bold    = unicodeFonts?.bold    ?? (await doc.embedFont(StandardFonts.HelveticaBold));
+  const oblique = unicodeFonts?.italic  ?? (await doc.embedFont(StandardFonts.HelveticaOblique));
 
   const firstPage = doc.addPage([PAGE_W, PAGE_H]);
+  firstPage.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: C.white });
   const ctx: Ctx = {
     doc, regular, bold, oblique,
     pages:   [firstPage],

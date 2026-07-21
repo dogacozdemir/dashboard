@@ -13,7 +13,8 @@ import { webSearchTool }               from '../tools/web-search';
 import { assetSearchTool }             from '../tools/asset-search';
 import { crawlUrlTool }                from '../tools/crawl-url';
 import type { AiMessage }               from '../types';
-import type { DeepSeekMessage, DeepSeekToolCall, ToolContext } from '../tools/types'; // DeepSeekToolCall used by executeToolCalls
+import type { DeepSeekMessage, DeepSeekToolCall, ToolContext } from '../tools/types';
+import { proposeActionsForMessage, type ProposedAction } from './proposedActions'; // DeepSeekToolCall used by executeToolCalls
 import type { SessionUser }             from '@/types/user';
 import { trackActivity }                from '@/features/gamification/actions/trackActivity';
 import { isDemoTenant }                 from '@/lib/demo/is-demo-tenant';
@@ -336,7 +337,7 @@ export async function sendAiMessage(
   companyId:  string,
   userMessage: string,
   tenantName:  string,
-): Promise<{ reply: string; error?: string }> {
+): Promise<{ reply: string; error?: string; proposedActions?: ProposedAction[] }> {
   const session = await auth();
   if (!session) {
     const { premiumSessionRequiredMessage } = await import('@/lib/i18n/premium-action-errors');
@@ -646,7 +647,16 @@ export async function sendAiMessage(
       locale,
     );
 
-    return { reply: finalReply };
+    // Write intents are never executed here — they come back as proposals the
+    // user confirms in the UI.
+    let proposedActions: ProposedAction[] = [];
+    try {
+      proposedActions = await proposeActionsForMessage(validatedId, userMessage);
+    } catch (e) {
+      console.error('[sendAiMessage] propose actions', e);
+    }
+
+    return { reply: finalReply, proposedActions };
   } catch (err) {
     console.error('[sendAiMessage]', err);
     return { reply: '', error: await getPremiumActionError() };

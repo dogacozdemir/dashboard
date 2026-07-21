@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth/config';
 import { randomBytes } from 'crypto';
 import type { SessionUser } from '@/types/user';
 import type { OAuthState } from '@/features/oauth/types';
+import { signOAuthState } from '@/lib/auth/oauth-state';
+import { getAppUrl } from '@/lib/utils/app-url';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -11,7 +13,7 @@ export async function GET(req: NextRequest) {
   const user       = session.user as SessionUser;
   const tenantId   = user.tenantId;
   const appId      = process.env.META_APP_ID;
-  const appUrl     = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const appUrl     = getAppUrl();
 
   if (!appId) {
     return NextResponse.json(
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
     redirect_uri:  `${appUrl}/api/oauth/meta/callback`,
     scope:         'ads_read,ads_management,business_management,instagram_basic,pages_read_engagement',
     response_type: 'code',
-    state:         Buffer.from(JSON.stringify(state)).toString('base64url'),
+    state:         signOAuthState(state),
   });
 
   return NextResponse.redirect(

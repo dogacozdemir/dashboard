@@ -48,13 +48,15 @@ export async function GET(req: NextRequest) {
     const supabase = await createSupabaseServerClient();
     const { data: trow, error: tenantErr } = await supabase
       .from('tenants')
-      .select('name')
+      .select('name, currency')
       .eq('id', tenantId)
       .maybeSingle();
     if (tenantErr) {
       console.error('[mono-report] tenant lookup', tenantErr.message);
     }
-    const tenantName = String((trow as { name?: string } | null)?.name ?? 'Tenant');
+    const trowTyped = trow as { name?: string; currency?: string | null } | null;
+    const tenantName = String(trowTyped?.name ?? 'Tenant');
+    const tenantCurrency = trowTyped?.currency ?? undefined;
 
     let narrative = '';
     try {
@@ -84,6 +86,8 @@ export async function GET(req: NextRequest) {
         chart,
         narrative,
         poweredLine,
+        locale,
+        currency: tenantCurrency,
       });
     } catch (e) {
       console.error('[mono-report] PDF render failed', { tenantId: tenantId.slice(0, 8), range, cockpit }, e);

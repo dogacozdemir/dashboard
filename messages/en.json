@@ -54,6 +54,7 @@
       "masteryHall": "Mastery",
       "opsCalendar": "Ops Calendar",
       "instagramPreview": "IG Feed Mock",
+      "boardReport": "Board report",
       "badgeLive": "Live",
       "badgeAi": "AI",
       "brandLabel": "Brand",
@@ -71,7 +72,10 @@
       "mono": "Mono",
       "chat": "Chat",
       "mainNavAria": "Main navigation",
-      "stackMastery": "XP · badges · level"
+      "stackMastery": "XP · badges · level",
+      "stackHint": "All pages here",
+      "openStack": "Open all pages",
+      "closeStack": "Close menu"
     },
     "mobileDrawer": {
       "openAria": "Open navigation",
@@ -168,6 +172,31 @@
           "lcpHealthy": "LCP at {lcp}s is in a healthy band — maintain performance budgets as you ship new pages.",
           "queriesQueued": "Query rows are ingesting — the matrix will populate as the first GSC snapshot lands."
         }
+      },
+      "ga4Matrix": {
+        "sectionTitle": "Site Analytics (GA4)",
+        "sectionSubtitle": "The site-side counterpart to ad spend: what actually happened after the click.",
+        "sectionSubtitleNamed": "{property} · what actually happened on site after the click, last 30 days.",
+        "empty": "Google Analytics 4 isn't connected yet. Connect your Google account to see site behaviour here.",
+        "emptyConnected": "GA4 property connected — the first data set hasn't synced yet. It will appear after the next sync.",
+        "sessionsTitle": "Sessions",
+        "sessionsHint": "Visits that started on the site in the last 30 days.",
+        "usersTitle": "Active Users",
+        "usersHint": "Unique people who engaged with the site during the period.",
+        "newUsersTitle": "New Users",
+        "newUsersHint": "First-time visitors — your audience growth signal.",
+        "engagementTitle": "Engagement Rate",
+        "engagementHint": "Share of sessions that engaged meaningfully; if it's low, revisit landing-page fit.",
+        "durationTitle": "Avg. Session Duration",
+        "durationHint": "Average time visitors spend on the site.",
+        "conversionsTitle": "Conversions",
+        "conversionsHint": "Total of the events marked as conversions in GA4.",
+        "channelsTitle": "Channel Breakdown",
+        "channelsSubtitle": "Where traffic and revenue come from (GA4 default channel grouping).",
+        "colChannel": "Channel",
+        "colSessions": "Sessions",
+        "colConversions": "Conversions",
+        "colRevenue": "Revenue"
       },
       "comparison": {
         "title": "Platform comparison",
@@ -280,7 +309,6 @@
     "integrationGsc": "Search Console data couldn't be fetched. Check your Google connection and site verification, then retry.",
     "integrationNetwork": "The network dropped. Check your connection and try again shortly."
   },
-  "SEO_GEO": {},
   "Pages": {
     "notFound": {
       "title": "Page not found",
@@ -306,7 +334,9 @@
     },
     "profile": {
       "settingsTitle": "Profile settings",
-      "settingsSubtitle": "Manage your account and preferences"
+      "settingsSubtitle": "Manage your account and preferences",
+      "tourHeading": "Product tour",
+      "tourSubtitle": "Re-run the guided walkthrough to rediscover key features."
     },
     "calendar": {
       "title": "Operations calendar",
@@ -406,6 +436,21 @@
       "heading": "Global user directory",
       "subheading": "{count} users across all tenants · God Mode",
       "globalInvite": "Invite user",
+      "tenantAddUser": "Add user to {tenant}",
+      "addModalTitle": "Add user to tenant",
+      "addModalTitleTenant": "Add user to {tenant}",
+      "tabCreateUser": "Create with password",
+      "tabInviteUser": "Send invite",
+      "createModalDesc": "Create an account immediately with email and password. The user can sign in right away.",
+      "createFullNameLabel": "Full name",
+      "createFullNamePlaceholder": "Optional display name",
+      "createPasswordLabel": "Password",
+      "createConfirmPasswordLabel": "Confirm password",
+      "createPasswordPlaceholder": "••••••••",
+      "createSubmit": "Create user",
+      "createPasswordMismatch": "Passwords do not match.",
+      "createPasswordShort": "Password must be at least 8 characters.",
+      "toastCreateOk": "User created — they can sign in immediately.",
       "searchPlaceholder": "Search by email or name…",
       "filterAllTenants": "All tenants",
       "filterAllRoles": "All roles",
@@ -449,7 +494,9 @@
         "errTenantLookup": "Could not resolve tenant subdomain for invite redirect.",
         "errSuperAdminBlocked": "Super admin accounts cannot be modified from this panel.",
         "errUserNotFound": "User not found.",
-        "errLastTenantAdmin": "Cannot demote or remove the last tenant admin."
+        "errLastTenantAdmin": "Cannot demote or remove the last tenant admin.",
+        "errWeakPassword": "Password must be at least 8 characters.",
+        "errUserExists": "A user with this email already exists."
       }
     },
     "subdomainsPage": {
@@ -514,6 +561,7 @@
       "statusActive": "Active",
       "statusInactive": "Inactive",
       "impersonate": "View as customer",
+      "menuAddUser": "Add user",
       "menuEdit": "Edit tenant",
       "menuDeactivate": "Deactivate",
       "menuActivate": "Activate",
@@ -605,7 +653,6 @@
       "vaultMissingBodyChunks": "brand_knowledge_chunks is empty — check indexing / chunk pipeline."
     }
   },
-  "AI_Chat": {},
   "Auth": {
     "brandTitle": "madmonos",
     "tagline": "AI-First Marketing Agency",
@@ -616,7 +663,47 @@
     "placeholderPassword": "••••••••",
     "submit": "Enter dashboard",
     "invalidCredentials": "Invalid credentials. Please try again.",
+    "sessionNotPersisted": "Sign-in succeeded but your session could not be saved. Use npm run dev locally, or HTTPS in production.",
+    "tenantAccessDenied": "No account found for this workspace. Sign in on your company's subdomain.",
+    "tabSignIn": "Sign in",
+    "tabChangePassword": "Change password",
+    "passwordChange": {
+      "subtitle": "Update your password securely",
+      "email": "Email",
+      "placeholderEmail": "you@brand.com",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "placeholderPassword": "••••••••",
+      "submit": "Update password",
+      "toastPwOk": "Password changed successfully",
+      "toastPwFail": "Could not update password",
+      "toastPwMismatch": "New passwords do not match",
+      "toastPwShort": "Password must be at least 8 characters",
+      "wrongCurrentPassword": "Current password is incorrect",
+      "sessionRequired": "Sign in or enter your email to change password"
+    },
+    "setPasswordTitle": "Set your password",
+    "setPasswordSubtitle": "Create a password to activate your account",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "submitSetPassword": "Set password & sign in",
+    "checkingLink": "Verifying your invite…",
+    "invalidLinkTitle": "This link is invalid or has expired",
+    "invalidLinkHint": "Ask your admin to send a fresh invite.",
+    "backToLogin": "Back to sign in",
+    "pwMismatch": "Passwords do not match.",
+    "pwTooShort": "Password must be at least 8 characters.",
+    "setPasswordError": "Could not set password. The link may have expired.",
     "footer": "Powered by Madmonos Engineering Capacity™"
+  },
+  "Pwa": {
+    "installTitle": "Install the app",
+    "installBody": "Add Madmonos to your home screen for full-screen, faster access.",
+    "installCta": "Install",
+    "dismiss": "Not now",
+    "iosTitle": "Add to Home Screen",
+    "iosBody": "Tap the Share icon, then choose “Add to Home Screen”."
   },
   "Features": {
     "Gamification": {
@@ -1028,9 +1115,38 @@
         "web_fetch": "Page",
         "web_search": "Search",
         "search_assets": "Assets"
+      },
+      "proposedActions": {
+        "eyebrow": "Awaiting your confirmation",
+        "dismiss": "Dismiss"
       }
     },
+    "MonoAiSuggestions": {
+      "heading": "Ask monoAI",
+      "subtitle": "Answers are grounded in your own data.",
+      "p1": "Summarise this week's performance and suggest 3 actions",
+      "p2": "Why did ROAS change over the last 30 days?",
+      "p3": "Summarise the creatives waiting for review",
+      "p4": "Are there gaps in the next 30 days of the publishing plan?"
+    },
+    "BoardReport": {
+      "print": "Print / PDF",
+      "email": "Email report",
+      "recipientPlaceholder": "recipient@email.com",
+      "sendCta": "Send",
+      "sent": "Report sent.",
+      "sendFail": "Could not send the report."
+    },
     "Profile": {
+      "notifications": {
+        "heading": "Notifications",
+        "subtitle": "Choose how Madmonos reaches you.",
+        "emailCreativeReview": "Email — new creative to review",
+        "emailWeeklyDigest": "Email — weekly performance digest",
+        "emailAnomaly": "Email — performance alerts",
+        "push": "Push notifications on this device",
+        "pushUnavailable": "Not available here"
+      },
       "fullNamePlaceholder": "Your full name",
       "passwordPlaceholder": "••••••••",
       "profileInfoHeading": "Profile info",
@@ -1338,6 +1454,11 @@
       "closeModal": "Close",
       "prevSlide": "Previous slide",
       "nextSlide": "Next slide",
+      "backToGrid": "Back to grid",
+      "postsHeader": "Posts",
+      "likeAria": "Like",
+      "carouselScrollHint": "Swipe to see all {count} creatives",
+      "carouselDot": "Slide {n}",
       "verified": "Verified",
       "accountMenu": "Menu",
       "createAria": "Create",

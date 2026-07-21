@@ -3,24 +3,35 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { runSyncAdPlatformForTenant, runSyncSEOForTenant } from '@/features/oauth/actions/syncPlatformData';
-import type { OAuthState } from '@/features/oauth/types';
+import { verifyOAuthState } from '@/lib/auth/oauth-state';
+import { auth } from '@/lib/auth/config';
+import type { SessionUser } from '@/types/user';
 import { oauthSuccessRedirect } from '@/features/oauth/lib/oauthRedirect';
+import { getAppUrl } from '@/lib/utils/app-url';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code     = searchParams.get('code');
   const stateB64 = searchParams.get('state');
-  const appUrl   = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const appUrl   = getAppUrl();
 
   if (!code || !stateB64) {
     return NextResponse.redirect(`${appUrl}/performance?error=oauth_failed`);
   }
 
-  let state: OAuthState;
-  try {
-    state = JSON.parse(Buffer.from(stateB64, 'base64url').toString()) as OAuthState;
-  } catch {
+  const state = verifyOAuthState(stateB64);
+  if (!state) {
     return NextResponse.redirect(`${appUrl}/performance?error=invalid_state`);
+  }
+
+  // Defense-in-depth: only a logged-in member of the target tenant may complete the connection.
+  const session     = await auth();
+  const sessionUser = session?.user as SessionUser | undefined;
+  if (!sessionUser) {
+    return NextResponse.redirect(`${appUrl}/login`);
+  }
+  if (sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
+    return NextResponse.redirect(`${appUrl}/unauthorized`);
   }
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID ?? '';

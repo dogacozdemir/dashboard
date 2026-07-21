@@ -10,6 +10,10 @@ import { mapIntegrationSyncErrorForUser } from '@/lib/integrations/user-facing-e
 import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
 import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
 
+// Centralized API versions — bump here when a provider sunsets a version.
+const META_GRAPH_VERSION = 'v20.0';
+const GOOGLE_ADS_VERSION = 'v18';
+
 const DATE_END = () => new Date().toISOString().split('T')[0];
 const DATE_START_30 = () => {
   const d = new Date();
@@ -245,15 +249,27 @@ function metaSpendImpressionsClicksConversionsRoasCtr(row: MetaInsightLike): {
 }
 
 async function syncMeta(accessToken: string, tenantId: string, supabase: SupabaseClient): Promise<void> {
-  const accountsRes = await fetch(
-    `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`
-  );
-  if (!accountsRes.ok) {
-    const t = await accountsRes.text();
-    throw new Error(`Meta: ad accounts ${accountsRes.status} ${t.slice(0, 200)}`);
+  // Paginate ad accounts — the default page size is 25, so large orgs need paging.
+  const accounts: Array<{ id: string; name: string }> = [];
+  let nextAccountsUrl: string | null =
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/me/adaccounts` +
+    `?fields=id,name,account_status&limit=200&access_token=${accessToken}`;
+
+  while (nextAccountsUrl) {
+    const accountsRes = await fetch(nextAccountsUrl);
+    if (!accountsRes.ok) {
+      const t = await accountsRes.text();
+      throw new Error(`Meta: ad accounts ${accountsRes.status} ${t.slice(0, 200)}`);
+    }
+    const json = (await accountsRes.json()) as {
+      data?: Array<{ id: string; name: string }>;
+      paging?: { next?: string };
+    };
+    for (const a of json.data ?? []) accounts.push(a);
+    nextAccountsUrl = json.paging?.next ?? null;
   }
-  const { data: accounts } = (await accountsRes.json()) as { data: Array<{ id: string; name: string }> };
-  if (!accounts?.length) return;
+
+  if (!accounts.length) return;
 
   let wroteMetrics = false;
   const timeRange = encodeURIComponent(JSON.stringify({ since: DATE_START_30(), until: DATE_END() }));
@@ -264,7 +280,7 @@ async function syncMeta(accessToken: string, tenantId: string, supabase: Supabas
     const campaignByName = new Map<string, { name: string; graphStatus: string }>();
 
     let nextCampUrl: string | null =
-      `https://graph.facebook.com/v18.0/${actId}/campaigns` +
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${actId}/campaigns` +
       `?fields=id,name,status,objective&access_token=${accessToken}&limit=100`;
 
     while (nextCampUrl) {
@@ -289,7 +305,7 @@ async function syncMeta(accessToken: string, tenantId: string, supabase: Supabas
     const metricsByCampaignName = new Map<string, CampInsight>();
 
     const campInsightsRes = await fetch(
-      `https://graph.facebook.com/v18.0/${actId}/insights` +
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${actId}/insights` +
         `?level=campaign` +
         `&fields=campaign_name,campaign_id,campaign_status,spend,impressions,clicks,actions,action_values,purchase_roas,ctr` +
         `&time_range=${timeRange}` +
@@ -341,7 +357,7 @@ async function syncMeta(accessToken: string, tenantId: string, supabase: Supabas
     }
 
     const insightsRes = await fetch(
-      `https://graph.facebook.com/v18.0/${actId}/insights` +
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${actId}/insights` +
         `?fields=date_start,spend,impressions,clicks,actions,action_values,purchase_roas,ctr` +
         `&time_increment=1` +
         `&time_range=${timeRange}` +
@@ -386,10 +402,13 @@ async function syncGoogle(accessToken: string, tenantId: string, supabase: Supab
   const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? '';
   if (!developerToken) throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN is not set');
 
-  const customersRes = await fetch('https://googleads.googleapis.com/v15/customers:listAccessibleCustomers', {
+  const loginCustomerId = (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ?? '').replace(/-/g, '').trim();
+
+  const customersRes = await fetch(`https://googleads.googleapis.com/${GOOGLE_ADS_VERSION}/customers:listAccessibleCustomers`, {
     headers: {
       Authorization:     `Bearer ${accessToken}`,
       'developer-token': developerToken,
+      ...(loginCustomerId ? { 'login-customer-id': loginCustomerId } : {}),
     },
   });
   if (!customersRes.ok) {
@@ -416,13 +435,15 @@ async function syncGoogle(accessToken: string, tenantId: string, supabase: Supab
     `;
 
     const queryRes = await fetch(
-      `https://googleads.googleapis.com/v15/customers/${customerId}/googleAds:search`,
+      `https://googleads.googleapis.com/${GOOGLE_ADS_VERSION}/customers/${customerId}/googleAds:search`,
       {
         method: 'POST',
         headers: {
           Authorization:     `Bearer ${accessToken}`,
           'developer-token': developerToken,
           'Content-Type':    'application/json',
+          // Required for manager (MCC) access; harmless for direct accounts.
+          ...(loginCustomerId ? { 'login-customer-id': loginCustomerId } : {}),
         },
         body: JSON.stringify({ query: gaql }),
       }
@@ -776,6 +797,194 @@ async function syncTikTok(accessToken: string, tenantId: string, supabase: Supab
   if (!wrote) console.warn('[syncTikTok] no daily_metrics rows written');
 }
 
+// ─── Google Analytics 4 ──────────────────────────────────────────────────────
+
+type Ga4Row = { dimensionValues?: Array<{ value?: string }>; metricValues?: Array<{ value?: string }> };
+
+const ga4Num = (row: Ga4Row, i: number) => Number(row.metricValues?.[i]?.value ?? 0) || 0;
+
+/** Bind the tenant to a GA4 property once, then reuse it on every sync. */
+async function resolveGa4Property(
+  tenantId: string,
+  accessToken: string,
+  supabase: SupabaseClient,
+): Promise<{ propertyId: string } | { skipped: true } | { error: string }> {
+  const { data: existing } = await supabase
+    .from('ga4_properties')
+    .select('property_id')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  const stored = (existing as { property_id?: string } | null)?.property_id;
+  if (stored) return { propertyId: stored };
+
+  const res = await fetch('https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    // A tenant that never granted the analytics scope is not an error — just no GA4.
+    if (res.status === 403) return { skipped: true };
+    return { error: `GA4 accountSummaries ${res.status}: ${t.slice(0, 180)}` };
+  }
+
+  const json = (await res.json()) as {
+    accountSummaries?: Array<{ propertySummaries?: Array<{ property?: string; displayName?: string }> }>;
+  };
+  const first = (json.accountSummaries ?? [])
+    .flatMap((a) => a.propertySummaries ?? [])
+    .find((p) => typeof p.property === 'string');
+
+  if (!first?.property) return { skipped: true };
+
+  const propertyId = first.property.replace(/^properties\//, '');
+  const { error } = await supabase.from('ga4_properties').upsert(
+    {
+      tenant_id: tenantId,
+      property_id: propertyId,
+      display_name: first.displayName ?? null,
+      connected_at: new Date().toISOString(),
+    },
+    { onConflict: 'tenant_id' },
+  );
+  if (error) console.error('[syncGa4] property upsert', error.message);
+
+  return { propertyId };
+}
+
+async function runGa4Report(
+  propertyId: string,
+  accessToken: string,
+  body: Record<string, unknown>,
+): Promise<{ rows: Ga4Row[] } | { error: string }> {
+  const res = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const t = await res.text();
+    return { error: `GA4 runReport ${res.status}: ${t.slice(0, 180)}` };
+  }
+  const json = (await res.json()) as { rows?: Ga4Row[] };
+  return { rows: json.rows ?? [] };
+}
+
+/**
+ * Pulls the last 30 days of GA4 site behaviour: daily totals plus the default
+ * channel grouping. Skips silently when the tenant has no property or never
+ * granted the analytics scope, so the UI shows an honest empty state.
+ */
+async function syncGa4DataWithSupabase(
+  tenantId: string,
+  supabase: SupabaseClient,
+): Promise<{ success: boolean; error?: string; skipped?: boolean }> {
+  const tokenResult = await ensureGoogleAccessToken(supabase, tenantId);
+  if ('error' in tokenResult) {
+    return { success: true, skipped: true };
+  }
+  const accessToken = tokenResult.accessToken;
+
+  const prop = await resolveGa4Property(tenantId, accessToken, supabase);
+  if ('error' in prop) return { success: false, error: prop.error };
+  if ('skipped' in prop) return { success: true, skipped: true };
+
+  const dateRanges = [{ startDate: DATE_START_30(), endDate: DATE_END() }];
+  const coreMetrics = [
+    { name: 'sessions' },
+    { name: 'activeUsers' },
+    { name: 'newUsers' },
+    { name: 'engagedSessions' },
+    { name: 'bounceRate' },
+    { name: 'averageSessionDuration' },
+    { name: 'conversions' },
+    { name: 'totalRevenue' },
+  ];
+
+  const daily = await runGa4Report(prop.propertyId, accessToken, {
+    dateRanges,
+    dimensions: [{ name: 'date' }],
+    metrics: coreMetrics,
+    limit: 400,
+  });
+  if ('error' in daily) return { success: false, error: daily.error };
+
+  const dailyRows = daily.rows
+    .map((row) => {
+      const raw = row.dimensionValues?.[0]?.value ?? '';
+      if (!/^\d{8}$/.test(raw)) return null;
+      return {
+        tenant_id: tenantId,
+        date: `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`,
+        sessions: Math.round(ga4Num(row, 0)),
+        active_users: Math.round(ga4Num(row, 1)),
+        new_users: Math.round(ga4Num(row, 2)),
+        engaged_sessions: Math.round(ga4Num(row, 3)),
+        bounce_rate: ga4Num(row, 4),
+        avg_session_secs: ga4Num(row, 5),
+        conversions: ga4Num(row, 6),
+        revenue: ga4Num(row, 7),
+        synced_at: new Date().toISOString(),
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  if (dailyRows.length) {
+    const { error } = await supabase
+      .from('ga4_daily_metrics')
+      .upsert(dailyRows, { onConflict: 'tenant_id,date' });
+    if (error) return { success: false, error: `GA4 daily upsert: ${error.message}` };
+  }
+
+  const channels = await runGa4Report(prop.propertyId, accessToken, {
+    dateRanges,
+    dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'activeUsers' },
+      { name: 'conversions' },
+      { name: 'totalRevenue' },
+    ],
+    limit: 25,
+  });
+  if (!('error' in channels)) {
+    const channelRows = channels.rows
+      .map((row) => {
+        const channel = (row.dimensionValues?.[0]?.value ?? '').trim();
+        if (!channel) return null;
+        return {
+          tenant_id: tenantId,
+          channel,
+          sessions: Math.round(ga4Num(row, 0)),
+          active_users: Math.round(ga4Num(row, 1)),
+          conversions: ga4Num(row, 2),
+          revenue: ga4Num(row, 3),
+          synced_at: new Date().toISOString(),
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    // Channels come and go between windows — clear the old set before writing.
+    await supabase.from('ga4_channel_metrics').delete().eq('tenant_id', tenantId);
+    if (channelRows.length) {
+      const { error } = await supabase.from('ga4_channel_metrics').insert(channelRows);
+      if (error) console.error('[syncGa4] channel insert', error.message);
+    }
+  } else {
+    console.error('[syncGa4]', channels.error);
+  }
+
+  await supabase
+    .from('ga4_properties')
+    .update({ synced_at: new Date().toISOString() })
+    .eq('tenant_id', tenantId);
+
+  return { success: true, skipped: dailyRows.length === 0 };
+}
+
 // ─── Google Search Console ───────────────────────────────────────────────────
 
 type GscRow = { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number };
@@ -871,17 +1080,15 @@ async function syncGSCDataWithSupabase(
       );
       if (!qRes.ok) continue;
       const qJson = (await qRes.json()) as { rows?: GscRow[] };
-      for (const r of qJson.rows ?? []) {
-        const rawQ  = r.keys?.[0] ?? '(not set)';
-        const query = `${siteUrl} · ${rawQ}`.slice(0, 500);
-        const clicks      = r.clicks ?? 0;
-        const impressions = r.impressions ?? 0;
-        const ctr         = r.ctr ?? 0;
-        const position    = r.position ?? 0;
 
-        const { error: insErr } = await supabase.from('geo_reports').insert({
+      // Batch insert (chunks of 500) instead of one round-trip per row — GSC can
+      // return up to 25k query rows, and row-by-row was slow enough to risk timeouts.
+      const queryRows = (qJson.rows ?? []).map((r) => {
+        const rawQ  = r.keys?.[0] ?? '(not set)';
+        const ctr   = r.ctr ?? 0;
+        return {
           tenant_id:     tenantId,
-          keyword:       query,
+          keyword:       `${siteUrl} · ${rawQ}`.slice(0, 500),
           engine:        'google',
           metric_source: 'gsc_query',
           rank_data:     {
@@ -889,14 +1096,18 @@ async function syncGSCDataWithSupabase(
             siteUrl,
             query:           rawQ,
             cited:           false,
-            position:        Math.round(position * 10) / 10,
+            position:        Math.round((r.position ?? 0) * 10) / 10,
             citationSource:  null,
             snippet:         null,
-            clicks,
-            impressions,
+            clicks:          r.clicks ?? 0,
+            impressions:     r.impressions ?? 0,
             ctr:             ctr <= 1 ? ctr * 100 : ctr,
           },
-        });
+        };
+      });
+
+      for (let i = 0; i < queryRows.length; i += 500) {
+        const { error: insErr } = await supabase.from('geo_reports').insert(queryRows.slice(i, i + 500));
         if (!insErr) gscWrote = true;
       }
 
@@ -1115,6 +1326,12 @@ export async function syncSEO(tenantId: string): Promise<{ success: boolean; err
   } catch (e) {
     console.error('[syncSEO] pagespeed', e);
   }
+  try {
+    const ga4 = await syncGa4DataWithSupabase(tenantId, supabase);
+    if (ga4.error) console.error('[syncSEO] ga4', ga4.error);
+  } catch (e) {
+    console.error('[syncSEO] ga4', e);
+  }
   if (gsc.error) {
     console.error('[syncSEO] gsc raw:', gsc.error);
     return { ...gsc, error: await mapIntegrationSyncErrorForUser(gsc.error) };
@@ -1133,6 +1350,12 @@ export async function runSyncSEOForTenant(tenantId: string, supabase: SupabaseCl
     await fetchPagespeedCwv(tenantId, supabase);
   } catch (e) {
     console.error('[runSyncSEOForTenant] pagespeed', e);
+  }
+  try {
+    const ga4 = await syncGa4DataWithSupabase(tenantId, supabase);
+    if (ga4.error) console.error('[runSyncSEOForTenant] ga4', ga4.error);
+  } catch (e) {
+    console.error('[runSyncSEOForTenant] ga4', e);
   }
   return gsc;
 }

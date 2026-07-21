@@ -5,7 +5,7 @@ import {
 } from '@/features/admin/actions/adminUserActions';
 
 type PageProps = {
-  searchParams: Promise<{ tenantId?: string; search?: string; roleId?: string }>;
+  searchParams: Promise<{ tenantId?: string; search?: string; roleId?: string; invite?: string }>;
 };
 
 export default async function AdminUsersPage({ searchParams }: PageProps) {
@@ -13,6 +13,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   const tenantId = params.tenantId?.trim() || undefined;
   const search = params.search?.trim() || undefined;
   const roleId = params.roleId?.trim() || undefined;
+  const inviteOpen = params.invite === '1';
 
   const [users, filterOptions] = await Promise.all([
     fetchAdminUsers({ tenantId, search, roleId }),
@@ -28,6 +29,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         initialTenantId={tenantId ?? ''}
         initialSearch={search ?? ''}
         initialRoleId={roleId ?? ''}
+        initialInviteOpen={inviteOpen}
       />
     </div>
   );

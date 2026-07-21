@@ -11,6 +11,8 @@ export interface Tenant {
   /** White-label shell logo (Brand Vault primary); empty → Madmonos default. */
   brand_logo_url?: string | null;
   custom_domain: string | null;
+  /** ISO-4217 code used to format every monetary value for this tenant. */
+  currency?: string | null;
   plan: TenantPlan;
   primary_color: string | null;
   is_active: boolean;

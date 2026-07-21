@@ -20,6 +20,7 @@ import {
   showroomConnectedAdAccounts,
   showroomExecutiveTrend,
   showroomGscSeoMatrix,
+  showroomGa4Snapshot,
   showroomPlatformComparison,
   showroomPlatformMetrics,
   showroomRecentActivity,
@@ -209,10 +210,20 @@ async function aggregateMetrics(
 const sumAll = (agg: Record<string, PlatformAgg>, field: keyof PlatformAgg) =>
   Object.values(agg).reduce((s, v) => s + v[field], 0);
 
+/**
+ * Blended ROAS = total revenue / total spend across paid platforms (organic excluded).
+ * A spend-weighted figure — a low-budget channel can no longer skew the headline number
+ * the way an unweighted average of per-platform ROAS did.
+ */
 const avgRoas = (agg: Record<string, PlatformAgg>) => {
-  const entries = Object.entries(agg).filter(([k]) => k !== 'organic');
-  if (!entries.length) return 0;
-  return entries.reduce((s, [, v]) => s + (v.roas / (v.count || 1)), 0) / entries.length;
+  let revenue = 0;
+  let spend = 0;
+  for (const [k, v] of Object.entries(agg)) {
+    if (k === 'organic') continue;
+    revenue += v.revenue;
+    spend += v.spend;
+  }
+  return spend > 0 ? revenue / spend : 0;
 };
 
 const blendedCtr = (agg: Record<string, PlatformAgg>) => {
@@ -308,8 +319,9 @@ async function computePlatformMetrics(
       change: pv > 0 ? ((cv - pv) / pv) * 100 : (cv > 0 && pv === 0 ? 100 : 0),
     });
 
-    const roasC = c.count > 0 ? c.roas / c.count : 0;
-    const roasP = p.count > 0 ? p.roas / p.count : 0;
+    // Spend-weighted ROAS (revenue / spend) — consistent with the blended aggregate.
+    const roasC = c.spend > 0 ? c.revenue / c.spend : 0;
+    const roasP = p.spend > 0 ? p.revenue / p.spend : 0;
     const ctrC = c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0;
     const ctrP = p.impressions > 0 ? (p.clicks / p.impressions) * 100 : 0;
 
@@ -381,7 +393,7 @@ export async function fetchPlatformComparison(
 
   return platforms.map((platform) => {
     const v = byPlatform[platform];
-    const roas = v.count > 0 ? v.roas / v.count : 0;
+    const roas = v.spend > 0 ? v.revenue / v.spend : 0;
     const cpa = v.conversions > 0 ? v.spend / v.conversions : 0;
     return {
       platform,
@@ -733,4 +745,113 @@ export async function fetchRecentActivity(companyId: string): Promise<ActivityIt
   return items
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
+}
+
+
+export interface Ga4Snapshot {
+  connected: boolean;
+  propertyName: string | null;
+  sessions: number;
+  activeUsers: number;
+  newUsers: number;
+  engagementRatePct: number;
+  avgSessionSecs: number;
+  conversions: number;
+  revenue: number;
+  channels: Array<{ channel: string; sessions: number; conversions: number; revenue: number }>;
+}
+
+const EMPTY_GA4: Ga4Snapshot = {
+  connected: false,
+  propertyName: null,
+  sessions: 0,
+  activeUsers: 0,
+  newUsers: 0,
+  engagementRatePct: 0,
+  avgSessionSecs: 0,
+  conversions: 0,
+  revenue: 0,
+  channels: [],
+};
+
+/**
+ * Last-30-day GA4 site behaviour. Returns an unconnected snapshot rather than
+ * inventing numbers, so a real tenant without GA4 sees an honest empty state.
+ */
+export async function fetchGa4Snapshot(companyId: string): Promise<Ga4Snapshot> {
+  const validatedId = await requireTenantAction(companyId);
+  if (await isDemoTenant(validatedId)) {
+    return showroomGa4Snapshot() as Ga4Snapshot;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const [{ data: prop }, { data: daily }, { data: channels }] = await Promise.all([
+    supabase
+      .from('ga4_properties')
+      .select('display_name')
+      .eq('tenant_id', validatedId)
+      .maybeSingle(),
+    supabase
+      .from('ga4_daily_metrics')
+      .select('sessions, active_users, new_users, engaged_sessions, avg_session_secs, conversions, revenue')
+      .eq('tenant_id', validatedId),
+    supabase
+      .from('ga4_channel_metrics')
+      .select('channel, sessions, conversions, revenue')
+      .eq('tenant_id', validatedId)
+      .order('sessions', { ascending: false })
+      .limit(6),
+  ]);
+
+  if (!prop) return EMPTY_GA4;
+
+  type DailyRow = {
+    sessions: number | null;
+    active_users: number | null;
+    new_users: number | null;
+    engaged_sessions: number | null;
+    avg_session_secs: number | null;
+    conversions: number | null;
+    revenue: number | null;
+  };
+
+  let sessions = 0;
+  let activeUsers = 0;
+  let newUsers = 0;
+  let engaged = 0;
+  let durationWeighted = 0;
+  let conversions = 0;
+  let revenue = 0;
+
+  for (const r of (daily ?? []) as DailyRow[]) {
+    const s = Number(r.sessions ?? 0);
+    sessions += s;
+    activeUsers += Number(r.active_users ?? 0);
+    newUsers += Number(r.new_users ?? 0);
+    engaged += Number(r.engaged_sessions ?? 0);
+    // Session duration is a per-session average — weight it by sessions.
+    durationWeighted += Number(r.avg_session_secs ?? 0) * s;
+    conversions += Number(r.conversions ?? 0);
+    revenue += Number(r.revenue ?? 0);
+  }
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  return {
+    connected: true,
+    propertyName: (prop as { display_name?: string | null }).display_name ?? null,
+    sessions,
+    activeUsers,
+    newUsers,
+    engagementRatePct: sessions > 0 ? round2((engaged / sessions) * 100) : 0,
+    avgSessionSecs: sessions > 0 ? round2(durationWeighted / sessions) : 0,
+    conversions: round2(conversions),
+    revenue: round2(revenue),
+    channels: ((channels ?? []) as Array<{ channel: string; sessions: number | null; conversions: number | null; revenue: number | null }>).map((c) => ({
+      channel: c.channel,
+      sessions: Number(c.sessions ?? 0),
+      conversions: Number(c.conversions ?? 0),
+      revenue: Number(c.revenue ?? 0),
+    })),
+  };
 }

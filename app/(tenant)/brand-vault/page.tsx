@@ -87,11 +87,11 @@ export default async function BrandVaultPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.labelKey}
-            className="relative overflow-hidden rounded-3xl p-5 border border-white/[0.08]"
+            className="relative overflow-hidden rounded-3xl p-4 sm:p-5 border border-white/[0.08]"
             style={{
               background: 'rgba(255,255,255,0.03)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',

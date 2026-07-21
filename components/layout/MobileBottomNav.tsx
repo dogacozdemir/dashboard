@@ -6,44 +6,22 @@ import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  LayoutDashboard,
-  BarChart3,
-  Clapperboard,
-  MessageSquare,
-  Brain,
-  Globe,
-  Shield,
-  CalendarDays,
-  Trophy,
-} from 'lucide-react';
+import { UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-
-const LEFT_ITEMS = [
-  { href: '/dashboard', labelKey: 'home' as const, icon: LayoutDashboard },
-  { href: '/performance', labelKey: 'performance' as const, icon: BarChart3 },
-] as const;
-
-const RIGHT_ITEMS = [
-  { href: '/creative', labelKey: 'creative' as const, icon: Clapperboard },
-  { href: '/chat', labelKey: 'chat' as const, icon: MessageSquare },
-] as const;
-
-const STACK_ITEMS = [
-  { href: '/mastery', labelKey: 'masteryHall' as const, icon: Trophy },
-  { href: '/mono-ai', labelKey: 'monoAi' as const, icon: Brain },
-  { href: '/strategy', labelKey: 'seoGeo' as const, icon: Globe },
-  { href: '/brand-vault', labelKey: 'brandVault' as const, icon: Shield },
-  { href: '/calendar', labelKey: 'opsCalendar' as const, icon: CalendarDays },
-] as const;
+import {
+  TENANT_NAV_LEFT,
+  TENANT_NAV_RIGHT,
+  TENANT_NAV_STACK,
+} from '@/lib/navigation/tenant-nav';
 
 const tapSpring = { type: 'spring' as const, stiffness: 520, damping: 28 };
 
 interface MobileBottomNavProps {
   brandLogoUrl?: string | null;
+  canManageTeam?: boolean;
 }
 
-export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
+export function MobileBottomNav({ brandLogoUrl, canManageTeam = false }: MobileBottomNavProps) {
   const pathname = usePathname();
   const tMobile = useTranslations('Dashboard.mobileNav');
   const tSidebar = useTranslations('Dashboard.sidebar');
@@ -63,10 +41,61 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
     }
   }, [isClient, hintDismissed]);
 
-  const isArmoryActive = useMemo(
-    () => STACK_ITEMS.some((item) => pathname === item.href || pathname.startsWith(item.href + '/')),
-    [pathname],
+  const isActiveHref = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  // Stack (gem menu) = shared stack items + permission-gated Team, so mobile always
+  // mirrors the desktop sidebar. Labels resolved from the same i18n namespaces.
+  const stackEntries = useMemo(
+    () => [
+      ...TENANT_NAV_STACK.map((i) => ({ href: i.href, icon: i.icon, label: tSidebar(i.labelKey) })),
+      ...(canManageTeam
+        ? [{ href: '/settings/team', icon: UsersRound, label: tSidebar('team') }]
+        : []),
+    ],
+    [canManageTeam, tSidebar],
   );
+
+  const isArmoryActive = useMemo(
+    () => stackEntries.some((item) => isActiveHref(item.href)),
+    [stackEntries, pathname], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const barItem = (item: (typeof TENANT_NAV_LEFT)[number]) => {
+    const isActive = isActiveHref(item.href);
+    const Icon = item.icon;
+    const label = item.shortLabelKey ? tMobile(item.shortLabelKey) : '';
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className="relative flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-2xl press-scale"
+        aria-current={isActive ? 'page' : undefined}
+        aria-label={label}
+      >
+        <AnimatePresence>
+          {isActive ? (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              className="absolute inset-x-1 top-0 h-8 rounded-2xl bg-[#bea042]/12"
+            />
+          ) : null}
+        </AnimatePresence>
+        <motion.span
+          whileTap={{ scale: 0.9 }}
+          transition={tapSpring}
+          className={cn('relative z-10', isActive ? 'text-[#bea042]' : 'text-white/45')}
+          style={isActive ? { filter: 'drop-shadow(0 0 10px rgba(190,160,66,0.85))' } : undefined}
+        >
+          <Icon className="h-[19px] w-[19px]" strokeWidth={isActive ? 2.25 : 1.9} />
+        </motion.span>
+        <span className={cn('relative z-10 text-[9px] leading-none', isActive ? 'text-[#bea042]' : 'text-white/40')}>
+          {label}
+        </span>
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -80,7 +109,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
               'pointer-events-auto relative rounded-[2rem] border border-white/10 border-t border-white/10',
               'bg-white/5 backdrop-blur-3xl',
               'shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]',
-              'px-3 pt-3 pb-2',
+              'px-3 pt-2 pb-2',
             )}
             style={{
               WebkitBackdropFilter: 'blur(64px) saturate(200%)',
@@ -89,41 +118,10 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
           >
             <div className="relative flex items-end justify-between gap-1">
               <div className="flex w-[40%] items-center justify-around">
-                {LEFT_ITEMS.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="relative flex h-12 w-12 items-center justify-center rounded-full press-scale"
-                      aria-current={isActive ? 'page' : undefined}
-                      aria-label={tMobile(item.labelKey)}
-                    >
-                      <AnimatePresence>
-                        {isActive ? (
-                          <motion.span
-                            initial={{ opacity: 0, scale: 0.85 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.85 }}
-                            className="absolute inset-0 rounded-full bg-[#bea042]/12"
-                          />
-                        ) : null}
-                      </AnimatePresence>
-                      <motion.span
-                        whileTap={{ scale: 0.93 }}
-                        transition={tapSpring}
-                        className={cn('relative z-10', isActive ? 'text-[#bea042]' : 'text-white/45')}
-                        style={isActive ? { filter: 'drop-shadow(0 0 10px rgba(190,160,66,0.85))' } : undefined}
-                      >
-                        <Icon className="h-5 w-5" strokeWidth={isActive ? 2.25 : 1.9} />
-                      </motion.span>
-                    </Link>
-                  );
-                })}
+                {TENANT_NAV_LEFT.map(barItem)}
               </div>
 
-              {/* Apex handle — Glass Gem */}
+              {/* Apex handle — Glass Gem (opens the full navigation stack) */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.93 }}
@@ -137,7 +135,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
                   }
                   setArmoryOpen((prev) => !prev);
                 }}
-                aria-label="Open navigation stack"
+                aria-label={armoryOpen ? tMobile('closeStack') : tMobile('openStack')}
                 aria-expanded={armoryOpen}
                 aria-controls="mobile-armory-stack"
                 className="relative -mt-9 flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-full text-white"
@@ -165,7 +163,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
                 >
                   <TenantLogoMark
                     brandLogoUrl={brandLogoUrl}
-                    alt="Navigation"
+                    alt={tMobile('openStack')}
                     width={50}
                     height={50}
                     className="h-[50px] w-[50px]"
@@ -199,7 +197,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
                       className="absolute bottom-[78px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-[#0c070c]/70 px-3 py-1.5 text-[11px] text-white/80 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
                       style={{ WebkitBackdropFilter: 'blur(24px) saturate(170%)' }}
                     >
-                      More’da tüm sayfalar
+                      {tMobile('stackHint')}
                       <span className="absolute left-1/2 top-full -translate-x-1/2 h-2 w-2 rotate-45 border-b border-r border-white/15 bg-[#0c070c]/70" />
                     </motion.div>
                   ) : null}
@@ -207,38 +205,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
               </motion.button>
 
               <div className="flex w-[40%] items-center justify-around">
-                {RIGHT_ITEMS.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="relative flex h-12 w-12 items-center justify-center rounded-full press-scale"
-                      aria-current={isActive ? 'page' : undefined}
-                      aria-label={tMobile(item.labelKey)}
-                    >
-                      <AnimatePresence>
-                        {isActive ? (
-                          <motion.span
-                            initial={{ opacity: 0, scale: 0.85 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.85 }}
-                            className="absolute inset-0 rounded-full bg-[#bea042]/12"
-                          />
-                        ) : null}
-                      </AnimatePresence>
-                      <motion.span
-                        whileTap={{ scale: 0.93 }}
-                        transition={tapSpring}
-                        className={cn('relative z-10', isActive ? 'text-[#bea042]' : 'text-white/45')}
-                        style={isActive ? { filter: 'drop-shadow(0 0 10px rgba(190,160,66,0.85))' } : undefined}
-                      >
-                        <Icon className="h-5 w-5" strokeWidth={isActive ? 2.25 : 1.9} />
-                      </motion.span>
-                    </Link>
-                  );
-                })}
+                {TENANT_NAV_RIGHT.map(barItem)}
               </div>
             </div>
           </div>
@@ -256,7 +223,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
           >
             <motion.button
               type="button"
-              aria-label="Close navigation stack"
+              aria-label={tMobile('closeStack')}
               className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
               onClick={() => setArmoryOpen(false)}
               initial={{ opacity: 0 }}
@@ -268,7 +235,7 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
               id="mobile-armory-stack"
               role="dialog"
               aria-modal="true"
-              aria-label="Navigation stack"
+              aria-label={tMobile('mainNavAria')}
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               onDragEnd={(_, info) => {
@@ -281,7 +248,6 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
               className="absolute inset-x-0 bottom-[92px] flex justify-center px-4"
             >
               <div className="w-full max-w-[420px]">
-                {/* Upward-extending Liquid Glass stack (Cephanelik) */}
                 <div className="relative mx-auto w-full max-w-[340px]">
                   <motion.div
                     initial={{ opacity: 0, y: 14 }}
@@ -302,26 +268,23 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
                       <div className="absolute -bottom-14 -right-10 h-40 w-40 rounded-full bg-amber-400/10 blur-2xl" />
                     </div>
 
-                    <div className="relative grid grid-cols-1 gap-2 p-3">
-                      {STACK_ITEMS.map((item, idx) => {
-                        // Stack order: Mono AI (top), SEO&GEO, Brand Vault, Ops Calendar (bottom/base).
-                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    <div className="relative grid max-h-[60vh] grid-cols-1 gap-2 overflow-y-auto p-3 scrollbar-thin">
+                      {stackEntries.map((item, idx) => {
+                        const isActive = isActiveHref(item.href);
                         const Icon = item.icon;
-                        const baseDelay = 0.04;
                         return (
                           <motion.div
                             key={item.href}
                             initial={{ opacity: 0, y: 10, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                            transition={{ type: 'spring', stiffness: 520, damping: 34, delay: idx * baseDelay }}
+                            transition={{ type: 'spring', stiffness: 520, damping: 34, delay: idx * 0.04 }}
                           >
                             <Link
                               href={item.href}
                               onClick={() => setArmoryOpen(false)}
                               className={cn(
-                                'relative flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all',
-                                'backdrop-blur-3xl',
+                                'relative flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all backdrop-blur-3xl',
                                 isActive
                                   ? 'border-[#bea042]/55 bg-[#bea042]/12 text-[#bea042]'
                                   : 'border-white/10 bg-white/[0.03] text-white/80 hover:bg-white/[0.06]',
@@ -336,28 +299,11 @@ export function MobileBottomNav({ brandLogoUrl }: MobileBottomNavProps) {
                               >
                                 <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.2 : 1.8} />
                               </span>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold leading-tight truncate">{tSidebar(item.labelKey)}</p>
-                                <p className="text-[11px] text-white/40 leading-tight truncate">
-                                  {item.href === '/mastery'
-                                    ? tMobile('stackMastery')
-                                    : item.href === '/mono-ai'
-                                      ? 'Jungle Engine'
-                                      : item.href === '/strategy'
-                                        ? 'SEO & GEO cockpit'
-                                        : item.href === '/brand-vault'
-                                          ? 'Brand Mono assets'
-                                          : 'Ops calendar'}
-                                </p>
-                              </div>
-                              {isActive ? (
-                                <span
-                                  className="ml-auto h-2 w-2 rounded-full bg-[#bea042]"
-                                  style={{ boxShadow: '0 0 14px rgba(190,160,66,0.75)' }}
-                                />
-                              ) : (
-                                <span className="ml-auto h-2 w-2 rounded-full bg-white/10" />
-                              )}
+                              <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">{item.label}</p>
+                              <span
+                                className={cn('h-2 w-2 rounded-full', isActive ? 'bg-[#bea042]' : 'bg-white/10')}
+                                style={isActive ? { boxShadow: '0 0 14px rgba(190,160,66,0.75)' } : undefined}
+                              />
                             </Link>
                           </motion.div>
                         );

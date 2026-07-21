@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { TenantLogoMark } from '@/components/branding/TenantLogoMark';
 import { motion } from 'framer-motion';
@@ -15,30 +16,23 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { NotificationCenter } from '@/app/components/layout/NotificationCenter';
 import type { SessionUser } from '@/types/user';
-import type { LuxNotificationItem } from '@/features/notifications/types';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 
 interface TopBarProps {
   user: SessionUser;
-  companyId: string;
   title: string;
   subtitle?: string;
-  /** White-label mark for mobile header chip. */
   brandLogoUrl?: string | null;
-  initialNotifs?: LuxNotificationItem[];
-  canUseNotifications?: boolean;
+  notificationSlot: ReactNode;
 }
 
 export function TopBar({
   user,
-  companyId,
   title,
   subtitle,
   brandLogoUrl,
-  initialNotifs = [],
-  canUseNotifications = false,
+  notificationSlot,
 }: TopBarProps) {
   const t = useTranslations('Common.commandPalette');
   const initials = user.name
@@ -91,11 +85,13 @@ export function TopBar({
               >
                 <Search className="h-3.5 w-3.5" />
               </motion.button>
-              <NotificationCenter
-                companyId={companyId}
-                initialNotifs={initialNotifs}
-                enabled={canUseNotifications}
-              />
+              <Link
+                href="/profile"
+                aria-label={t('profileSettings')}
+                className="press-scale flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] text-white/55 transition-colors hover:border-[#bea042]/25 hover:text-[#bea042]/90"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
           {subtitle ? (
@@ -104,12 +100,12 @@ export function TopBar({
         </div>
       </div>
 
-      <div className="hidden shrink-0 items-center gap-1.5 md:flex md:gap-2">
+      <div className="flex shrink-0 items-center gap-1 md:gap-2">
         <motion.button
           type="button"
           whileTap={{ scale: 0.95 }}
           onClick={() => window.dispatchEvent(new CustomEvent('madmonos:command-open'))}
-          className="press-scale flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:border-[#bea042]/25 hover:text-white/70"
+          className="press-scale hidden md:flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:border-[#bea042]/25 hover:text-white/70"
           style={{ boxShadow: '0 0 10px rgba(190,160,66,0.06)' }}
         >
           <Search className="h-3.5 w-3.5 shrink-0" />
@@ -119,21 +115,18 @@ export function TopBar({
           </kbd>
         </motion.button>
 
-        <LanguageSwitcher />
+        <div className="hidden md:block">
+          <LanguageSwitcher />
+        </div>
 
-        <NotificationCenter
-          companyId={companyId}
-          initialNotifs={initialNotifs}
-          enabled={canUseNotifications}
-        />
+        {notificationSlot}
 
-        <Link href="/profile" className="hidden sm:block">
-          <button
-            type="button"
-            className="press-scale flex h-8 w-8 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-white/40 transition-all duration-200 hover:border-[#bea042]/20 hover:bg-white/[0.07] hover:text-[#bea042]/80"
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
+        <Link
+          href="/profile"
+          aria-label={t('profileSettings')}
+          className="press-scale hidden sm:flex h-8 w-8 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-white/40 transition-all duration-200 hover:border-[#bea042]/20 hover:bg-white/[0.07] hover:text-[#bea042]/80"
+        >
+          <Settings className="h-3.5 w-3.5" />
         </Link>
 
         <DropdownMenu>
@@ -158,41 +151,6 @@ export function TopBar({
             </div>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent
-            align="end"
-            className="w-52 border-white/[0.08] bg-[#130c13]/95 text-white/80 backdrop-blur-2xl"
-          >
-            <div className="px-3 py-2">
-              <p className="text-xs font-medium text-white/70">{user.name}</p>
-              <p className="mt-0.5 text-[11px] text-white/35">{user.email}</p>
-            </div>
-            <DropdownMenuSeparator className="bg-white/[0.06]" />
-            <DropdownMenuItem className="cursor-pointer p-0 hover:bg-white/[0.06]">
-              <Link href="/profile" className="block w-full px-3 py-2 text-sm">
-                {t('profileSettings')}
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-white/[0.06]" />
-            <DropdownMenuItem
-              className="cursor-pointer px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10"
-              onClick={() => signOut({ callbackUrl: '/login' })}
-            >
-              {t('signOut')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="flex shrink-0 md:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger className="press-scale flex cursor-pointer items-center rounded-2xl py-1 outline-none">
-            <Avatar className="h-7 w-7 ring-2 ring-[#bea042]/20" style={{ boxShadow: '0 0 10px rgba(190,160,66,0.12)' }}>
-              <AvatarImage src={user.image ?? undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-[#9c70b2]/40 to-[#bea042]/30 text-[10px] font-semibold text-[#e3d0ea]">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
             className="w-52 border-white/[0.08] bg-[#130c13]/95 text-white/80 backdrop-blur-2xl"

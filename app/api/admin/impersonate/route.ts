@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
-import { IMPERSONATE_TENANT_COOKIE } from '@/lib/auth/constants';
+import {
+  IMPERSONATE_TENANT_COOKIE,
+  IMPERSONATE_TENANT_ID_COOKIE,
+} from '@/lib/auth/constants';
+import { getSharedCookieDomain } from '@/lib/auth/cookie-domain';
+import { resolveTenantIdBySlug } from '@/lib/auth/resolve-tenant-id';
 import type { SessionUser } from '@/types/user';
 import {
   premiumForbiddenMessage,
@@ -9,13 +14,23 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { resolveActionLocale } from '@/lib/i18n/resolve-action-locale';
 
-const COOKIE_OPTS = {
-  httpOnly: true as const,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-  maxAge: 60 * 60 * 8, // 8h
-};
+function cookieBaseOpts() {
+  return {
+    httpOnly: true as const,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    domain: getSharedCookieDomain(),
+  };
+}
+
+function clearImpersonationCookies(res: NextResponse) {
+  const base = cookieBaseOpts();
+  for (const name of [IMPERSONATE_TENANT_COOKIE, IMPERSONATE_TENANT_ID_COOKIE]) {
+    res.cookies.set(name, '', { ...base, maxAge: 0 });
+    res.cookies.delete(name);
+  }
+}
 
 /**
  * Super-admin only: set or clear tenant impersonation (customer view).
@@ -41,15 +56,24 @@ export async function POST(request: NextRequest) {
   }
 
   const raw = body.slug;
-  const slug = typeof raw === 'string' ? raw.trim() : '';
+  const slug = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
 
   const res = NextResponse.json({ ok: true, slug: slug || null });
 
   if (!slug) {
-    res.cookies.delete(IMPERSONATE_TENANT_COOKIE);
+    clearImpersonationCookies(res);
     return res;
   }
 
-  res.cookies.set(IMPERSONATE_TENANT_COOKIE, slug, COOKIE_OPTS);
+  const tenantId = await resolveTenantIdBySlug(slug);
+  if (!tenantId) {
+    const locale = await resolveActionLocale();
+    const t = await getTranslations({ locale, namespace: 'PremiumMessages' });
+    return NextResponse.json({ error: t('invalidPayload') }, { status: 404 });
+  }
+
+  const base = cookieBaseOpts();
+  res.cookies.set(IMPERSONATE_TENANT_COOKIE, slug, { ...base, maxAge: 60 * 60 * 8 });
+  res.cookies.set(IMPERSONATE_TENANT_ID_COOKIE, tenantId, { ...base, maxAge: 60 * 60 * 8 });
   return res;
 }

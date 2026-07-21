@@ -2,12 +2,13 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
+import { requirePermission } from '@/lib/auth/permissions';
 import { decryptToken, unpackToken } from '@/lib/utils/crypto';
 import { createPresignedDownloadUrl } from '@/lib/storage/s3';
 import { extractS3Key, normalizeDuplicateTenantKey } from '@/features/creative-studio/lib/creativeS3Keys';
 import type { CreativeContentFormat } from '@/features/creative-studio/types';
 
-const GRAPH_VERSION = 'v18.0';
+const GRAPH_VERSION = 'v20.0';
 
 export type PublishInstagramResult =
   | { success: true; instagramMediaId: string; published: boolean }
@@ -35,6 +36,36 @@ function mapContentFormatToMediaType(
 }
 
 /**
+ * A media container must reach `status_code = FINISHED` before `media_publish`.
+ * Images finish instantly; video/reels/carousel need processing time, so publishing
+ * immediately (as the old code did) fails with "Media ID is not available".
+ * Bounded poll — heavy videos exceeding the window need a background job.
+ */
+async function waitForContainerReady(
+  graphBase: string,
+  containerId: string,
+  accessToken: string,
+  maxMs = 55_000,
+  intervalMs = 3_000,
+): Promise<{ ready: boolean; error?: string }> {
+  const deadline = Date.now() + maxMs;
+  for (;;) {
+    const res = await fetch(
+      `${graphBase}/${containerId}?fields=status_code&access_token=${accessToken}`,
+    );
+    if (res.ok) {
+      const json = (await res.json()) as { status_code?: string };
+      if (json.status_code === 'FINISHED') return { ready: true };
+      if (json.status_code === 'ERROR' || json.status_code === 'EXPIRED') {
+        return { ready: false, error: `Media processing ${json.status_code}` };
+      }
+    }
+    if (Date.now() >= deadline) return { ready: false, error: 'Media processing timed out' };
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
+/**
  * Placeholder pipeline for Meta Content Publishing API.
  * Requires `meta_publishing_accounts` row + public media URLs for Graph API.
  *
@@ -45,6 +76,7 @@ export async function publishInstagramPost(
   creativePostId: string,
 ): Promise<PublishInstagramResult> {
   await requireTenantAction(companyId);
+  await requirePermission('creative.approve');
   const supabase = await createSupabaseServerClient();
 
   const { data: post, error: postErr } = await supabase
@@ -143,6 +175,11 @@ export async function publishInstagramPost(
         };
       }
 
+      const carouselReady = await waitForContainerReady(graphBase, containerJson.id, accessToken);
+      if (!carouselReady.ready) {
+        return { success: false, error: carouselReady.error ?? 'Carousel not ready' };
+      }
+
       const publishRes = await fetch(`${graphBase}/${igUserId}/media_publish`, {
         method: 'POST',
         body: new URLSearchParams({ creation_id: containerJson.id, access_token: accessToken }),
@@ -178,6 +215,14 @@ export async function publishInstagramPost(
         success: false,
         error: containerJson.error?.message ?? `Media container failed (${containerRes.status})`,
       };
+    }
+
+    // Video/Reels need processing; images finish instantly (poll is a no-op for them).
+    if (mediaKind === 'VIDEO') {
+      const ready = await waitForContainerReady(graphBase, containerJson.id, accessToken);
+      if (!ready.ready) {
+        return { success: false, error: ready.error ?? 'Media not ready' };
+      }
     }
 
     const publishRes = await fetch(`${graphBase}/${igUserId}/media_publish`, {

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { LOCALE_COOKIE, normalizeLocale } from '@/lib/i18n/constants';
 import { loadMessages } from '@/lib/i18n/load-messages';
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import './globals.css';
 
 const geistSans = Geist({
@@ -60,6 +61,7 @@ export default async function RootLayout({
     >
       <body className="h-full antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <ServiceWorkerRegister />
           {children}
         </NextIntlClientProvider>
       </body>
