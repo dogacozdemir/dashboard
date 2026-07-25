@@ -78,6 +78,7 @@ export async function fetchCreativePosts(companyId: string): Promise<CreativePos
     .select(
       `
       id, title, caption, platform, content_format, status, scheduled_date, scheduled_time, social_post_event_id, thumbnail_url, uploaded_by, created_at,
+      publish_state, published_at, ig_media_id, publish_error,
       creative_assets ( id, slide_index, title, url, thumbnail_url, type, created_at )
     `,
     )
@@ -134,6 +135,10 @@ export async function fetchCreativePosts(companyId: string): Promise<CreativePos
           uploadedBy: row.uploaded_by as string,
           createdAt: row.created_at as string,
           slides,
+          publishState: ((row as { publish_state?: string }).publish_state as CreativePost['publishState']) ?? 'idle',
+          publishedAt: (row as { published_at?: string | null }).published_at ?? null,
+          igMediaId: (row as { ig_media_id?: string | null }).ig_media_id ?? null,
+          publishError: (row as { publish_error?: string | null }).publish_error ?? null,
         } satisfies CreativePost;
       }),
     );

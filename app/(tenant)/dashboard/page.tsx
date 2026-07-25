@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from 'react';
 import { requireTenantContext } from '@/lib/auth/tenant-guard';
+import { fetchConnectedAdAccounts } from '@/features/performance-hub/actions/fetchMetrics';
 import { getCachedSession } from '@/lib/auth/cached-auth';
 import { OverviewMetrics } from '@/features/performance-hub/components/OverviewMetrics';
 import { RecentActivity } from '@/features/performance-hub/components/RecentActivity';
@@ -41,6 +42,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     searchParams,
     getTranslations('Features.DashboardPage'),
   ]);
+  const connectedAccounts = await fetchConnectedAdAccounts(companyId);
+  const connectedPlatforms = [...new Set(connectedAccounts.map((a) => a.platform))] as Array<
+    'meta' | 'google' | 'tiktok'
+  >;
 
   const tenant = tenantCtx as Tenant;
 
@@ -105,7 +110,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             {tDash('executiveTrendHeading')}
           </p>
         </div>
-        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
+        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport connectedPlatforms={connectedPlatforms} />
       </div>
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>
         <CockpitHeavyStagger>

@@ -1,6 +1,7 @@
 import type { AggregateMetrics } from '@/features/performance-hub/types';
 import type { TimeRange } from '@/features/performance-hub/actions/fetchMetrics';
 import type { CockpitPlatform } from '@/features/performance-hub/lib/cockpit-platform';
+import { deepseekChatModel } from '@/lib/ai/deepseek-model';
 
 export async function generateMonoReportNarrative(input: {
   tenantName: string;
@@ -40,8 +41,8 @@ export async function generateMonoReportNarrative(input: {
 
   const user =
     locale === 'en'
-      ? `Tenant: ${tenantName}. KPI JSON: ${JSON.stringify(kpi)}. Voice: premium, engineering-forward, frictionless.`
-      : `Tenant: ${tenantName}. KPI JSON: ${JSON.stringify(kpi)}. Üslup: premium, mühendislik odaklı, frictionless.`;
+      ? `Tenant: ${tenantName}. KPI JSON: ${JSON.stringify(kpi)}. Voice: clear, natural, professional; no buzzwords.`
+      : `Tenant: ${tenantName}. KPI JSON: ${JSON.stringify(kpi)}. Üslup: net, doğal, profesyonel; pazarlama klişesi kullanma.`;
 
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -51,7 +52,7 @@ export async function generateMonoReportNarrative(input: {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },

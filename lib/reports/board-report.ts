@@ -7,6 +7,7 @@ import {
   fetchGscSeoMatrix,
 } from '@/features/performance-hub/actions/fetchMetrics';
 import { DEFAULT_CURRENCY, formatCurrency } from '@/lib/utils/format';
+import { deepseekChatModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
 
 export interface BoardReportKpi {
   key: string;
@@ -57,7 +58,7 @@ async function generateBoardNarrative(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         messages: [
           {
             role: 'system',
@@ -81,7 +82,7 @@ async function generateBoardNarrative(
     });
     if (!res.ok) return null;
     const json = await res.json();
-    const p = JSON.parse(json.choices[0].message.content) as Partial<BoardReport['narrative']>;
+    const p = parseDeepseekJson<Partial<BoardReport['narrative']>>(json?.choices?.[0]?.message?.content) ?? {};
     if (!p.executiveSummary) return null;
     return {
       executiveSummary: String(p.executiveSummary),

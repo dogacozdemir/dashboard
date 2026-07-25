@@ -52,7 +52,7 @@ function sanitizeCallbackUrl(raw: string | null, origin: string): string {
 /**
  * Multi-tenant proxy.
  * - Tenant scope from Host subdomain (retroline.madmonos.com → retroline)
- * - Redirects preserve the incoming Host (never NEXTAUTH_URL / nerdyreptile)
+ * - Redirects preserve the incoming Host (never NEXTAUTH_URL)
  * - Super-admin impersonation via cookies
  */
 export default auth(async (request) => {

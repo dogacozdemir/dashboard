@@ -13,12 +13,15 @@ interface CockpitToolbarProps {
   currentPlatform: CockpitPlatform;
   /** When true, show mono Report PDF export (Performance Hub + Dashboard). */
   showMonoReportExport?: boolean;
+  /** Connected ad channels — filters the platform pills. */
+  connectedPlatforms?: Array<'meta' | 'google' | 'tiktok'>;
 }
 
 export function CockpitToolbar({
   currentRange,
   currentPlatform,
   showMonoReportExport = false,
+  connectedPlatforms,
 }: CockpitToolbarProps) {
   const t = useTranslations('Performance.cockpit.toolbarHint');
 
@@ -34,7 +37,7 @@ export function CockpitToolbar({
             <ExportMonoReportButton range={currentRange} cockpit={currentPlatform} />
           ) : null}
           <TimeRangeFilter current={currentRange} />
-          <PlatformSwitcher current={currentPlatform} />
+          <PlatformSwitcher current={currentPlatform} connected={connectedPlatforms} />
         </div>
       </motion.div>
     </LayoutGroup>

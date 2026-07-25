@@ -4,6 +4,7 @@ import { runSyncAdPlatformForTenant, runSyncSEOForTenant } from '@/features/oaut
 import { runGenerateGeoReportForTenant } from '@/features/strategy/actions/generateGeoReport';
 import { detectAndNotifyAnomalies } from '@/lib/alerts/anomaly';
 import { runTenantSiteCrawl } from '@/lib/ai/site-crawl';
+import { trackCompetitor, isCompetitorDue } from '@/lib/competitors/track';
 import type { AdPlatform } from '@/features/oauth/types';
 
 /**
@@ -96,6 +97,41 @@ export async function GET(req: NextRequest) {
           await runTenantSiteCrawl(supabase, tid, (row as { custom_domain?: string | null }).custom_domain ?? null);
         } catch (e) {
           console.error('[cron/sync-all] site-crawl', tid, e instanceof Error ? e.message : e);
+        }
+      }
+
+      // Re-check due competitors and notify the agency when a page changed.
+      if (!isDemo) {
+        try {
+          const { data: competitors } = await supabase
+            .from('competitors')
+            .select('id, tenant_id, name, url, last_checked_at')
+            .eq('tenant_id', tid)
+            .eq('is_active', true)
+            .limit(20);
+
+          for (const comp of (competitors ?? []) as Array<{
+            id: string; tenant_id: string; name: string; url: string; last_checked_at: string | null;
+          }>) {
+            if (!isCompetitorDue(comp.last_checked_at)) continue;
+            const res = await trackCompetitor(supabase, comp);
+            if (res.status === 'changed') {
+              // A price move is louder than a generic content change.
+              const isPrice = Boolean(res.priceChange);
+              await supabase.from('notifications').insert({
+                tenant_id: tid,
+                user_id: null,
+                sender_name: 'Mono AI',
+                message: isPrice
+                  ? `💰 Fiyat değişikliği — ${comp.name}: ${res.priceChange}`
+                  : `Rakip güncellemesi — ${comp.name}: ${res.summary ?? 'sayfası değişti.'}`,
+                type: isPrice ? 'alert' : 'info',
+                is_read: false,
+              });
+            }
+          }
+        } catch (e) {
+          console.error('[cron/sync-all] competitors', tid, e instanceof Error ? e.message : e);
         }
       }
 

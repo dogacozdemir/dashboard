@@ -6,19 +6,21 @@ import { verifyOAuthState } from '@/lib/auth/oauth-state';
 import { auth } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
 import { oauthSuccessRedirect } from '@/features/oauth/lib/oauthRedirect';
-import { getAppUrl } from '@/lib/utils/app-url';
+import { getAppUrl, getOAuthBaseUrl, sanitizeTenantOrigin } from '@/lib/utils/app-url';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const authCode  = searchParams.get('auth_code');
   const stateB64  = searchParams.get('state');
-  const appUrl    = getAppUrl();
+  const state     = verifyOAuthState(stateB64);
+  // User-facing redirects go back to the tenant subdomain the flow started on;
+  // the fixed OAuth host only exists so the registered redirect_uri is stable.
+  const appUrl    = sanitizeTenantOrigin(state?.origin) ?? getAppUrl();
 
   if (!authCode || !stateB64) {
     return NextResponse.redirect(`${appUrl}/performance?error=oauth_failed`);
   }
 
-  const state = verifyOAuthState(stateB64);
   if (!state) {
     return NextResponse.redirect(`${appUrl}/performance?error=invalid_state`);
   }

@@ -1,5 +1,6 @@
 'use server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { requirePermission } from '@/lib/auth/permissions';
@@ -78,12 +79,29 @@ export async function publishInstagramPost(
   await requireTenantAction(companyId);
   await requirePermission('creative.approve');
   const supabase = await createSupabaseServerClient();
+  return publishInstagramPostCore(supabase, companyId, creativePostId);
+}
+
+/**
+ * Session-free publish. The scheduled publisher runs with the admin client and
+ * has no session to satisfy `requireTenantAction`, so the guards live in the
+ * wrapper above and the Graph work lives here.
+ *
+ * Records the outcome on the post — without that there is no way to tell what
+ * shipped, and a retry would publish the same creative twice.
+ */
+export async function publishInstagramPostCore(
+  supabase: SupabaseClient,
+  companyId: string,
+  creativePostId: string,
+): Promise<PublishInstagramResult> {
 
   const { data: post, error: postErr } = await supabase
     .from('creative_posts')
     .select(
       `
       id, tenant_id, caption, platform, status, content_format,
+      publish_state, published_at, ig_media_id, publish_attempts,
       creative_assets ( id, url, type, slide_index )
     `,
     )
@@ -102,6 +120,61 @@ export async function publishInstagramPost(
   if (post.status !== 'approved') {
     return { success: false, error: 'Only approved posts can be published.', errorKey: 'not_approved' };
   }
+
+  // Publishing is irreversible — never let a retry double-post.
+  if (post.publish_state === 'published' || post.ig_media_id) {
+    return {
+      success: false,
+      error: 'This post has already been published to Instagram.',
+      errorKey: 'already_published',
+    };
+  }
+
+  // Claim the row so a cron run and a manual click can't both push it live.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('creative_posts')
+    .update({
+      publish_state: 'publishing',
+      publish_attempts: Number(post.publish_attempts ?? 0) + 1,
+      publish_error: null,
+    })
+    .eq('id', creativePostId)
+    .eq('tenant_id', companyId)
+    .in('publish_state', ['idle', 'queued', 'failed'])
+    .select('id')
+    .maybeSingle();
+
+  if (claimErr || !claimed) {
+    return {
+      success: false,
+      error: 'Another publish attempt is already in progress.',
+      errorKey: 'publish_in_progress',
+    };
+  }
+
+  /** Every early return past this point must release the claim. */
+  const fail = async (error: string, errorKey?: string): Promise<PublishInstagramResult> => {
+    await supabase
+      .from('creative_posts')
+      .update({ publish_state: 'failed', publish_error: error.slice(0, 500) })
+      .eq('id', creativePostId)
+      .eq('tenant_id', companyId);
+    return { success: false, error, errorKey };
+  };
+
+  const succeed = async (instagramMediaId: string): Promise<PublishInstagramResult> => {
+    await supabase
+      .from('creative_posts')
+      .update({
+        publish_state: 'published',
+        published_at: new Date().toISOString(),
+        ig_media_id: instagramMediaId,
+        publish_error: null,
+      })
+      .eq('id', creativePostId)
+      .eq('tenant_id', companyId);
+    return { success: true, instagramMediaId, published: true };
+  };
 
   const { data: pubAccount, error: pubErr } = await supabase
     .from('meta_publishing_accounts')
@@ -128,7 +201,7 @@ export async function publishInstagramPost(
   const rawSlides = (post.creative_assets as Array<{ url: string; type: string; slide_index: number }> | null) ?? [];
   const slides = [...rawSlides].sort((a, b) => a.slide_index - b.slide_index);
   if (slides.length === 0) {
-    return { success: false, error: 'Post has no media slides.', errorKey: 'no_media' };
+    return fail('Post has no media slides.', 'no_media');
   }
 
   const signedUrls = await Promise.all(slides.map((s) => signMediaUrl(s.url)));
@@ -152,10 +225,7 @@ export async function publishInstagramPost(
         const res = await fetch(`${graphBase}/${igUserId}/media`, { method: 'POST', body });
         const json = (await res.json()) as { id?: string; error?: { message: string } };
         if (!res.ok || !json.id) {
-          return {
-            success: false,
-            error: json.error?.message ?? `Carousel child creation failed (${res.status})`,
-          };
+          return fail(json.error?.message ?? `Carousel child creation failed (${res.status})`);
         }
         childIds.push(json.id);
       }
@@ -169,15 +239,12 @@ export async function publishInstagramPost(
       const containerRes = await fetch(`${graphBase}/${igUserId}/media`, { method: 'POST', body: carouselBody });
       const containerJson = (await containerRes.json()) as { id?: string; error?: { message: string } };
       if (!containerRes.ok || !containerJson.id) {
-        return {
-          success: false,
-          error: containerJson.error?.message ?? `Carousel container failed (${containerRes.status})`,
-        };
+        return fail(containerJson.error?.message ?? `Carousel container failed (${containerRes.status})`);
       }
 
       const carouselReady = await waitForContainerReady(graphBase, containerJson.id, accessToken);
       if (!carouselReady.ready) {
-        return { success: false, error: carouselReady.error ?? 'Carousel not ready' };
+        return fail(carouselReady.error ?? 'Carousel not ready');
       }
 
       const publishRes = await fetch(`${graphBase}/${igUserId}/media_publish`, {
@@ -186,18 +253,15 @@ export async function publishInstagramPost(
       });
       const publishJson = (await publishRes.json()) as { id?: string; error?: { message: string } };
       if (!publishRes.ok || !publishJson.id) {
-        return {
-          success: false,
-          error: publishJson.error?.message ?? `media_publish failed (${publishRes.status})`,
-        };
+        return fail(publishJson.error?.message ?? `media_publish failed (${publishRes.status})`);
       }
 
-      return { success: true, instagramMediaId: publishJson.id, published: true };
+      return succeed(publishJson.id);
     }
 
     const primaryUrl = signedUrls[0];
     if (!primaryUrl) {
-      return { success: false, error: 'Could not resolve public media URL.', errorKey: 'no_media' };
+      return fail('Could not resolve public media URL.', 'no_media');
     }
 
     const params = new URLSearchParams({
@@ -211,17 +275,14 @@ export async function publishInstagramPost(
     const containerRes = await fetch(`${graphBase}/${igUserId}/media`, { method: 'POST', body: params });
     const containerJson = (await containerRes.json()) as { id?: string; error?: { message: string } };
     if (!containerRes.ok || !containerJson.id) {
-      return {
-        success: false,
-        error: containerJson.error?.message ?? `Media container failed (${containerRes.status})`,
-      };
+      return fail(containerJson.error?.message ?? `Media container failed (${containerRes.status})`);
     }
 
     // Video/Reels need processing; images finish instantly (poll is a no-op for them).
     if (mediaKind === 'VIDEO') {
       const ready = await waitForContainerReady(graphBase, containerJson.id, accessToken);
       if (!ready.ready) {
-        return { success: false, error: ready.error ?? 'Media not ready' };
+        return fail(ready.error ?? 'Media not ready');
       }
     }
 
@@ -231,16 +292,13 @@ export async function publishInstagramPost(
     });
     const publishJson = (await publishRes.json()) as { id?: string; error?: { message: string } };
     if (!publishRes.ok || !publishJson.id) {
-      return {
-        success: false,
-        error: publishJson.error?.message ?? `media_publish failed (${publishRes.status})`,
-      };
+      return fail(publishJson.error?.message ?? `media_publish failed (${publishRes.status})`);
     }
 
-    return { success: true, instagramMediaId: publishJson.id, published: true };
+    return succeed(publishJson.id);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[publishInstagramPost]', msg);
-    return { success: false, error: msg };
+    return fail(msg);
   }
 }

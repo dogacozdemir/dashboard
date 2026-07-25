@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { cn } from '@/lib/utils/cn';
 import type { GeoAiKeywordRow } from '../types';
@@ -10,14 +11,12 @@ interface GeoKeywordLiquidTableProps {
 }
 
 export function GeoKeywordLiquidTable({ rows }: GeoKeywordLiquidTableProps) {
+  const t = useTranslations('Features.StrategyTechnical.geoTable');
   if (!rows.length) {
     return (
       <GlassCard padding="lg" className="bento-card border border-dashed border-white/[0.08]">
-        <h3 className="text-sm font-semibold text-white/70">GEO keyword intelligence</h3>
-        <p className="text-xs text-white/35 mt-2 leading-relaxed">
-          Run a Google OAuth sync with Search Console, then trigger the GEO simulator (cron or pipeline) to populate
-          DeepSeek visibility scores and action plans per query.
-        </p>
+        <h3 className="text-sm font-semibold text-white/70">{t('emptyTitle')}</h3>
+        <p className="text-xs text-white/35 mt-2 leading-relaxed">{t('emptyBody')}</p>
       </GlassCard>
     );
   }
@@ -25,14 +24,14 @@ export function GeoKeywordLiquidTable({ rows }: GeoKeywordLiquidTableProps) {
   return (
     <GlassCard padding="none" className="bento-card overflow-hidden">
       <div className="px-6 py-4 border-b border-white/[0.06]">
-        <h3 className="text-sm font-semibold text-white/85">GEO keyword performance</h3>
-        <p className="text-xs text-white/30 mt-0.5">DeepSeek · simulated LLM visibility vs GSC context</p>
+        <h3 className="text-sm font-semibold text-white/85">{t('title')}</h3>
+        <p className="text-xs text-white/30 mt-0.5">{t('caption')}</p>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-white/[0.05]">
-              {['Query', 'AI score', 'GSC imps', 'Steps'].map((h) => (
+              {[t('colQuery'), t('colScore'), t('colImpressions'), t('colSteps')].map((h) => (
                 <th
                   key={h}
                   className="px-6 py-3 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider"

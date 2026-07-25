@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { deepseekChatModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
 
 /**
  * Weekly digest: proactive performance narrative + recommended actions per tenant.
@@ -93,7 +94,7 @@ async function aiNarrative(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         messages: [
           {
             role: 'system',
@@ -116,7 +117,7 @@ async function aiNarrative(
     });
     if (!res.ok) return null;
     const json = await res.json();
-    const parsed = JSON.parse(json.choices[0].message.content) as { narrative?: string; actions?: string[] };
+    const parsed = parseDeepseekJson<{ narrative?: string; actions?: string[] }>(json?.choices?.[0]?.message?.content) ?? {};
     const actions = Array.isArray(parsed.actions) ? parsed.actions.map(String).slice(0, 3) : [];
     if (!parsed.narrative) return null;
     return { narrative: String(parsed.narrative), actions };

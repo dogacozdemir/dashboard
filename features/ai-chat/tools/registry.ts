@@ -6,6 +6,7 @@ import { getPerformanceTool } from './get-performance';
 import { getCreativeContextTool } from './get-creative-context';
 import { getCalendarTool } from './get-calendar';
 import { getSiteAnalyticsTool } from './get-site-analytics';
+import { getCompetitorsTool } from './get-competitors';
 import type { MonoAITool } from './types';
 
 // generate_pdf is intentionally excluded here — PDF generation is triggered
@@ -21,6 +22,7 @@ export const MONO_AI_TOOLS: MonoAITool<any>[] = [
   getCreativeContextTool,
   getCalendarTool,
   getSiteAnalyticsTool,
+  getCompetitorsTool,
 ];
 
 /**

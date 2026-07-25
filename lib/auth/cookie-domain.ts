@@ -35,7 +35,7 @@ export function getSharedCookieDomain(): string | undefined {
 
   const { host } = getPublicRootDomainParts();
 
-  if (isLocalRootHost(host) || host.includes('nerdyreptile')) {
+  if (isLocalRootHost(host)) {
     return undefined;
   }
 

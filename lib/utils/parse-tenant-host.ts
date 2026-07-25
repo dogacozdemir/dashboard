@@ -32,13 +32,17 @@ export function parseTenantSlugFromHost(host: string): string {
   return 'localhost';
 }
 
-/** True when host maps to a real tenant workspace (not admin / apex / local). */
+/** True when host maps to a real tenant workspace (not admin / apex / local).
+ *  `app` and `api` are reserved for the fixed OAuth/callback host — a session
+ *  landing there resolves to the user's own tenant, not a tenant named "app". */
 export function isScopedTenantHostSlug(slug: string): boolean {
   const s = slug.trim().toLowerCase();
   return Boolean(
     s &&
       s !== 'admin' &&
       s !== 'www' &&
+      s !== 'app' &&
+      s !== 'api' &&
       s !== 'localhost' &&
       s !== '127.0.0.1',
   );

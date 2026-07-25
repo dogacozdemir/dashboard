@@ -7,6 +7,7 @@ import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { fetchAggregateMetrics } from '@/features/performance-hub/actions/fetchMetrics';
 import { tenantDashboardMetricsTag } from '@/lib/cache/dashboard-tags';
 import type { DashboardGoal } from '@/types/tenant';
+import { deepseekChatModel } from '@/lib/ai/deepseek-model';
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -78,7 +79,7 @@ export async function runMagicQuickWins(companyId: string): Promise<{ hints: str
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         temperature: 0.45,
         max_tokens: 400,
         messages: [

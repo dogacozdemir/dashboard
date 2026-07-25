@@ -5,6 +5,16 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import type { GeoReport, RoadmapItem, MarketInsight, SeoGeoDashboardData, SeoLogPayload, GeoAiKeywordRow } from '../types';
 import type { GeoStrategyLogContent } from '@/features/strategy/types';
+import { auth } from '@/lib/auth/config';
+import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
+import type { SessionUser } from '@/types/user';
+import { deepseekChatModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
+
+/** Viewer's page language — AI narratives must match it. */
+async function viewerLocale(): Promise<'tr' | 'en'> {
+  const session = await auth();
+  return (session?.user as SessionUser | undefined)?.locale === 'en' ? 'en' : 'tr';
+}
 
 function pickNum(obj: Record<string, unknown> | null | undefined, keys: string[]): number {
   if (!obj) return 0;
@@ -181,20 +191,22 @@ export async function fetchMarketInsight(
   tenantName: string
 ): Promise<MarketInsight | null> {
   const validatedId = await requireTenantAction(companyId);
+  const locale = await viewerLocale();
 
   const supabase = await createSupabaseServerClient();
 
-  // Return cached insight if generated within last 24 hours
+  // Cached per language, so a TR viewer and an EN viewer each get their own.
+  const reportType = `market_insight_${locale}`;
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: cached } = await supabase
     .from('strategy_logs')
     .select('content, generated_at')
     .eq('tenant_id', validatedId)
-    .eq('report_type', 'market_insight')
+    .eq('report_type', reportType)
     .gte('generated_at', oneDayAgo)
     .order('generated_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (cached?.content) {
     return cached.content as MarketInsight;
@@ -202,6 +214,91 @@ export async function fetchMarketInsight(
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return null;
+
+  // ── Ground the insight in what is actually measured for this tenant ──────
+  // An "insight" written from nothing but the brand name is fabrication; if no
+  // real signal exists, the honest answer is the empty state, not a guess.
+  const [gscAgg, ga4, competitors] = await Promise.all([
+    supabase
+      .from('geo_reports')
+      .select('rank_data')
+      .eq('tenant_id', validatedId)
+      .eq('metric_source', 'gsc_query')
+      .limit(500),
+    supabase
+      .from('ga4_daily_metrics')
+      .select('sessions, conversions, revenue')
+      .eq('tenant_id', validatedId),
+    supabase
+      .from('competitors')
+      .select('name, url')
+      .eq('tenant_id', validatedId)
+      .eq('is_active', true)
+      .limit(10),
+  ]);
+
+  let gscImpressions = 0;
+  let gscClicks = 0;
+  const topQueries: Array<{ query: string; impressions: number; position: number }> = [];
+  for (const row of gscAgg.data ?? []) {
+    const rd = row.rank_data as Record<string, unknown> | null;
+    const im = Number(rd?.impressions ?? 0);
+    gscImpressions += im;
+    gscClicks += Number(rd?.clicks ?? 0);
+    if (typeof rd?.query === 'string' && im > 0) {
+      topQueries.push({ query: rd.query, impressions: im, position: Number(rd?.position ?? 0) });
+    }
+  }
+  topQueries.sort((a, b) => b.impressions - a.impressions);
+
+  let ga4Sessions = 0;
+  let ga4Conversions = 0;
+  for (const row of ga4.data ?? []) {
+    ga4Sessions += Number((row as { sessions?: number }).sessions ?? 0);
+    ga4Conversions += Number((row as { conversions?: number }).conversions ?? 0);
+  }
+
+  const { data: spendRows } = await supabase
+    .from('daily_metrics')
+    .select('platform, spend, revenue')
+    .eq('tenant_id', validatedId)
+    .limit(1000);
+
+  const paid: Record<string, { spend: number; revenue: number }> = {};
+  for (const r of spendRows ?? []) {
+    const plat = String((r as { platform?: string }).platform ?? '');
+    if (!plat || plat === 'organic') continue;
+    paid[plat] = paid[plat] ?? { spend: 0, revenue: 0 };
+    paid[plat].spend += Number((r as { spend?: number }).spend ?? 0);
+    paid[plat].revenue += Number((r as { revenue?: number }).revenue ?? 0);
+  }
+
+  const competitorNames = (competitors.data ?? []).map((c) => (c as { name: string }).name);
+
+  const hasSignal =
+    gscImpressions > 0 ||
+    ga4Sessions > 0 ||
+    Object.keys(paid).length > 0 ||
+    competitorNames.length > 0;
+
+  // Showroom tenants are allowed illustrative content; real tenants are not.
+  const demo = await isDemoTenant(validatedId);
+  if (!hasSignal && !demo) return null;
+
+  const facts = {
+    organicSearch:
+      gscImpressions > 0
+        ? { impressions: gscImpressions, clicks: gscClicks, topQueries: topQueries.slice(0, 8) }
+        : null,
+    siteAnalytics: ga4Sessions > 0 ? { sessions: ga4Sessions, conversions: ga4Conversions } : null,
+    paidChannels: Object.keys(paid).length > 0 ? paid : null,
+    trackedCompetitors: competitorNames.length > 0 ? competitorNames : null,
+  };
+
+  const langLine =
+    locale === 'en'
+      ? 'Write EVERY string value in natural, clear ENGLISH.'
+      : 'Write EVERY string value in natural, clear TURKISH.';
 
   try {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -211,29 +308,32 @@ export async function fetchMarketInsight(
         Authorization:   `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         messages: [
           {
             role: 'system',
             content:
-              'You are a senior digital marketing strategist specializing in AI-first marketing and GEO (Generative Engine Optimization). ' +
-              'Provide concise, actionable insights in JSON format only.',
+              'You are a senior digital marketing strategist. You analyse ONLY the measured data you are given. ' +
+              'Never invent metrics, market claims, or competitor moves that are not in the data. ' +
+              'If a data source is null, do not speculate about it. ' +
+              'Avoid marketing buzzwords; plain professional language. Respond with JSON only.',
           },
           {
             role: 'user',
             content:
-              `Generate a market insight report for "${tenantName}", a brand managed by Madmonos AI-first marketing agency. ` +
+              `Brand: "${tenantName}". ${langLine}\n\n` +
+              `Measured data (last sync window):\n${JSON.stringify(facts, null, 2)}\n\n` +
               'Return a JSON object with exactly these fields: ' +
-              '{ "summary": string (2-3 sentences of strategic overview), ' +
-              '"opportunities": string[] (3 actionable opportunities), ' +
-              '"threats": string[] (2 key threats to watch), ' +
-              '"geoRecommendation": string (specific GEO/AI-citation strategy), ' +
-              '"confidence": number (0-100) }',
+              '{ "summary": string (2-3 sentences grounded in the data above), ' +
+              '"opportunities": string[] (up to 3, each tied to a specific number or query in the data), ' +
+              '"threats": string[] (up to 2, only if the data supports them — empty array otherwise), ' +
+              '"geoRecommendation": string (GEO/AI-visibility step based on the actual top queries), ' +
+              '"confidence": number (0-100 — LOW when few data sources are present) }',
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 600,
-        temperature: 0.7,
+        max_tokens: 1500,
+        temperature: 0.4,
       }),
     });
 
@@ -243,12 +343,15 @@ export async function fetchMarketInsight(
     }
 
     const json = await response.json();
-    const content = JSON.parse(json.choices[0].message.content) as MarketInsight;
+    const content = parseDeepseekJson<MarketInsight>(json?.choices?.[0]?.message?.content);
+    if (!content) {
+      console.error('[fetchMarketInsight] could not parse model JSON');
+      return null;
+    }
 
-    // Cache result
     await supabase.from('strategy_logs').insert({
       tenant_id:    validatedId,
-      report_type:  'market_insight',
+      report_type:  reportType,
       content,
       generated_at: new Date().toISOString(),
     });
@@ -368,10 +471,23 @@ async function computeSeoGeoDashboard(validatedId: string): Promise<SeoGeoDashbo
     .map((l) => cwvFromTechnicalMetadata(l.metadata))
     .find((c) => c != null);
 
+  const locale = await viewerLocale();
   const strat = geoStratRow.data?.content as GeoStrategyLogContent | null | undefined;
+  // Serve the narrative in the viewer's language when the English pass exists.
+  const localized =
+    strat && locale === 'en' && strat.en
+      ? {
+          ...strat,
+          headline: strat.en.headline,
+          summary: strat.en.summary,
+          sentimentAndCitations: strat.en.sentimentAndCitations,
+          geoGapAnalysis: strat.en.geoGapAnalysis,
+          globalActionPlan: strat.en.globalActionPlan,
+        }
+      : strat;
   const geoStrategy =
-    strat && geoStratRow.data?.generated_at
-      ? { ...strat, logGeneratedAt: geoStratRow.data.generated_at }
+    localized && geoStratRow.data?.generated_at
+      ? { ...localized, logGeneratedAt: geoStratRow.data.generated_at }
       : null;
 
   const geoAiKeywords: GeoAiKeywordRow[] = (geoAiRows.data ?? []).map((row) => {
@@ -379,7 +495,10 @@ async function computeSeoGeoDashboard(validatedId: string): Promise<SeoGeoDashbo
     return {
       keyword:         row.keyword,
       visibilityScore: rd.visibilityScore ?? 0,
-      actionableSteps: rd.actionableSteps ?? '',
+      actionableSteps:
+        locale === 'en' && (rd as { actionableStepsEn?: string | null }).actionableStepsEn
+          ? String((rd as { actionableStepsEn?: string | null }).actionableStepsEn)
+          : rd.actionableSteps ?? '',
       gscImpressions:  rd.gscImpressions ?? undefined,
       gscClicks:       rd.gscClicks ?? undefined,
       gscPosition:     rd.gscPosition ?? undefined,

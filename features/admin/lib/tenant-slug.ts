@@ -1,6 +1,6 @@
 export const TENANT_SLUG_RE = /^[a-z][a-z0-9-]{1,62}$/;
 
-export const RESERVED_TENANT_SLUGS = new Set(['admin', 'www', 'api', 'localhost']);
+export const RESERVED_TENANT_SLUGS = new Set(['admin', 'www', 'app', 'api', 'localhost']);
 
 export function normalizeTenantSlug(raw: string): string {
   return raw

@@ -6,6 +6,7 @@ import {
   fetchCampaigns,
   fetchPlatformMetrics,
   fetchPlatformComparison,
+  fetchConnectedAdAccounts,
 } from '@/features/performance-hub/actions/fetchMetrics';
 import { MetricCard } from '@/features/performance-hub/components/MetricCard';
 import { SpendChart } from '@/features/performance-hub/components/SpendChart';
@@ -60,11 +61,15 @@ export default async function PerformancePage({ searchParams }: PageProps) {
 
   const cockpit = parseCockpitPlatform(params.platform);
 
-  const [chartData, campaigns, comparisonRows] = await Promise.all([
+  const [chartData, campaigns, comparisonRows, connectedAccounts] = await Promise.all([
     fetchSpendChartData(companyId, range, cockpit),
     fetchCampaigns(companyId, cockpit),
     cockpit === 'all' ? fetchPlatformComparison(companyId, range, cockpit) : Promise.resolve([]),
+    fetchConnectedAdAccounts(companyId),
   ]);
+  const connectedPlatforms = [...new Set(connectedAccounts.map((a) => a.platform))] as Array<
+    'meta' | 'google' | 'tiktok'
+  >;
 
   const paidSurface = cockpit !== 'seo';
 
@@ -80,7 +85,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest">
           {tPerf('performancePage.overviewHeading')}
         </h2>
-        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport />
+        <CockpitToolbar currentRange={range} currentPlatform={cockpit} showMonoReportExport connectedPlatforms={connectedPlatforms} />
       </div>
 
       <CockpitMetricsCrossfade cockpit={cockpit} range={range}>

@@ -6,6 +6,7 @@ import { sessionHasPermission } from '@/lib/auth/session-capabilities';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { updateCreativePostStatus } from '@/features/creative-studio/actions/fetchAssets';
 import { syncSEO } from '@/features/oauth/actions/syncPlatformData';
+import { publishInstagramPost } from '@/features/oauth/actions/publishInstagramPost';
 import type { SessionUser } from '@/types/user';
 
 /**
@@ -13,7 +14,7 @@ import type { SessionUser } from '@/types/user';
  * in the chat UI, and only then does the mutation run — with the same permission
  * checks the equivalent button would enforce.
  */
-export type ProposedActionKind = 'approve_creative' | 'request_revision' | 'sync_data';
+export type ProposedActionKind = 'approve_creative' | 'request_revision' | 'sync_data' | 'publish_post';
 
 export interface ProposedAction {
   /** Stable id so the UI can track which card was confirmed. */
@@ -31,6 +32,8 @@ const APPROVE_RE =
   /\b(onayla|onaylar\s*mısın|approve|onaylayabilir)\b/i;
 const REVISION_RE =
   /\b(revize\s*(iste|talep)|revizyon\s*iste|request\s+(a\s+)?revision|düzeltme\s*iste)\b/i;
+const PUBLISH_RE =
+  /\b(yayınla|yayinla|paylaş|paylas|instagram'?a\s*(at|koy|gönder)|publish|post it|go live)\b/i;
 const SYNC_RE =
   /\b(senkron(ize)?\s*(et|la)?|verileri\s*(güncelle|yenile)|sync\s+(data|now)|refresh\s+data)\b/i;
 
@@ -59,9 +62,44 @@ export async function proposeActionsForMessage(
   const wantsApprove = APPROVE_RE.test(userMessage);
   const wantsRevision = REVISION_RE.test(userMessage);
   const wantsSync = SYNC_RE.test(userMessage);
-  if (!wantsApprove && !wantsRevision && !wantsSync) return [];
+  const wantsPublish = PUBLISH_RE.test(userMessage);
+  if (!wantsApprove && !wantsRevision && !wantsSync && !wantsPublish) return [];
 
   const actions: ProposedAction[] = [];
+
+  if (wantsPublish && sessionHasPermission(user, 'creative.approve')) {
+    const supabase = await createSupabaseServerClient();
+    const hint = extractTitleHint(userMessage);
+
+    // Only approved Instagram posts that have not already gone live.
+    let q = supabase
+      .from('creative_posts')
+      .select('id, title')
+      .eq('tenant_id', validatedId)
+      .eq('platform', 'instagram')
+      .eq('status', 'approved')
+      .is('ig_media_id', null)
+      .in('publish_state', ['idle', 'queued', 'failed'])
+      .order('scheduled_date', { ascending: true })
+      .limit(hint ? 3 : 1);
+
+    if (hint) q = q.ilike('title', `%${hint}%`);
+
+    const { data: publishable } = await q;
+
+    for (const p of (publishable ?? []) as Array<{ id: string; title: string }>) {
+      actions.push({
+        id: `publish-${p.id}`,
+        kind: 'publish_post',
+        targetId: p.id,
+        label: locale === 'en' ? 'Publish now' : 'Şimdi yayınla',
+        description:
+          locale === 'en'
+            ? `Publish "${p.title}" to Instagram now. This cannot be undone.`
+            : `"${p.title}" içeriğini Instagram'da hemen yayınla. Bu işlem geri alınamaz.`,
+      });
+    }
+  }
 
   if ((wantsApprove || wantsRevision) && sessionHasPermission(user, 'creative.approve')) {
     const supabase = await createSupabaseServerClient();
@@ -158,6 +196,18 @@ export async function executeProposedAction(
             kind === 'approve_creative'
               ? locale === 'en' ? 'Creative approved.' : 'Kreatif onaylandı.'
               : locale === 'en' ? 'Revision requested.' : 'Revize talebi oluşturuldu.',
+        };
+      }
+
+      case 'publish_post': {
+        if (!targetId) {
+          return { success: false, message: locale === 'en' ? 'No target selected.' : 'Hedef seçilmedi.' };
+        }
+        const res = await publishInstagramPost(validatedId, targetId);
+        if (!res.success) return { success: false, message: res.error };
+        return {
+          success: true,
+          message: locale === 'en' ? 'Published to Instagram.' : "Instagram'da yayınlandı.",
         };
       }
 

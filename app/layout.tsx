@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Madmonos — AI-First Marketing Dashboard',
-  description: 'Frictionless marketing operations powered by AI. Performance, Creative, GEO — all in one place.',
+  description: 'AI destekli pazarlama yönetimi — performans, kreatif ve SEO tek yerde.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

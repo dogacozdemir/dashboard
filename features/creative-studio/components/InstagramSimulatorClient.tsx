@@ -173,13 +173,15 @@ function PostGridThumb({ post }: { post: HybridFeedPost }) {
       {post.contentFormat === 'reel' && (
         <Clapperboard className="absolute top-2 right-2 h-4 w-4 text-white drop-shadow-md md:h-5 md:w-5" strokeWidth={2.5} />
       )}
-      {/* Desktop hover overlay — IG-style interaction glyphs (no fabricated counts). */}
+      {/* Desktop hover overlay — real Graph API counts for live posts; glyphs only for scheduled ones. */}
       <div className="pointer-events-none absolute inset-0 hidden items-center justify-center gap-5 bg-black/35 opacity-0 transition-opacity duration-200 group-hover:opacity-100 md:flex">
-        <span className="flex items-center gap-1.5 text-white">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
           <Heart className="h-5 w-5 fill-white" />
+          {typeof post.likeCount === 'number' ? formatMetric(post.likeCount) : null}
         </span>
-        <span className="flex items-center gap-1.5 text-white">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
           <MessageCircle className="h-5 w-5 fill-white" />
+          {typeof post.commentsCount === 'number' ? formatMetric(post.commentsCount) : null}
         </span>
       </div>
     </div>
@@ -508,7 +510,9 @@ export function InstagramSimulatorClient({
   const avatarUrl = liveProfile.profilePictureUrl ?? brandLogoUrl ?? null;
   const hasStoryRing = Boolean(avatarUrl);
   const isVerified = liveProfile.connected;
-  const bioLink = websiteUrl?.trim() ? websiteUrl.trim() : null;
+  // The website set on the IG profile itself beats the tenant's custom domain.
+  const bioLink = liveProfile.website?.trim() || (websiteUrl?.trim() ? websiteUrl.trim() : null);
+  const biography = liveProfile.biography;
 
   const postsStat =
     liveProfile.connected && liveProfile.mediaCount != null
@@ -574,6 +578,8 @@ export function InstagramSimulatorClient({
               </div>
             </div>
 
+            {/* Scrollable content — the whole page scrolls like real Instagram */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
             {!selected && (
               <>
             {/* Profile header */}
@@ -634,6 +640,11 @@ export function InstagramSimulatorClient({
                   )}
                 </div>
                 <p className="truncate text-sm text-white/45">{displayHandle}</p>
+                {biography && (
+                  <p className="whitespace-pre-line text-sm leading-snug text-white/85 line-clamp-4">
+                    {biography}
+                  </p>
+                )}
                 {bioLink && (
                   <a
                     href={ensureHref(bioLink)}
@@ -695,8 +706,8 @@ export function InstagramSimulatorClient({
               </div>
             )}
 
-            {/* Tab strip — grid / reels / tagged */}
-            <div className="flex shrink-0 border-y border-white/10">
+            {/* Tab strip — sticks under the app bar while the profile scrolls away */}
+            <div className="sticky top-0 z-10 flex shrink-0 border-y border-white/10 bg-black">
               {(
                 [
                   { id: 'grid' as const, icon: Grid3X3, label: t('tabGrid') },
@@ -725,8 +736,7 @@ export function InstagramSimulatorClient({
               </>
             )}
 
-            {/* Scrollable content — grid/reels or in-phone post viewer */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
+
             <AnimatePresence mode="wait">
               {selected ? (
                 <InPhoneFeedView

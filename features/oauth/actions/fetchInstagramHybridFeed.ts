@@ -3,7 +3,8 @@
 import { unstable_noStore } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireTenantAction } from '@/lib/auth/tenant-guard';
-import { decryptToken, unpackToken } from '@/lib/utils/crypto';
+import { decryptToken, encryptToken, packToken, unpackToken } from '@/lib/utils/crypto';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { fetchInstagramFeedPosts } from '@/features/creative-studio/actions/fetchAssets';
 import type {
   CreativeContentFormat,
@@ -30,6 +31,8 @@ type MetaProfileResponse = {
   name?: string;
   profile_picture_url?: string;
   followers_count?: number;
+  biography?: string;
+  website?: string;
   follows_count?: number;
   media_count?: number;
   error?: { message: string; code?: number };
@@ -42,6 +45,8 @@ type MetaMediaItem = {
   media_type?: string;
   caption?: string;
   timestamp?: string;
+  like_count?: number;
+  comments_count?: number;
 };
 
 type MetaMediaResponse = {
@@ -57,6 +62,8 @@ const EMPTY_PROFILE: InstagramLiveProfile = {
   followersCount: null,
   followsCount: null,
   mediaCount: null,
+  biography: null,
+  website: null,
 };
 
 function decryptPackedToken(packed: string): string {
@@ -77,6 +84,36 @@ function decryptAccessToken(account: TokenRow): string {
     /* fall through */
   }
   return decryptPackedToken(account.access_token);
+}
+
+/**
+ * Caches the discovered Page/IG pairing so the publisher (which cannot run the
+ * Graph discovery itself) has credentials to work with. Uses the admin client
+ * because the same path runs from the scheduled publisher, where there is no
+ * session to satisfy RLS. Failures are non-fatal — the read path still works.
+ */
+async function persistPublishingAccount(
+  tenantId: string,
+  input: { facebookPageId: string | null; igUserId: string; pageToken: string },
+): Promise<void> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const packed = packToken(encryptToken(input.pageToken));
+
+    const { error } = await admin.from('meta_publishing_accounts').upsert(
+      {
+        tenant_id: tenantId,
+        facebook_page_id: input.facebookPageId,
+        instagram_business_account_id: input.igUserId,
+        page_access_token: packed,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'tenant_id' },
+    );
+    if (error) console.error('[persistPublishingAccount]', error.message);
+  } catch (e) {
+    console.error('[persistPublishingAccount]', e instanceof Error ? e.message : e);
+  }
 }
 
 async function resolveIgCredentials(
@@ -122,7 +159,7 @@ async function resolveIgCredentials(
     const pagesUrl = new URL(`${GRAPH_BASE}/me/accounts`);
     pagesUrl.searchParams.set(
       'fields',
-      'access_token,instagram_business_account{id,username}',
+      'id,access_token,instagram_business_account{id,username}',
     );
     pagesUrl.searchParams.set('limit', '50');
     pagesUrl.searchParams.set('access_token', userToken);
@@ -130,6 +167,7 @@ async function resolveIgCredentials(
     const pagesRes = await fetch(pagesUrl.toString(), { next: { revalidate: 0 } });
     const pagesJson = (await pagesRes.json()) as {
       data?: Array<{
+        id?: string;
         access_token?: string;
         instagram_business_account?: { id: string; username?: string };
       }>;
@@ -145,10 +183,18 @@ async function resolveIgCredentials(
     if (!pageWithIg?.instagram_business_account?.id) return null;
 
     const pageToken = pageWithIg.access_token ?? userToken;
-    return {
-      igUserId: pageWithIg.instagram_business_account.id,
-      accessToken: pageToken,
-    };
+    const igUserId = pageWithIg.instagram_business_account.id;
+
+    // Publishing reads `meta_publishing_accounts` exclusively — it has no
+    // discovery fallback — so persist what we just resolved. Without this the
+    // publisher always reports "publishing_not_configured".
+    await persistPublishingAccount(tenantId, {
+      facebookPageId: pageWithIg.id ?? null,
+      igUserId,
+      pageToken,
+    });
+
+    return { igUserId, accessToken: pageToken };
   } catch (e) {
     console.error('[fetchInstagramLiveProfileAndFeed] pages discovery', e);
     return null;
@@ -181,6 +227,13 @@ function mapMetaMediaToHybridPost(item: MetaMediaItem): HybridFeedPost {
     posterThumbnailUrl: thumb,
     uploadedBy: 'meta-graph',
     createdAt: timestamp,
+    // Anything coming back from the Graph API is, by definition, already live.
+    publishState: 'published',
+    publishedAt: timestamp,
+    igMediaId: item.id,
+    publishError: null,
+    likeCount: typeof item.like_count === 'number' ? item.like_count : null,
+    commentsCount: typeof item.comments_count === 'number' ? item.comments_count : null,
     slides: [
       {
         id: `meta-live-slide-${item.id}`,
@@ -231,14 +284,14 @@ export async function fetchInstagramLiveProfileAndFeed(companyId: string): Promi
     const profileUrl = new URL(`${GRAPH_BASE}/${igUserId}`);
     profileUrl.searchParams.set(
       'fields',
-      'username,name,profile_picture_url,followers_count,follows_count,media_count',
+      'username,name,profile_picture_url,followers_count,follows_count,media_count,biography,website',
     );
     profileUrl.searchParams.set('access_token', accessToken);
 
     const mediaUrl = new URL(`${GRAPH_BASE}/${igUserId}/media`);
     mediaUrl.searchParams.set(
       'fields',
-      'id,media_url,thumbnail_url,media_type,caption,timestamp',
+      'id,media_url,thumbnail_url,media_type,caption,timestamp,like_count,comments_count',
     );
     mediaUrl.searchParams.set('limit', '24');
     mediaUrl.searchParams.set('access_token', accessToken);
@@ -270,6 +323,8 @@ export async function fetchInstagramLiveProfileAndFeed(companyId: string): Promi
       followsCount:
         typeof profileJson.follows_count === 'number' ? profileJson.follows_count : null,
       mediaCount: typeof profileJson.media_count === 'number' ? profileJson.media_count : null,
+      biography: profileJson.biography?.trim() || null,
+      website: profileJson.website?.trim() || null,
     };
 
     const livePosts = (mediaJson.data ?? []).map(mapMetaMediaToHybridPost);
@@ -294,7 +349,16 @@ export async function fetchInstagramHybridSimulatorData(companyId: string): Prom
     fetchInstagramFeedPosts(companyId),
   ]);
 
-  const scheduledHybrid = scheduledPosts.map(mapScheduledToHybrid);
+  // Once a scheduled post goes live it also comes back from the Graph API, so
+  // without this it would appear twice in the simulator — once as the plan and
+  // once as the real thing. The live copy wins: it carries real engagement.
+  const liveMediaIds = new Set(
+    livePosts.map((p) => p.igMediaId).filter((id): id is string => Boolean(id)),
+  );
+
+  const scheduledHybrid = scheduledPosts
+    .filter((p) => !(p.igMediaId && liveMediaIds.has(p.igMediaId)))
+    .map(mapScheduledToHybrid);
 
   const hybridFeedPosts = [...livePosts, ...scheduledHybrid].sort((a, b) => {
     const cmp = a.sortAt.localeCompare(b.sortAt);

@@ -39,9 +39,9 @@
   },
   "Dashboard": {
     "shell": {
-      "subtitle": "Sürtünmesiz Pazarlama Operasyonları",
+      "subtitle": "Pazarlama yönetim paneli",
       "showroomBadge": "Showroom modu — simüle edilmiş veriler",
-      "showroomLine": "Premium kokpit önizlemesi. Metrikler Madmonos Lux Cosmetics için örnektir."
+      "showroomLine": "Örnek önizleme. Metrikler Madmonos Lux Cosmetics için temsilidir."
     },
     "sidebar": {
       "overview": "Özet",
@@ -124,7 +124,7 @@
       },
       "executiveTrend": {
         "title": "Yönetici trendi",
-        "subtitle": "Ücretli medya · harcama ve gelir (SSOT)",
+        "subtitle": "Ücretli medya · harcama ve gelir",
         "legendSpend": "Harcama",
         "legendRevenue": "Gelir",
         "tooltipSpend": "Harcama {amount}",
@@ -212,7 +212,7 @@
       "spendCurveTitle": "Harcama eğrisi",
       "spendCurveCaption": "Bağlantı sonrası kanal bazlı harcama burada görünür.",
       "revenueRoasTitle": "Gelir / ROAS",
-      "revenueRoasCaption": "SSOT günlük metriklerinden hesaplanır.",
+      "revenueRoasCaption": "Günlük senkronlanan verilerden hesaplanır.",
       "clickEfficiencyTitle": "Tıklama verimi",
       "clickEfficiencyCaption": "CTR ve dönüşüm oranı kartları otomatik dolar.",
       "campaignIntensityTitle": "Kampanya yoğunluğu",
@@ -232,7 +232,7 @@
       "connectedBanner": "{platform} bağlandı · son 30 gün verisi arka planda senkronize ediliyor",
       "overviewHeading": "Performans özeti",
       "platformBreakdown": "Kanal dağılımı",
-      "channelCaption": "Kanal karşılaştırması · Sürtünmesiz SSOT",
+      "channelCaption": "Kanal karşılaştırması",
       "metricSpend": "Harcama",
       "metricImpressions": "Gösterim",
       "metricClicks": "Tıklama",
@@ -273,7 +273,7 @@
       }
     },
     "connectedAccounts": {
-      "title": "Bağlı reklam hesapları · SSOT",
+      "title": "Bağlı reklam hesapları",
       "accountFallback": "Hesap",
       "syncedPrefix": "senkron:",
       "relJustNow": "şimdi",
@@ -379,13 +379,13 @@
       "systemVolume": "Sistem hacmi",
       "spendSubtitle": "Son 30 gün reklam harcaması ·",
       "managedAssets": "{count} yönetilen varlık",
-      "campaignRows": "{count} kampanya kaydı · Mühendislik kapasitesi görünür",
+      "campaignRows": "{count} kampanya kaydı",
       "syncStatus": "Senkron durumu",
       "healthOk": "Sağlıklı",
       "healthWarn": "Gecikme",
       "healthBad": "Dikkat",
       "roleCardTitle": "Rol mimarı",
-      "roleCardLead": "Rol hiyerarşisi ve izin matrisi — sürtünmesiz yönetim.",
+      "roleCardLead": "Rol hiyerarşisini ve izinleri buradan yönet.",
       "roleCardSub": "Yeni rol, politika ve Brand Mono erişim katmanları.",
       "openRoleBuilder": "Rol oluşturucuyu aç",
       "dockAria": "Admin hızlı aksiyonlar",
@@ -400,7 +400,7 @@
     "opsCenter": {
       "eyebrow": "Ops merkezi · Görev merkezi",
       "heroTitle": "Tenant operasyonları tek ekranda",
-      "heroSubtitle": "Darboğazları, onayları ve vault sağlığını takip edin. Gözat ile ilgili tenant’a kimlik taklidi yaparak geçin — sürtünmesiz Madmonos kontrolü.",
+      "heroSubtitle": "Darboğazları, onayları ve marka kasası durumunu takip et. Gözat ile ilgili müşterinin panelini onların gözünden görebilirsin.",
       "activeTasks": "Aktif görevler",
       "openTasksSuffix": "{count} açık",
       "emptyStableTitle": "Tüm sistem stabil, Madmonos güvende",
@@ -695,7 +695,7 @@
     "pwMismatch": "Şifreler eşleşmiyor.",
     "pwTooShort": "Şifre en az 8 karakter olmalı.",
     "setPasswordError": "Şifre belirlenemedi. Bağlantının süresi dolmuş olabilir.",
-    "footer": "Madmonos Mühendislik Kapasitesi ile güçlendirilmiştir™"
+    "footer": "Madmonos tarafından geliştirildi"
   },
   "Pwa": {
     "installTitle": "Uygulamayı yükle",
@@ -1003,8 +1003,35 @@
         "pinNotePlaceholder": "Burada ne değişmeli?",
         "removePinAria": "{n}. pini kaldır",
         "captureStart": "Başlangıcı oynatıcıdan al",
-        "captureEnd": "Sonu oynatıcıdan al"
-      }
+        "captureEnd": "Sonu oynatıcıdan al",
+        "closeFullAsset": "Kapat"
+      },
+      "publishScheduled": "Planlandı",
+      "publishQueued": "Sırada",
+      "publishInProgress": "Yayınlanıyor",
+      "publishLive": "Yayında",
+      "publishFailed": "Yayınlanamadı",
+      "publishNow": "Şimdi yayınla",
+      "publishRetry": "Tekrar dene",
+      "publishViewOnInstagram": "Instagram'da gör",
+      "publishConfirmBody": "Bu gönderi Instagram'da hemen yayına alınacak. Bu işlem geri alınamaz — kaldırmak için Instagram'dan silmen gerekir.",
+      "publishConfirmYes": "Evet, yayınla",
+      "publishConfirmNo": "Vazgeç",
+      "visionReviewTitle": "AI Görsel İncelemesi",
+      "visionReviewCta": "Görseli incele",
+      "visionReviewRunning": "İnceleniyor…",
+      "visionReviewRerun": "Yeniden incele",
+      "visionReviewDisclaimer": "AI değerlendirmesi — nihai karar senin.",
+      "visionVerdict_ready": "Yayına hazır",
+      "visionVerdict_minor_issues": "Küçük düzeltmeler önerilir",
+      "visionVerdict_needs_work": "Revizyon gerekiyor",
+      "visionArea_brand_consistency": "Marka tutarlılığı",
+      "visionArea_legibility": "Okunabilirlik",
+      "visionArea_composition": "Kompozisyon",
+      "visionArea_text_ratio": "Metin oranı",
+      "visionArea_accessibility": "Erişilebilirlik",
+      "visionArea_platform_fit": "Platform uyumu",
+      "visionArea_message_clarity": "Mesaj netliği"
     },
     "CreativePage": {
       "statPending": "İncelemede",
@@ -1370,8 +1397,48 @@
       },
       "cwv": {
         "title": "Core Web Vitals",
-        "subtitle": "Mühendislik sağlığı · son SEO anlık görüntüsünden tek doğru kaynak"
+        "subtitle": "Site sağlığı · son SEO taramasından"
+      },
+      "geoTable": {
+        "title": "GEO anahtar kelime performansı",
+        "caption": "Yapay zekâ aramalarında (ChatGPT, Perplexity) görünürlük tahmini · gerçek Search Console verisiyle",
+        "emptyTitle": "GEO anahtar kelime analizi",
+        "emptyBody": "Google hesabını Search Console ile bağlayıp senkron çalıştığında, her sorgu için yapay zekâ görünürlük puanı ve aksiyon planı burada görünür.",
+        "colQuery": "Sorgu",
+        "colScore": "AI puanı",
+        "colImpressions": "GSC gösterim",
+        "colSteps": "Adımlar"
+      },
+      "marketInsightEmpty": {
+        "title": "Pazar içgörüsü henüz hazır değil",
+        "body": "Yapay zekâ pazar analizini yazabilmek için ölçülmüş veri gerekiyor. Search Console, Analytics veya reklam hesaplarından biri bağlanıp ilk senkron tamamlandığında burada gerçek verilere dayalı analiz görünür.",
+        "hint": "Google/Meta/TikTok bağla, ardından senkronu çalıştır"
       }
+    },
+    "Competitors": {
+      "sectionTitle": "Rakip Takibi",
+      "intro": "Rakiplerinin web sitelerini ekle; sistem düzenli olarak kontrol eder ve önemli bir değişiklik (yeni ürün, kampanya, fiyat, mesaj) olduğunda seni bilgilendirir.",
+      "urlPlaceholder": "rakip.com",
+      "namePlaceholder": "İsim (opsiyonel)",
+      "add": "Ekle",
+      "addError": "Rakip eklenemedi.",
+      "empty": "Henüz rakip eklenmedi. Yukarıdan bir web adresi ekleyerek başla.",
+      "notCheckedYet": "Henüz kontrol edilmedi.",
+      "noChange": "Son kontrolde önemli bir değişiklik yok",
+      "checkNow": "Şimdi kontrol et",
+      "remove": "Kaldır",
+      "changeCount": "{count} değişiklik",
+      "noPricesDetected": "Fiyat tespit edilmedi",
+      "priceSummary": "{count} fiyat tespit edildi",
+      "showDetail": "Detay",
+      "hideDetail": "Gizle",
+      "colProduct": "Ürün",
+      "colPrice": "Fiyat",
+      "otherPrices": "Diğer fiyatlar",
+      "detectedPrices": "Tespit edilen fiyatlar",
+      "historyTitle": "Değişiklik geçmişi",
+      "noHistory": "Henüz kaydedilmiş bir değişiklik yok.",
+      "changeNoSummary": "Sayfa değişti (özet yok)."
     }
   },
   "Shared": {
@@ -1409,9 +1476,9 @@
     "stepOf": "{current} / {total}",
     "steps": {
       "1": {
-        "tag": "Unified Cockpit",
+        "tag": "Genel Bakış",
         "title": "Komuta merkezin",
-        "body": "Tüm platform KPI'ları tek bir cockpit'te — ROAS, Harcama, Gelir, CTR. Zaman aralığı veya platform filtresini değiştirerek istediğin boyutu anında dilimle."
+        "body": "Tüm platform metrikleri tek ekranda — ROAS, harcama, gelir, CTR. Zaman aralığını veya platform filtresini değiştirerek istediğin kırılımı görebilirsin."
       },
       "2": {
         "tag": "Performance Hub",

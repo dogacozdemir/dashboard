@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Video, Clapperboard, Sparkles, CalendarDays, Layers } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ApprovalBadge } from './ApprovalBadge';
+import { PublishBadge } from './PublishBadge';
 import { RevisionThread } from './RevisionThread';
 import { formatRelativeTime, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
@@ -102,6 +103,18 @@ export function MediaGrid({
 
   const bySchedule = posts.filter((p) => matchesSchedule(p, scheduleScope));
   const filtered = filter === 'all' ? bySchedule : bySchedule.filter((p) => p.status === filter);
+
+  /** Reflect a manual publish immediately — the badge should not wait for a refetch. */
+  function handlePublished(postId: string, igMediaId: string) {
+    const patch = {
+      publishState: 'published' as const,
+      igMediaId,
+      publishedAt: new Date().toISOString(),
+      publishError: null,
+    };
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
+    setSelectedPost((prev) => (prev && prev.id === postId ? { ...prev, ...patch } : prev));
+  }
 
   function handleStatusChange(postId: string, newStatus: CreativePost['status']) {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, status: newStatus } : p)));
@@ -354,8 +367,12 @@ export function MediaGrid({
                         </motion.span>
                       </div>
 
-                      <div className="absolute top-3 left-3 z-20">
+                      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
                         <ApprovalBadge status={post.status} />
+                        <PublishBadge
+                          state={post.publishState}
+                          scheduled={post.status === 'approved' && Boolean(post.scheduledDate)}
+                        />
                       </div>
 
                       {carouselCount > 1 && (
@@ -407,6 +424,7 @@ export function MediaGrid({
             currentUserId={currentUserId}
             onClose={() => setSelectedPost(null)}
             onStatusChange={handleStatusChange}
+            onPublished={handlePublished}
             onPostDeleted={handlePostDeleted}
           />
         ) : null}

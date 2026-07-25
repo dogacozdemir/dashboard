@@ -168,7 +168,14 @@ export function TopBar({
             <DropdownMenuSeparator className="bg-white/[0.06]" />
             <DropdownMenuItem
               className="cursor-pointer px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={async () => {
+                // redirect:false + manual navigation keeps the user on the
+                // CURRENT origin. NextAuth's own redirect resolves against
+                // NEXTAUTH_URL, so a stale env value would send people to a
+                // dead domain after logout.
+                await signOut({ redirect: false });
+                window.location.href = '/login';
+              }}
             >
               {t('signOut')}
             </DropdownMenuItem>

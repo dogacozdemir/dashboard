@@ -1,6 +1,7 @@
 'use server';
 
 import type { UserLocale } from '@/types/user';
+import { deepseekChatModel } from '@/lib/ai/deepseek-model';
 
 export interface MonoWelcomeCopy {
   sector: string;
@@ -37,8 +38,8 @@ export async function fetchMonoWelcomeCopy(params: {
     (isEn ? 'general brand and marketing' : 'genel marka ve pazarlama');
 
   const systemPrompt = isEn
-    ? `You are MonoAI, Madmonos agency voice: premium, frictionless, engineering-heavy. Reply ONLY valid JSON with keys: sector (short English sector label, 2-4 words), headline (one punchy English sentence, max 12 words), subline (one English sentence, personalized, mentions data sync / analysis, max 28 words). No markdown.`
-    : `You are MonoAI, Madmonos agency voice: premium, frictionless, engineering-heavy. Reply ONLY valid JSON with keys: sector (short Turkish sector label, 2-4 words), headline (one punchy Turkish sentence, max 12 words), subline (one Turkish sentence, personalized, mentions data sync / analysis, max 28 words). No markdown.`;
+    ? `You are MonoAI. Write in a clear, natural, professional voice — no marketing buzzwords. Reply ONLY valid JSON with keys: sector (short English sector label, 2-4 words), headline (one punchy English sentence, max 12 words), subline (one English sentence, personalized, mentions data sync / analysis, max 28 words). No markdown.`
+    : `You are MonoAI. Write in a clear, natural, professional voice — no marketing buzzwords. Reply ONLY valid JSON with keys: sector (short Turkish sector label, 2-4 words), headline (one punchy Turkish sentence, max 12 words), subline (one Turkish sentence, personalized, mentions data sync / analysis, max 28 words). No markdown.`;
 
   const userPrompt = isEn
     ? `User first name: ${params.userFirstName}. Brand / tenant: ${params.tenantName}. Industry hint: ${hint}. Produce welcome copy.`
@@ -52,7 +53,7 @@ export async function fetchMonoWelcomeCopy(params: {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         temperature: 0.6,
         max_tokens: 320,
         messages: [

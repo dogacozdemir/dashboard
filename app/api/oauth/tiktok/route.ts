@@ -4,7 +4,8 @@ import { randomBytes } from 'crypto';
 import type { SessionUser } from '@/types/user';
 import type { OAuthState } from '@/features/oauth/types';
 import { signOAuthState } from '@/lib/auth/oauth-state';
-import { getAppUrl } from '@/lib/utils/app-url';
+import { getOAuthBaseUrl } from '@/lib/utils/app-url';
+import { getRequestOrigin } from '@/lib/utils/request-origin';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const user   = session.user as SessionUser;
   const appId  = process.env.TIKTOK_APP_ID;
-  const appUrl = getAppUrl();
+  const appUrl   = getOAuthBaseUrl();
 
   if (!appId) {
     return NextResponse.json(
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
     tenantId: user.tenantId,
     returnTo: '/dashboard?magic=1',
     csrf:     randomBytes(16).toString('hex'),
+    origin:   getRequestOrigin(req),
   };
 
   const params = new URLSearchParams({

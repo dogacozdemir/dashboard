@@ -3,6 +3,12 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      // Next.js marker package with no Node entry point; a no-op in tests.
+      'server-only': new URL('./tests/stubs/server-only.ts', import.meta.url).pathname,
+    },
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],

@@ -4,7 +4,8 @@ import { randomBytes } from 'crypto';
 import type { SessionUser } from '@/types/user';
 import type { OAuthState } from '@/features/oauth/types';
 import { signOAuthState } from '@/lib/auth/oauth-state';
-import { getAppUrl } from '@/lib/utils/app-url';
+import { getOAuthBaseUrl } from '@/lib/utils/app-url';
+import { getRequestOrigin } from '@/lib/utils/request-origin';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const user       = session.user as SessionUser;
   const tenantId   = user.tenantId;
   const appId      = process.env.META_APP_ID;
-  const appUrl     = getAppUrl();
+  const appUrl   = getOAuthBaseUrl();
 
   if (!appId) {
     return NextResponse.json(
@@ -26,12 +27,17 @@ export async function GET(req: NextRequest) {
     tenantId,
     returnTo: '/dashboard?magic=1',
     csrf:     randomBytes(16).toString('hex'),
+    origin:   getRequestOrigin(req),
   };
 
   const params = new URLSearchParams({
     client_id:     appId,
     redirect_uri:  `${appUrl}/api/oauth/meta/callback`,
-    scope:         'ads_read,ads_management,business_management,instagram_basic,pages_read_engagement',
+    // `instagram_content_publish` + `pages_show_list` are what the scheduled
+    // publisher needs; without them media_publish is rejected outright.
+    scope:
+      'ads_read,ads_management,business_management,instagram_basic,' +
+      'instagram_content_publish,pages_show_list,pages_read_engagement',
     response_type: 'code',
     state:         signOAuthState(state),
   });

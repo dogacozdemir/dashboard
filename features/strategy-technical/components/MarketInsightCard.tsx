@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { Brain, TrendingUp, AlertTriangle, Zap, BarChart3 } from 'lucide-react';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { cn } from '@/lib/utils/cn';
@@ -108,6 +109,7 @@ export function MarketInsightCard({ insight, generatedFor }: MarketInsightCardPr
 }
 
 export function MarketInsightEmpty() {
+  const t = useTranslations('Features.StrategyTechnical.marketInsightEmpty');
   return (
     <GlassCard padding="none" className="border border-dashed border-white/[0.08]">
       <div className="flex flex-col items-center justify-center gap-4 py-10 text-center px-6">
@@ -115,12 +117,12 @@ export function MarketInsightEmpty() {
           <Brain className="w-5 h-5 text-indigo-400" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white/60">Market Insight not available</p>
-          <p className="text-xs text-white/25 mt-1">Add your DeepSeek API key to enable AI-generated market analysis</p>
+          <p className="text-sm font-semibold text-white/60">{t('title')}</p>
+          <p className="text-xs text-white/25 mt-1 max-w-sm leading-relaxed">{t('body')}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-white/30">
           <BarChart3 className="w-3.5 h-3.5" />
-          <span>Set DEEPSEEK_API_KEY in your environment variables</span>
+          <span>{t('hint')}</span>
         </div>
       </div>
     </GlassCard>

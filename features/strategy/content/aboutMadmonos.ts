@@ -4,7 +4,7 @@
  */
 export const ABOUT_MADMONOS_CONTEXT = `
 Madmonos is an AI-first marketing agency operating a multi-tenant dashboard (brand.madmonos.com)
-for clients. Core themes: Frictionless execution, GEO (Generative Engine Optimization),
+for clients. Core themes: dependable execution, GEO (Generative Engine Optimization),
 Engineering Capacity, and Brand Mono (consistent brand voice in AI surfaces).
 
 GEO means optimizing how brands appear inside answers from LLMs and AI-powered search

@@ -31,14 +31,11 @@ export function inferRootHostFromHostname(hostname: string): string {
 export function getPublicRootDomainParts(): { host: string; port: string } {
   const raw = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'lvh.me:3000').trim().toLowerCase();
 
-  // Never treat staging hostnames as canonical in production builds.
-  const sanitized = raw.includes('nerdyreptile') ? 'madmonos.com' : raw;
-
-  const colon = sanitized.lastIndexOf(':');
-  if (colon > -1 && /^\d+$/.test(sanitized.slice(colon + 1))) {
-    return { host: sanitized.slice(0, colon), port: sanitized.slice(colon) };
+  const colon = raw.lastIndexOf(':');
+  if (colon > -1 && /^\d+$/.test(raw.slice(colon + 1))) {
+    return { host: raw.slice(0, colon), port: raw.slice(colon) };
   }
-  return { host: sanitized, port: '' };
+  return { host: raw, port: '' };
 }
 
 /** Root domain derived from an incoming Host header — always wins over env at runtime. */

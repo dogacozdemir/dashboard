@@ -39,9 +39,9 @@
   },
   "Dashboard": {
     "shell": {
-      "subtitle": "Frictionless Marketing Operations",
+      "subtitle": "Marketing dashboard",
       "showroomBadge": "Showroom mode — simulated data",
-      "showroomLine": "Premium cockpit preview. Metrics are illustrative for Madmonos Lux Cosmetics."
+      "showroomLine": "Sample preview. Metrics are illustrative for Madmonos Lux Cosmetics."
     },
     "sidebar": {
       "overview": "Overview",
@@ -124,7 +124,7 @@
       },
       "executiveTrend": {
         "title": "Executive trend",
-        "subtitle": "Paid media · spend vs attributed revenue · SSOT",
+        "subtitle": "Paid media · spend vs attributed revenue",
         "legendSpend": "Spend",
         "legendRevenue": "Revenue",
         "tooltipSpend": "Spend {amount}",
@@ -212,7 +212,7 @@
       "spendCurveTitle": "Spend curve",
       "spendCurveCaption": "Channel spend appears here after connection.",
       "revenueRoasTitle": "Revenue / ROAS",
-      "revenueRoasCaption": "Computed from SSOT daily metrics.",
+      "revenueRoasCaption": "Computed from daily synced metrics.",
       "clickEfficiencyTitle": "Click efficiency",
       "clickEfficiencyCaption": "CTR and conversion cards fill automatically.",
       "campaignIntensityTitle": "Campaign intensity",
@@ -232,7 +232,7 @@
       "connectedBanner": "{platform} connected · syncing last 30 days of data in the background",
       "overviewHeading": "Performance overview",
       "platformBreakdown": "Platform breakdown",
-      "channelCaption": "Channel comparison · Frictionless SSOT",
+      "channelCaption": "Channel comparison",
       "metricSpend": "Spend",
       "metricImpressions": "Impressions",
       "metricClicks": "Clicks",
@@ -273,7 +273,7 @@
       }
     },
     "connectedAccounts": {
-      "title": "Connected ad accounts · SSOT",
+      "title": "Connected ad accounts",
       "accountFallback": "Account",
       "syncedPrefix": "synced",
       "relJustNow": "just now",
@@ -379,13 +379,13 @@
       "systemVolume": "System volume",
       "spendSubtitle": "Last 30 days ad spend ·",
       "managedAssets": "{count} managed assets",
-      "campaignRows": "{count} campaign rows · Engineering capacity visible",
+      "campaignRows": "{count} campaign rows",
       "syncStatus": "Sync status",
       "healthOk": "Healthy",
       "healthWarn": "Delayed",
       "healthBad": "Attention",
       "roleCardTitle": "Role Architect",
-      "roleCardLead": "Role hierarchy & permission matrix — frictionless management.",
+      "roleCardLead": "Manage role hierarchy and permissions.",
       "roleCardSub": "New roles, policies, and Brand Mono access layers.",
       "openRoleBuilder": "Open Role Builder",
       "dockAria": "Admin quick actions",
@@ -400,7 +400,7 @@
     "opsCenter": {
       "eyebrow": "Ops Center · Task hub",
       "heroTitle": "Tenant operations in one view",
-      "heroSubtitle": "Track bottlenecks, approvals, and vault health. Use Browse to impersonate the tenant — frictionless Madmonos control.",
+      "heroSubtitle": "Track bottlenecks, approvals and brand vault health. Use Browse to see the client's panel as they see it.",
       "activeTasks": "Active tasks",
       "openTasksSuffix": "{count} open",
       "emptyStableTitle": "All systems stable, Madmonos is secure",
@@ -695,7 +695,7 @@
     "pwMismatch": "Passwords do not match.",
     "pwTooShort": "Password must be at least 8 characters.",
     "setPasswordError": "Could not set password. The link may have expired.",
-    "footer": "Powered by Madmonos Engineering Capacity™"
+    "footer": "Built by Madmonos"
   },
   "Pwa": {
     "installTitle": "Install the app",
@@ -1003,8 +1003,35 @@
         "pinNotePlaceholder": "What should change here?",
         "removePinAria": "Remove pin {n}",
         "captureStart": "Set start from playhead",
-        "captureEnd": "Set end from playhead"
-      }
+        "captureEnd": "Set end from playhead",
+        "closeFullAsset": "Close"
+      },
+      "publishScheduled": "Scheduled",
+      "publishQueued": "Queued",
+      "publishInProgress": "Publishing",
+      "publishLive": "Live",
+      "publishFailed": "Publish failed",
+      "publishNow": "Publish now",
+      "publishRetry": "Retry",
+      "publishViewOnInstagram": "View on Instagram",
+      "publishConfirmBody": "This post will go live on Instagram immediately. The action cannot be undone — removing it means deleting the post on Instagram.",
+      "publishConfirmYes": "Yes, publish",
+      "publishConfirmNo": "Cancel",
+      "visionReviewTitle": "AI Visual Review",
+      "visionReviewCta": "Review the artwork",
+      "visionReviewRunning": "Reviewing…",
+      "visionReviewRerun": "Review again",
+      "visionReviewDisclaimer": "AI assessment — the final call is yours.",
+      "visionVerdict_ready": "Ready to publish",
+      "visionVerdict_minor_issues": "Minor fixes suggested",
+      "visionVerdict_needs_work": "Needs rework",
+      "visionArea_brand_consistency": "Brand consistency",
+      "visionArea_legibility": "Legibility",
+      "visionArea_composition": "Composition",
+      "visionArea_text_ratio": "Text ratio",
+      "visionArea_accessibility": "Accessibility",
+      "visionArea_platform_fit": "Platform fit",
+      "visionArea_message_clarity": "Message clarity"
     },
     "CreativePage": {
       "statPending": "Pending review",
@@ -1186,7 +1213,7 @@
         "badge": "MonoAI · First flight",
         "sectorLabel": "Industry context",
         "brandMono": "Brand Mono",
-        "syncHint": "Connect Meta / Google / TikTok to unlock full AI Brand Audit and goal-based cockpit layout.",
+        "syncHint": "Connect Meta / Google / TikTok to unlock the full AI brand audit and a goal-based dashboard layout.",
         "integrationsCta": "Open integrations",
         "monoAiCta": "Chat with MonoAI",
         "dismissAria": "Dismiss welcome banner"
@@ -1370,8 +1397,48 @@
       },
       "cwv": {
         "title": "Core Web Vitals",
-        "subtitle": "Engineering health · SSOT from latest SEO snapshot"
+        "subtitle": "Site health · from the latest SEO snapshot"
+      },
+      "geoTable": {
+        "title": "GEO keyword performance",
+        "caption": "Estimated visibility in AI search (ChatGPT, Perplexity) · grounded in real Search Console data",
+        "emptyTitle": "GEO keyword analysis",
+        "emptyBody": "Connect your Google account with Search Console and run a sync; each query's AI visibility score and action plan will appear here.",
+        "colQuery": "Query",
+        "colScore": "AI score",
+        "colImpressions": "GSC impressions",
+        "colSteps": "Steps"
+      },
+      "marketInsightEmpty": {
+        "title": "Market insight isn't ready yet",
+        "body": "AI market analysis needs measured data to work from. Once Search Console, Analytics or an ad account is connected and the first sync completes, a grounded analysis appears here.",
+        "hint": "Connect Google/Meta/TikTok, then run a sync"
       }
+    },
+    "Competitors": {
+      "sectionTitle": "Competitor Tracking",
+      "intro": "Add your competitors' websites; the system checks them regularly and notifies you when something meaningful changes (new product, campaign, pricing, messaging).",
+      "urlPlaceholder": "competitor.com",
+      "namePlaceholder": "Name (optional)",
+      "add": "Add",
+      "addError": "Could not add competitor.",
+      "empty": "No competitors yet. Add a website above to get started.",
+      "notCheckedYet": "Not checked yet.",
+      "noChange": "No meaningful change on the last check",
+      "checkNow": "Check now",
+      "remove": "Remove",
+      "changeCount": "{count} changes",
+      "noPricesDetected": "No prices detected",
+      "priceSummary": "{count} prices detected",
+      "showDetail": "Details",
+      "hideDetail": "Hide",
+      "colProduct": "Product",
+      "colPrice": "Price",
+      "otherPrices": "Other prices",
+      "detectedPrices": "Detected prices",
+      "historyTitle": "Change history",
+      "noHistory": "No changes recorded yet.",
+      "changeNoSummary": "Page changed (no summary)."
     }
   },
   "Shared": {
@@ -1409,9 +1476,9 @@
     "stepOf": "{current} / {total}",
     "steps": {
       "1": {
-        "tag": "Unified Cockpit",
+        "tag": "Overview",
         "title": "Your command center",
-        "body": "All platform KPIs in one cockpit — ROAS, Spend, Revenue, CTR. Switch the time range or platform filter to slice any dimension instantly."
+        "body": "All platform metrics on one screen — ROAS, spend, revenue, CTR. Switch the time range or platform filter to see any breakdown."
       },
       "2": {
         "tag": "Performance Hub",

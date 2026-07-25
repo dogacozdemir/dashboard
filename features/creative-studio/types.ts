@@ -34,7 +34,15 @@ export interface CreativePost {
   uploadedBy: string;
   createdAt: string;
   slides: CreativeSlide[];
+  /** Instagram publishing lifecycle — see `creative_posts.publish_state`. */
+  publishState: PublishState;
+  publishedAt: string | null;
+  /** Set once live on Instagram; also de-duplicates against the live feed. */
+  igMediaId: string | null;
+  publishError: string | null;
 }
+
+export type PublishState = 'idle' | 'queued' | 'publishing' | 'published' | 'failed';
 
 /** Live Instagram Business profile metrics from Meta Graph API. */
 export interface InstagramLiveProfile {
@@ -45,6 +53,10 @@ export interface InstagramLiveProfile {
   followersCount: number | null;
   followsCount: number | null;
   mediaCount: number | null;
+  /** Real account bio from the Graph API (business/creator accounts). */
+  biography: string | null;
+  /** Website set on the Instagram profile — preferred over the tenant domain. */
+  website: string | null;
 }
 
 /** Creative post in the hybrid simulator feed (live API + scheduled DB). */
@@ -52,6 +64,10 @@ export interface HybridFeedPost extends CreativePost {
   feedSource: 'live' | 'scheduled';
   /** ISO timestamp used for chronological merge + simulation visibility. */
   sortAt: string;
+  /** Real like count from the Graph API — null for scheduled (not yet live) posts. */
+  likeCount?: number | null;
+  /** Real comment count from the Graph API — null for scheduled posts. */
+  commentsCount?: number | null;
 }
 
 // ── Shared ──────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { requireTenantAction } from '@/lib/auth/tenant-guard';
 import { requirePermission } from '@/lib/auth/permissions';
 import { ABOUT_MADMONOS_CONTEXT, ABOUT_MADMONOS_CONTEXT_COMPACT } from '@/features/strategy/content/aboutMadmonos';
 import type { GeoStrategyLogContent } from '@/features/strategy/types';
+import { deepseekChatModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
 
 interface DeepseekKeywordRow {
   keyword: string;
@@ -88,8 +89,11 @@ export async function runGenerateGeoReportForTenant(
   const agencyCtx =
     opts?.agencyContext === 'full' ? ABOUT_MADMONOS_CONTEXT : ABOUT_MADMONOS_CONTEXT_COMPACT;
 
-  const userPrompt =
+  const promptFor = (lang: 'tr' | 'en') =>
     `Brand / tenant name: "${tenantName}".\n\n` +
+    (lang === 'tr'
+      ? 'IMPORTANT: Write EVERY string value in the JSON in natural, clear TURKISH (no marketing buzzwords).\n\n'
+      : 'IMPORTANT: Write EVERY string value in the JSON in natural, clear ENGLISH (no marketing buzzwords).\n\n') +
     `Top Google Search Console queries (last sync window, by impressions):\n${JSON.stringify(gscContext, null, 2)}\n\n` +
     `Using the agency context below, simulate GEO (Generative Engine Optimization) visibility — how likely are neutral LLMs ` +
     `(ChatGPT-class, Perplexity-class) to recommend or cite this brand for these queries?\n\n` +
@@ -113,8 +117,7 @@ export async function runGenerateGeoReportForTenant(
     `}\n` +
     `Include one keywords[] entry per input query (same order as given).`;
 
-  let parsed: DeepseekGeoPayload;
-  try {
+  async function callDeepseek(lang: 'tr' | 'en'): Promise<DeepseekGeoPayload> {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -122,7 +125,7 @@ export async function runGenerateGeoReportForTenant(
         Authorization:   `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model:    'deepseek-chat',
+        model:    deepseekChatModel(),
         messages: [
           {
             role:    'system',
@@ -130,22 +133,21 @@ export async function runGenerateGeoReportForTenant(
               'You are Madmonos GEO Intelligence — an expert in Generative Engine Optimization. ' +
               'Respond with valid JSON only, no markdown fences.',
           },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: promptFor(lang) },
         ],
         response_format: { type: 'json_object' },
         max_tokens:      2500,
         temperature:     0.45,
       }),
     });
-
     if (!response.ok) {
       const t = await response.text();
-      return { success: false, error: `DeepSeek ${response.status}: ${t.slice(0, 200)}` };
+      throw new Error(`DeepSeek ${response.status}: ${t.slice(0, 200)}`);
     }
-
     const json = await response.json();
-    const raw  = JSON.parse(json.choices[0].message.content) as DeepseekGeoPayload;
-    parsed     = {
+    const raw  = parseDeepseekJson<DeepseekGeoPayload>(json?.choices?.[0]?.message?.content);
+    if (!raw) throw new Error('Could not parse GEO report JSON from model');
+    return {
       overallVisibilityScore: clampScore(raw.overallVisibilityScore),
       sentimentAndCitations:  String(raw.sentimentAndCitations ?? ''),
       geoGapAnalysis:         String(raw.geoGapAnalysis ?? ''),
@@ -154,10 +156,23 @@ export async function runGenerateGeoReportForTenant(
       strategicSummary:       String(raw.strategicSummary ?? ''),
       keywords:               Array.isArray(raw.keywords) ? raw.keywords : [],
     };
+  }
+
+  // Both languages up front, so the page can honour the viewer's locale without
+  // a second generation pass. English failures fall back to Turkish-only.
+  let parsed: DeepseekGeoPayload;
+  let parsedEn: DeepseekGeoPayload | null = null;
+  try {
+    parsed = await callDeepseek('tr');
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'DeepSeek parse error';
     console.error('[generateGeoReport]', msg);
     return { success: false, error: msg };
+  }
+  try {
+    parsedEn = await callDeepseek('en');
+  } catch (e) {
+    console.error('[generateGeoReport] en pass', e instanceof Error ? e.message : e);
   }
 
   const generatedAt = new Date().toISOString();
@@ -169,6 +184,15 @@ export async function runGenerateGeoReportForTenant(
     geoGapAnalysis:           parsed.geoGapAnalysis,
     globalActionPlan:         parsed.globalActionPlan,
     generatedAt,
+    en: parsedEn
+      ? {
+          headline:              parsedEn.strategicHeadline,
+          summary:               parsedEn.strategicSummary,
+          sentimentAndCitations: parsedEn.sentimentAndCitations,
+          geoGapAnalysis:        parsedEn.geoGapAnalysis,
+          globalActionPlan:      parsedEn.globalActionPlan,
+        }
+      : undefined,
   };
 
   await supabase.from('geo_reports').delete().eq('tenant_id', tenantId).eq('metric_source', 'geo_ai');
@@ -204,6 +228,9 @@ export async function runGenerateGeoReportForTenant(
         snippet:          k.whyGeoLags ?? null,
         visibilityScore:  clampScore(k.visibilityScore),
         actionableSteps:  String(k.actionableSteps ?? ''),
+        actionableStepsEn: parsedEn?.keywords?.[i]?.actionableSteps
+          ? String(parsedEn.keywords[i].actionableSteps)
+          : null,
         whyGeoLags:       k.whyGeoLags ? String(k.whyGeoLags) : null,
         gscImpressions:   g?.impressions ?? null,
         gscClicks:        g?.clicks ?? null,

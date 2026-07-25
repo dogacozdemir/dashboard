@@ -10,7 +10,7 @@ import {
   Clock, Volume2, Type, Palette, Film,
   Image as ImageIcon, Layers, AlignLeft, User, Sunset,
   Sparkles, SlidersHorizontal, ChevronLeft, ChevronRight,
-  Pencil, Check, RotateCcw, MapPin, Crosshair,
+  Pencil, Check, RotateCcw, MapPin, Crosshair, Maximize2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription,
@@ -39,6 +39,8 @@ import type {
   ImageRevisionType, ImageRevisionMeta,
   RevisionReference, RevisionPin,
 } from '../types';
+import { PublishNowButton } from './PublishNowButton';
+import { VisionReviewPanel } from './VisionReviewPanel';
 
 // ─── Revision type definitions ────────────────────────────────────────────────
 
@@ -637,6 +639,8 @@ interface RevisionThreadProps {
   currentUserId?:  string | null;
   onClose:         () => void;
   onStatusChange?: (postId: string, newStatus: CreativePost['status']) => void;
+  /** Fired after a manual publish so the grid can reflect the new live state. */
+  onPublished?: (postId: string, igMediaId: string) => void;
   onPostDeleted?: (postId: string) => void;
 }
 
@@ -650,11 +654,31 @@ export function RevisionThread({
   currentUserId = null,
   onClose,
   onStatusChange,
+  onPublished,
   onPostDeleted,
 }: RevisionThreadProps) {
   const slides = post.slides ?? [];
   const [activeSlideIdx, setActiveSlideIdx] = useState(0);
   const [revisionCommentTarget, setRevisionCommentTarget] = useState<'whole' | number>('whole');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Esc closes the topmost layer: the full-size viewer first, then the drawer.
+  // The ref keeps the handler side-effect-free — calling onClose() inside a
+  // state updater fires twice under React's dev double-invoke and closes both.
+  const lightboxOpenRef = useRef(false);
+  useEffect(() => {
+    lightboxOpenRef.current = lightboxOpen;
+  }, [lightboxOpen]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (lightboxOpenRef.current) setLightboxOpen(false);
+      else onClose();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const clampedIdx = Math.min(Math.max(0, activeSlideIdx), Math.max(0, slides.length - 1));
   const activeSlide = slides[clampedIdx] ?? slides[0];
@@ -1133,15 +1157,14 @@ export function RevisionThread({
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {activeSlide && (
-                  <a
-                    href={activeSlide.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
                     className="inline-flex items-center gap-1.5 text-xs text-[#9c70b2] hover:text-[#b48dc8] transition-colors"
                   >
-                    {heroIsVideo ? <PlayCircle className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                    {heroIsVideo ? <PlayCircle className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                     {t('openFullAsset')}
-                  </a>
+                  </button>
                 )}
                 {!heroIsVideo && activeSlide && (
                   <button
@@ -1535,6 +1558,22 @@ export function RevisionThread({
                 </motion.button>
                 )}
               </div>
+
+              <VisionReviewPanel
+                postId={post.id}
+                companyId={companyId}
+                hasImageSlide={post.slides.some((s) => s.type === 'image')}
+              />
+
+              {canApprove && post.status === 'approved' && post.platform === 'instagram' ? (
+                <div className="mt-3">
+                  <PublishNowButton
+                    post={post}
+                    companyId={companyId}
+                    onPublished={(_postId: string, igMediaId: string) => onPublished?.(post.id, igMediaId)}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1700,9 +1739,59 @@ export function RevisionThread({
     </motion.div>
   );
 
+  const lightbox = (
+    <AnimatePresence>
+      {lightboxOpen && activeSlide ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[130] flex items-center justify-center p-4 md:p-8"
+          style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)' }}
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            aria-label={t('closeFullAsset')}
+            className="absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-white/[0.06] p-2 text-white/70 transition-colors hover:bg-white/[0.12] hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <motion.div
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={drawerSpring}
+            className="max-h-full max-w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {heroIsVideo ? (
+              <video
+                src={activeSlide.url}
+                controls
+                autoPlay
+                playsInline
+                className="max-h-[88vh] max-w-[92vw] rounded-2xl"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={activeSlide.url}
+                alt={post.title}
+                className="max-h-[88vh] max-w-[92vw] rounded-2xl object-contain"
+              />
+            )}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+
   return (
     <>
       {portalReady ? createPortal(overlay, document.body) : null}
+      {portalReady ? createPortal(lightbox, document.body) : null}
       {approveDialog}
       {deleteDialog}
     </>

@@ -9,6 +9,7 @@ import { buildFullSystemPrompt, buildMemorySummarizerPrompt } from '../prompts/s
 import { shouldSearchBrandVault } from '../lib/brandRagIntent';
 import { retrieveBrandVaultContext } from '../lib/retrieveBrandRag';
 import { generateAndStorePdf }          from '../tools/generate-pdf';
+import { extractDocumentTitle, stripPreamble } from '../lib/document-title';
 import { webSearchTool }               from '../tools/web-search';
 import { assetSearchTool }             from '../tools/asset-search';
 import { crawlUrlTool }                from '../tools/crawl-url';
@@ -23,6 +24,7 @@ import {
   DEMO_SHOWROOM_APPENDIX_EN,
   DEMO_SHOWROOM_APPENDIX_TR,
 } from '@/lib/demo/showroom-ai-appendix';
+import { deepseekChatModel } from '@/lib/ai/deepseek-model';
 
 const DEEPSEEK_URL          = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -162,7 +164,7 @@ async function generateConversationSummary(
       Authorization:  `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model:    'deepseek-chat',
+      model:    deepseekChatModel(),
       messages: [
         { role: 'system', content: buildMemorySummarizerPrompt(locale) },
         {
@@ -240,16 +242,6 @@ async function executeToolCalls(
 }
 
 // ─── PDF HELPERS ─────────────────────────────────────────────────────────────
-
-function extractDocumentTitle(content: string, fallback: string): string {
-  // First markdown heading
-  const h = content.match(/^#{1,3}\s+(.+)/m);
-  if (h) return h[1].replace(/\*\*/g, '').trim().slice(0, 100);
-  // First non-empty, non-bullet line
-  const line = content.split('\n').find((l) => l.trim().length > 8 && !l.trim().startsWith('-'));
-  if (line) return line.trim().replace(/\*\*/g, '').slice(0, 100);
-  return fallback.slice(0, 80);
-}
 
 function buildPdfFilename(title: string): string {
   const slug = title
@@ -390,7 +382,7 @@ export async function sendAiMessage(
     user_id:   user.id,
     role:      'user',
     content:   userMessage,
-    model:     'deepseek-chat',
+    model:     deepseekChatModel(),
   });
 
   if (insertUserRes.error) {
@@ -550,7 +542,7 @@ export async function sendAiMessage(
         Authorization:  `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model:       'deepseek-chat',
+        model:       deepseekChatModel(),
         messages:    synthMessages,
         max_tokens:  maxTokens,
         temperature: 0.65,
@@ -596,7 +588,7 @@ export async function sendAiMessage(
         const filename = buildPdfFilename(title);
 
         const pdfResult = await generateAndStorePdf(
-          { filename, title, content: finalReply },
+          { filename, title, content: stripPreamble(finalReply), subtitle: tenantName },
           validatedId,
         );
 
@@ -632,7 +624,7 @@ export async function sendAiMessage(
       user_id:     null,
       role:        'assistant',
       content:     finalReply,
-      model:       'deepseek-chat',
+      model:       deepseekChatModel(),
       tokens_used: tokensUsed ?? null,
     });
 

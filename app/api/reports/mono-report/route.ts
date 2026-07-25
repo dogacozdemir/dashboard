@@ -73,8 +73,8 @@ export async function GET(req: NextRequest) {
 
     const poweredLine =
       locale === 'en'
-        ? 'Powered by Madmonos · monoAI intelligence layer'
-        : 'Madmonos tarafından güçlendirildi · monoAI zekâ katmanı';
+        ? 'Prepared by Madmonos · monoAI'
+        : 'Madmonos tarafından hazırlandı · monoAI';
 
     let bytes: Uint8Array;
     try {

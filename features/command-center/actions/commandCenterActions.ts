@@ -11,6 +11,7 @@ import type { AdPlatform } from '@/features/oauth/types';
 import type { GamificationTrackResult } from '@/features/gamification/types';
 import { evaluateImpressionMilestone } from '@/features/gamification/actions/impressionMilestones';
 import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
+import { deepseekChatModel } from '@/lib/ai/deepseek-model';
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -183,7 +184,7 @@ export async function interpretNaturalLanguageCommand(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: deepseekChatModel(),
         temperature: 0.3,
         max_tokens: 220,
         messages: [

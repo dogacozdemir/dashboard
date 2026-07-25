@@ -250,8 +250,15 @@ export async function renderMonoReportPdf(input: {
   page.drawText(enc(copy.spendTrend), { x: M, y, size: 12, font: bold, color: VIOLET });
   y -= 14;
   const slice = Array.isArray(chart) ? chart.slice(-16) : [];
+  // A channel the tenant never connected has no business in their report.
+  const activePlatforms = (['meta', 'google', 'tiktok'] as const).filter((plat) =>
+    slice.some((row) => n(row[plat]) > 0),
+  );
   for (const row of slice) {
-    const line = `${String(row.date ?? '')}   meta ${n(row.meta).toFixed(0)}   google ${n(row.google).toFixed(0)}   tiktok ${n(row.tiktok).toFixed(0)}`;
+    const line = [
+      String(row.date ?? ''),
+      ...activePlatforms.map((plat) => `${plat} ${n(row[plat]).toFixed(0)}`),
+    ].join('   ');
     if (y < 80) {
       page = doc.addPage([PAGE_W, PAGE_H]);
       page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: BG });

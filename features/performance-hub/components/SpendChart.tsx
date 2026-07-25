@@ -11,6 +11,8 @@ import {
 } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { GlassCard } from '@/components/shared/GlassCard';
+import { useTenant } from '@/hooks/useTenant';
+import { currencySymbol } from '@/lib/utils/format';
 import { BlueprintChartArea } from '@/components/shared/BentoBlueprintEmpty';
 import type { ChartDataPoint } from '../types';
 
@@ -66,6 +68,8 @@ function CustomTooltip({
 }
 
 export function SpendChart({ data, range = 'monthly' }: SpendChartProps) {
+  const { tenant } = useTenant();
+  const sym = currencySymbol(tenant.currency ?? undefined);
   const t = useTranslations('Performance.spendChart');
   const subtitleRange =
     range === 'daily'
@@ -145,7 +149,7 @@ export function SpendChart({ data, range = 'monthly' }: SpendChartProps) {
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) =>
-              v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(v)}`
+              v >= 1000 ? `${sym}${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${sym}${Math.round(v)}`
             }
           />
 

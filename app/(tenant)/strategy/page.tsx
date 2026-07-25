@@ -8,6 +8,8 @@ import { MarketInsightCard, MarketInsightEmpty } from '@/features/strategy-techn
 import { SeoGeoMetricsPanel } from '@/features/strategy-technical/components/SeoGeoMetricsPanel';
 import { AiStrategyInsightCard } from '@/features/strategy-technical/components/AiStrategyInsightCard';
 import { StrategySeoSkeleton } from '@/features/strategy-technical/components/StrategySeoSkeleton';
+import { CompetitorPanel } from '@/features/competitors/components/CompetitorPanel';
+import { fetchCompetitors, canManageCompetitors } from '@/features/competitors/actions/competitorActions';
 
 export default function StrategyPage() {
   return (
@@ -21,10 +23,12 @@ async function StrategyPageInner() {
   const { companyId, tenant } = await requireTenantContext();
   const t = await getTranslations('Features.StrategyPage');
 
-  const [roadmap, insight, seoGeo] = await Promise.all([
+  const [roadmap, insight, seoGeo, competitors, canManage] = await Promise.all([
     fetchRoadmap(companyId),
     fetchMarketInsight(companyId, tenant.name),
     fetchSeoGeoDashboard(companyId),
+    fetchCompetitors(companyId),
+    canManageCompetitors(),
   ]);
 
   const rankCardReports = seoGeo.geoReports.filter((r) => r.metricSource !== 'geo_ai');
@@ -59,6 +63,8 @@ async function StrategyPageInner() {
         </h2>
         <GEORankCard reports={rankCardReports} />
       </div>
+
+      <CompetitorPanel companyId={companyId} initial={competitors} canManage={canManage} />
 
       <div>
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">

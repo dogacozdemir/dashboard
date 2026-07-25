@@ -7,4 +7,12 @@ export interface GeoStrategyLogContent {
   geoGapAnalysis: string;
   globalActionPlan: string;
   generatedAt: string;
+  /** English narrative — served when the viewer's page language is English. */
+  en?: {
+    headline: string;
+    summary: string;
+    sentimentAndCitations: string;
+    geoGapAnalysis: string;
+    globalActionPlan: string;
+  };
 }

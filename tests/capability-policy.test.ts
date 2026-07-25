@@ -22,6 +22,7 @@ describe('capability policy stays in sync with the code', () => {
         'assetSearchTool',
         'crawlUrlTool',
         'getCalendarTool',
+        'getCompetitorsTool',
         'getCreativeContextTool',
         'getPerformanceTool',
         'getSiteAnalyticsTool',
@@ -37,7 +38,7 @@ describe('capability policy stays in sync with the code', () => {
     expect(kindLine).not.toBeNull();
 
     const kinds = [...(kindLine?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-    expect(kinds.sort()).toEqual(['approve_creative', 'request_revision', 'sync_data']);
+    expect(kinds.sort()).toEqual(['approve_creative', 'publish_post', 'request_revision', 'sync_data']);
   });
 });
 
@@ -54,12 +55,24 @@ describe('capability policy content', () => {
         expect(policy).toMatch(/Brand Vault|Marka Kasası/);
       });
 
-      it('is explicit that it cannot see images', () => {
-        expect(policy).toMatch(/GÖREMEZSİN|cannot SEE images/);
+      it('is explicit that the chat layer cannot see images', () => {
+        expect(policy).toMatch(/GÖREMEZSİN|cannot see images in chat/);
+      });
+
+      it('points at the vision review instead of dead-ending on "I cannot see"', () => {
+        // A creative agency's assistant refusing every design question was the
+        // gap; a separate vision model now handles artwork critique.
+        expect(policy).toMatch(/AI Görsel İncelemesi|AI Visual Review/);
+        expect(policy).toMatch(/göremiyorum" deyip bırakma|don't just say you can't see it/);
       });
 
       it('rules out writing to ad platforms', () => {
         expect(policy).toMatch(/bütçe değiştiremez|cannot launch ads/);
+      });
+
+      it('states that publishing is possible but confirmation-gated', () => {
+        expect(policy).toMatch(/YAYINLAMAYI|publishing an approved/);
+        expect(policy).toMatch(/geri alınamaz|irreversible/);
       });
 
       it('rules out cross-tenant access', () => {

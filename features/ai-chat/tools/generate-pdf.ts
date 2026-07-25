@@ -64,16 +64,32 @@ const F = {
 
 // ─── SANITIZER ───────────────────────────────────────────────────────────────
 
+/**
+ * Liberation Sans covers Turkish but has no U+20BA glyph, so a lira sign renders
+ * as a blank box — the one substitution that must happen even with the Unicode
+ * fonts embedded. Everything else is only downgraded on the WinAnsi fallback path.
+ */
+function normalizeLira(text: string): string {
+  return text.replace(/₺\s*/g, 'TL ');
+}
+
 function toWinAnsi(text: string): string {
-  return text
-    .replace(/[\u2018\u2019\u0060]/g,  "'")
-    .replace(/[\u201C\u201D]/g,         '"')
-    .replace(/[\u2013\u2014]/g,         '-')
-    .replace(/\u2026/g,                 '...')
-    .replace(/[\uFF5C\u007C]/g,         '|')
-    .replace(/\u2022/g,                 '*')
-    .replace(/[\u2192\u2794]/g,         '->')
-    .replace(unicodeFontsActive ? /(?!)/g : /[^\x20-\xFF\n\r\t]/g, '');
+  const lira = normalizeLira(text);
+
+  if (unicodeFontsActive) {
+    // Real fonts are embedded — keep em dashes, bullets and arrows intact.
+    return lira.replace(/[｜]/g, '|');
+  }
+
+  return lira
+    .replace(/[‘’`]/g,  "'")
+    .replace(/[“”]/g,         '"')
+    .replace(/[–—]/g,         '-')
+    .replace(/…/g,                 '...')
+    .replace(/[｜|]/g,         '|')
+    .replace(/•/g,                 '*')
+    .replace(/[→➔]/g,         '->')
+    .replace(/[^\x20-\xFF\n\r\t]/g, '');
 }
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -143,32 +159,56 @@ function drawFooter(ctx: Ctx): void {
 
 // ─── COVER HEADER ────────────────────────────────────────────────────────────
 
-function drawCoverHeader(ctx: Ctx, title: string): void {
+/**
+ * Cover masthead. A client-facing document has to read as Madmonos letterhead —
+ * wordmark top-left, document kind top-right, then the title — rather than an
+ * anonymous slab of text with a version badge in the corner.
+ */
+function drawCoverHeader(ctx: Ctx, title: string, subtitle?: string): void {
   const p = ctx.page;
+  const left = MARGIN + 14;
 
-  // Background
   p.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: C.headerBg });
 
-  // Left indigo accent stripe
+  // Gold spine down the left edge.
   p.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: 5, height: HEADER_H, color: C.accentBar });
 
-  // monoAI badge (top-right)
-  const badge = 'monoAI v1';
-  p.drawText(badge, {
-    x: PAGE_W - MARGIN - ctx.bold.widthOfTextAtSize(badge, F.small),
-    y: PAGE_H - 26,
-    size: F.small, font: ctx.bold, color: C.accentTeal,
+  // ── Letterhead row ──────────────────────────────────────────────────────
+  const markY = PAGE_H - 34;
+
+  p.drawText('madmonos', {
+    x: left, y: markY, size: 13, font: ctx.bold, color: C.headerText,
   });
 
-  // Title (wrap if long)
-  const titleClean  = toWinAnsi(title);
-  const maxTitleW   = CONTENT_W - 20;
-  const titleSize   = titleClean.length > 55 ? F.h1 - 4 : F.h1;
-  const words       = titleClean.split(' ');
-  const titleLines: string[] = [];
-  let   cur         = '';
+  // Gold dot separating wordmark from the descriptor.
+  const markW = ctx.bold.widthOfTextAtSize('madmonos', 13);
+  p.drawCircle({ x: left + markW + 8, y: markY + 4, size: 1.6, color: C.accentBar });
 
-  for (const w of words) {
+  p.drawText('PAZARLAMA OPERASYONLARI', {
+    x: left + markW + 15, y: markY + 1.5,
+    size: 6.8, font: ctx.regular, color: C.headerSub,
+  });
+
+  const kind = 'monoAI RAPORU';
+  p.drawText(kind, {
+    x: PAGE_W - MARGIN - ctx.bold.widthOfTextAtSize(kind, 7.5),
+    y: markY + 1.5,
+    size: 7.5, font: ctx.bold, color: C.accentTeal,
+  });
+
+  // Hairline under the letterhead row.
+  p.drawRectangle({
+    x: left, y: markY - 12, width: PAGE_W - left - MARGIN, height: 0.6, color: C.border,
+  });
+
+  // ── Title ────────────────────────────────────────────────────────────────
+  const titleClean = toWinAnsi(title);
+  const maxTitleW  = CONTENT_W - 20;
+  const titleSize  = titleClean.length > 60 ? F.h1 - 5 : titleClean.length > 40 ? F.h1 - 2 : F.h1;
+
+  const titleLines: string[] = [];
+  let cur = '';
+  for (const w of titleClean.split(' ')) {
     const test = cur ? `${cur} ${w}` : w;
     if (ctx.bold.widthOfTextAtSize(test, titleSize) > maxTitleW) {
       if (cur) titleLines.push(cur);
@@ -179,19 +219,21 @@ function drawCoverHeader(ctx: Ctx, title: string): void {
   }
   if (cur) titleLines.push(cur);
 
-  const lineH = titleSize * 1.35;
-  const blockH = titleLines.length * lineH;
-  let ty = PAGE_H - HEADER_H / 2 + blockH / 2 - 8;
+  const lineH = titleSize * 1.3;
+  // Anchor the title block above the footer line so it never collides with it.
+  let ty = PAGE_H - HEADER_H + 46 + (titleLines.length - 1) * lineH;
 
-  for (const tl of titleLines) {
-    p.drawText(tl, { x: MARGIN + 14, y: ty, size: titleSize, font: ctx.bold, color: C.headerText });
+  for (const tl of titleLines.slice(0, 3)) {
+    p.drawText(tl, { x: left, y: ty, size: titleSize, font: ctx.bold, color: C.headerText });
     ty -= lineH;
   }
 
-  // Date + generated-by line
+  // ── Meta line ────────────────────────────────────────────────────────────
   const date = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-  p.drawText(`${date}  |  AI-Generated Report`, {
-    x: MARGIN + 14, y: PAGE_H - HEADER_H + 22,
+  const meta = subtitle?.trim() ? `${date}  ·  ${toWinAnsi(subtitle)}` : date;
+
+  p.drawText(meta, {
+    x: left, y: PAGE_H - HEADER_H + 22,
     size: F.small, font: ctx.regular, color: C.headerSub,
   });
 }
@@ -303,7 +345,11 @@ function drawBullet(ctx: Ctx, text: string, level = 0): void {
   const bulletX = MARGIN + indent;
   const textX   = bulletX + 12;
   const maxW    = CONTENT_W - indent - 14;
-  const clean   = stripMarkdown(text.replace(/^[\s\-*+]+/, '').replace(/^\d+\.\s+/, ''));
+  // Strip only the list marker. A greedy [-*+]+ also ate the "**" of a bold
+  // lead-in, leaving an orphan "**" printed in the document.
+  const clean   = stripMarkdown(
+    text.replace(/^\s*(?:[-+•]|\*(?!\*))\s+/, '').replace(/^\s*\d+\.\s+/, ''),
+  );
   const wrapped = wrapText(clean, ctx.regular, F.body, maxW);
   const lh      = F.body * 1.55;
 
@@ -424,7 +470,8 @@ function parseBlocks(markdown: string): Block[] {
 
 // ─── MAIN BUILDER ────────────────────────────────────────────────────────────
 
-async function buildPdfBytes(title: string, body: string): Promise<Uint8Array> {
+/** Exported so the document layout can be rendered and asserted without S3. */
+export async function buildPdfBytes(title: string, body: string, subtitle?: string): Promise<Uint8Array> {
   const doc      = await PDFDocument.create();
 
   // Embed Unicode fonts first so Turkish characters survive (see toWinAnsi).
@@ -450,10 +497,22 @@ async function buildPdfBytes(title: string, body: string): Promise<Uint8Array> {
   };
 
   // Cover header on page 1
-  drawCoverHeader(ctx, title);
+  drawCoverHeader(ctx, title, subtitle);
 
   // Render content blocks
-  const blocks = parseBlocks(toWinAnsi(body).slice(0, 300_000));
+  const allBlocks = parseBlocks(toWinAnsi(body).slice(0, 300_000));
+
+  // The title already dominates the cover; repeating it as the first body
+  // heading wastes the fold and reads like a duplication error.
+  const normalize = (v: string) =>
+    stripMarkdown(v.replace(/^#+\s*/, '')).toLowerCase().replace(/\s+/g, ' ').trim();
+  const firstContent = allBlocks.findIndex((b) => b.type !== 'blank');
+  const blocks =
+    firstContent >= 0 &&
+    allBlocks[firstContent].type === 'h1' &&
+    normalize(allBlocks[firstContent].text) === normalize(title)
+      ? allBlocks.slice(firstContent + 1)
+      : allBlocks;
   let blankRun  = 0;
 
   for (const block of blocks) {
@@ -492,6 +551,8 @@ export interface GeneratePdfOptions {
   filename: string;
   title:    string;
   content:  string;
+  /** Brand the document is for — printed on the letterhead meta line. */
+  subtitle?: string;
 }
 
 export interface GeneratePdfResult {
@@ -504,12 +565,12 @@ export async function generateAndStorePdf(
   options:  GeneratePdfOptions,
   tenantId: string,
 ): Promise<GeneratePdfResult> {
-  const { title, content, filename } = options;
+  const { title, content, filename, subtitle } = options;
 
   const safeName  = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const finalName = safeName.toLowerCase().endsWith('.pdf') ? safeName : `${safeName}.pdf`;
 
-  const bytes = await buildPdfBytes(title, content);
+  const bytes = await buildPdfBytes(title, content, subtitle);
 
   const s3Key = buildS3Key(tenantId, 'AI', finalName);
 
