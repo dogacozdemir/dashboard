@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { runSyncAdPlatformForTenant, runSyncSEOForTenant } from '@/features/oauth/actions/syncPlatformData';
@@ -27,13 +26,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/performance?error=invalid_state`);
   }
 
-  // Defense-in-depth: only a logged-in member of the target tenant may complete the connection.
+  // The signed `state` (HMAC over tenantId) is the authorization — not a session
+  // cookie, which isn't reliably visible on the fixed OAuth callback host and,
+  // when required there, silently dropped the connection at /login. A present
+  // session still rejects a mismatched non-admin tenant as a bonus guard.
   const session     = await auth();
   const sessionUser = session?.user as SessionUser | undefined;
-  if (!sessionUser) {
-    return NextResponse.redirect(`${appUrl}/login`);
-  }
-  if (sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
+  if (sessionUser && sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
     return NextResponse.redirect(`${appUrl}/unauthorized`);
   }
 
@@ -66,8 +65,10 @@ export async function GET(req: NextRequest) {
   const encAccess  = encryptToken(tokenData.access_token);
   const encRefresh = tokenData.refresh_token ? packToken(encryptToken(tokenData.refresh_token)) : null;
 
-  const supabase = await createSupabaseServerClient();
-  await supabase.from('ad_accounts').upsert(
+  // Admin client: the write must not depend on a request session, and its error
+  // must be surfaced rather than swallowed.
+  const supabase = createSupabaseAdminClient();
+  const { error: upsertError } = await supabase.from('ad_accounts').upsert(
     {
       tenant_id:        tenantId,
       platform:         'google',
@@ -84,16 +85,22 @@ export async function GET(req: NextRequest) {
     { onConflict: 'tenant_id,platform,account_id' }
   );
 
+  if (upsertError) {
+    console.error('[google-callback] ad_accounts upsert failed:', upsertError.message);
+    return NextResponse.redirect(`${appUrl}/performance?error=connect_store_failed`);
+  }
+
+  // Sync inline with the admin client so data lands on the first return and
+  // isn't cut off by the serverless runtime freezing after the redirect.
   try {
-    const admin = createSupabaseAdminClient();
-    void runSyncAdPlatformForTenant(tenantId, 'google', admin).catch((err) =>
-      console.error('[google-callback] ads sync error', err)
-    );
-    void runSyncSEOForTenant(tenantId, admin).catch((err) =>
-      console.error('[google-callback] SEO/GSC sync error', err)
-    );
-  } catch (e) {
-    console.error('[google-callback] admin client / sync bootstrap', e);
+    await runSyncAdPlatformForTenant(tenantId, 'google', supabase);
+  } catch (err) {
+    console.error('[google-callback] ads sync error', err);
+  }
+  try {
+    await runSyncSEOForTenant(tenantId, supabase);
+  } catch (err) {
+    console.error('[google-callback] SEO/GSC sync error', err);
   }
 
   return oauthSuccessRedirect(appUrl, state.returnTo, 'google');

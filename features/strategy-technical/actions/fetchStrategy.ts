@@ -8,7 +8,7 @@ import type { GeoStrategyLogContent } from '@/features/strategy/types';
 import { auth } from '@/lib/auth/config';
 import { isDemoTenant } from '@/lib/demo/is-demo-tenant';
 import type { SessionUser } from '@/types/user';
-import { deepseekChatModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
+import { deepseekChatModel, deepseekFastModel, parseDeepseekJson } from '@/lib/ai/deepseek-model';
 
 /** Viewer's page language — AI narratives must match it. */
 async function viewerLocale(): Promise<'tr' | 'en'> {
@@ -308,7 +308,9 @@ export async function fetchMarketInsight(
         Authorization:   `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: deepseekChatModel(),
+        // Flash keeps this page-blocking card at ~3s instead of the pro
+        // model's 15-25s; the task is a short grounded summary.
+        model: deepseekFastModel(),
         messages: [
           {
             role: 'system',

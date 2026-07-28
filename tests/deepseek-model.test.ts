@@ -40,6 +40,27 @@ describe('deepseekChatModel helper', () => {
   });
 });
 
+describe('deepseekFastModel helper', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  async function loadFast() {
+    return (await import('@/lib/ai/deepseek-model')).deepseekFastModel;
+  }
+
+  it('defaults to the fast flash tier for latency-sensitive UI calls', async () => {
+    delete process.env.DEEPSEEK_FAST_MODEL;
+    expect((await loadFast())()).toBe('deepseek-v4-flash');
+  });
+
+  it('honours the DEEPSEEK_FAST_MODEL override', async () => {
+    process.env.DEEPSEEK_FAST_MODEL = 'deepseek-v4-pro';
+    expect((await loadFast())()).toBe('deepseek-v4-pro');
+  });
+});
+
 describe('no stale deepseek-chat literal in app code', () => {
   const SKIP_DIRS = new Set(['node_modules', '.next', '.git', 'monoAI', 'coverage']);
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
-import { syncAdPlatform } from '@/features/oauth/actions/syncPlatformData';
+import { runSyncAdPlatformForTenant } from '@/features/oauth/actions/syncPlatformData';
 import { verifyOAuthState } from '@/lib/auth/oauth-state';
 import { auth } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
@@ -25,13 +25,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/performance?error=invalid_state`);
   }
 
-  // Defense-in-depth: only a logged-in member of the target tenant may complete the connection.
+  // The signed `state` (HMAC over tenantId) is the authorization — not a session
+  // cookie, which isn't reliably visible on the fixed OAuth callback host and,
+  // when required there, silently dropped the connection at /login. A present
+  // session still rejects a mismatched non-admin tenant as a bonus guard.
   const session     = await auth();
   const sessionUser = session?.user as SessionUser | undefined;
-  if (!sessionUser) {
-    return NextResponse.redirect(`${appUrl}/login`);
-  }
-  if (sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
+  if (sessionUser && sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
     return NextResponse.redirect(`${appUrl}/unauthorized`);
   }
 
@@ -68,8 +68,10 @@ export async function GET(req: NextRequest) {
   const encAccess = encryptToken(ttData.access_token);
   const encRefresh = ttData.refresh_token ? packToken(encryptToken(ttData.refresh_token)) : null;
 
-  const supabase = await createSupabaseServerClient();
-  await supabase.from('ad_accounts').upsert(
+  // Admin client: the write must not depend on a request session, and its error
+  // must be surfaced rather than swallowed.
+  const supabase = createSupabaseAdminClient();
+  const { error: upsertError } = await supabase.from('ad_accounts').upsert(
     {
       tenant_id:    tenantId,
       platform:     'tiktok',
@@ -86,9 +88,18 @@ export async function GET(req: NextRequest) {
     { onConflict: 'tenant_id,platform,account_id' }
   );
 
-  syncAdPlatform(tenantId, 'tiktok').catch((err) =>
-    console.error('[tiktok-callback] sync error', err)
-  );
+  if (upsertError) {
+    console.error('[tiktok-callback] ad_accounts upsert failed:', upsertError.message);
+    return NextResponse.redirect(`${appUrl}/performance?error=connect_store_failed`);
+  }
+
+  // Sync inline with the admin client so data lands on the first return and
+  // isn't cut off by the serverless runtime freezing after the redirect.
+  try {
+    await runSyncAdPlatformForTenant(tenantId, 'tiktok', supabase);
+  } catch (err) {
+    console.error('[tiktok-callback] sync error', err);
+  }
 
   return oauthSuccessRedirect(appUrl, state.returnTo, 'tiktok');
 }

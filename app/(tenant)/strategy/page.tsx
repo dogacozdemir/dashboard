@@ -23,9 +23,11 @@ async function StrategyPageInner() {
   const { companyId, tenant } = await requireTenantContext();
   const t = await getTranslations('Features.StrategyPage');
 
-  const [roadmap, insight, seoGeo, competitors, canManage] = await Promise.all([
+  // Everything here is DB-only and fast; the market insight (a DeepSeek call
+  // that can take several seconds on a cache miss) is streamed separately so it
+  // never blocks the rest of the page from painting.
+  const [roadmap, seoGeo, competitors, canManage] = await Promise.all([
     fetchRoadmap(companyId),
-    fetchMarketInsight(companyId, tenant.name),
     fetchSeoGeoDashboard(companyId),
     fetchCompetitors(companyId),
     canManageCompetitors(),
@@ -48,11 +50,9 @@ async function StrategyPageInner() {
         <h2 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-4">
           {t('sectionMarket')}
         </h2>
-        {insight ? (
-          <MarketInsightCard insight={insight} generatedFor={tenant.name} />
-        ) : (
-          <MarketInsightEmpty />
-        )}
+        <Suspense fallback={<MarketInsightLoading />}>
+          <MarketInsightSection companyId={companyId} tenantName={tenant.name} />
+        </Suspense>
       </div>
 
       <SeoGeoMetricsPanel data={seoGeo} />
@@ -73,5 +73,27 @@ async function StrategyPageInner() {
         <RoadmapTimeline items={roadmap} />
       </div>
     </div>
+  );
+}
+
+/** Streamed on its own so the AI call doesn't gate the whole page. */
+async function MarketInsightSection({
+  companyId,
+  tenantName,
+}: {
+  companyId: string;
+  tenantName: string;
+}) {
+  const insight = await fetchMarketInsight(companyId, tenantName);
+  return insight ? (
+    <MarketInsightCard insight={insight} generatedFor={tenantName} />
+  ) : (
+    <MarketInsightEmpty />
+  );
+}
+
+function MarketInsightLoading() {
+  return (
+    <div className="glass gpu-glass-promote glow-inset bento-card h-48 rounded-[2rem] border border-dashed border-white/[0.08] animate-pulse" />
   );
 }

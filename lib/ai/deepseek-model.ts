@@ -15,6 +15,16 @@ export function deepseekChatModel(): string {
 }
 
 /**
+ * Faster, cheaper model for latency-sensitive UI calls (short grounded
+ * summaries that gate a page render). `deepseek-v4-pro` reasons before
+ * answering and takes 15-25s; `deepseek-v4-flash` returns comparable quality for
+ * these small structured tasks in ~3s. Override with `DEEPSEEK_FAST_MODEL`.
+ */
+export function deepseekFastModel(): string {
+  return process.env.DEEPSEEK_FAST_MODEL?.trim() || 'deepseek-v4-flash';
+}
+
+/**
  * Robustly parse a JSON object out of a chat completion's `content`.
  *
  * Even with `response_format: { type: 'json_object' }`, models occasionally wrap

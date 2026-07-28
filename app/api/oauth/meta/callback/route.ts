@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { encryptToken, packToken } from '@/lib/utils/crypto';
-import { syncAdPlatform } from '@/features/oauth/actions/syncPlatformData';
+import { runSyncAdPlatformForTenant } from '@/features/oauth/actions/syncPlatformData';
 import { verifyOAuthState } from '@/lib/auth/oauth-state';
 import { auth } from '@/lib/auth/config';
 import type { SessionUser } from '@/types/user';
@@ -26,13 +26,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/performance?error=invalid_state`);
   }
 
-  // Defense-in-depth: only a logged-in member of the target tenant may complete the connection.
+  // The signed `state` (HMAC over tenantId) is the authorization here: it can't
+  // be forged, so it — not a session cookie — decides which tenant the token is
+  // written to. The callback runs on the fixed OAuth host, where the NextAuth
+  // session cookie may not be visible; requiring it there silently dropped the
+  // whole connection (redirect to /login before the token was ever stored). If a
+  // session IS present we still reject a mismatched non-admin tenant as a bonus
+  // guard, but its absence never blocks the flow.
   const session     = await auth();
   const sessionUser = session?.user as SessionUser | undefined;
-  if (!sessionUser) {
-    return NextResponse.redirect(`${appUrl}/login`);
-  }
-  if (sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
+  if (sessionUser && sessionUser.role !== 'super_admin' && sessionUser.tenantId !== state.tenantId) {
     return NextResponse.redirect(`${appUrl}/unauthorized`);
   }
 
@@ -65,8 +68,11 @@ export async function GET(req: NextRequest) {
     ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
     : null;
 
-  const supabase = await createSupabaseServerClient();
-  await supabase.from('ad_accounts').upsert(
+  // Admin client: the write must not depend on a request session (see above),
+  // and its error must be surfaced rather than swallowed — a failed upsert here
+  // is exactly the "connected but no data / not connected at all" symptom.
+  const supabase = createSupabaseAdminClient();
+  const { error: upsertError } = await supabase.from('ad_accounts').upsert(
     {
       tenant_id:        tenantId,
       platform:         'meta',
@@ -80,10 +86,20 @@ export async function GET(req: NextRequest) {
     { onConflict: 'tenant_id,platform,account_id' }
   );
 
-  // Trigger background sync (non-blocking)
-  syncAdPlatform(tenantId, 'meta').catch((err) =>
-    console.error('[meta-callback] sync error', err)
-  );
+  if (upsertError) {
+    console.error('[meta-callback] ad_accounts upsert failed:', upsertError.message);
+    return NextResponse.redirect(`${appUrl}/performance?error=connect_store_failed`);
+  }
+
+  // Sync inline with the admin client so data is present on the first return and
+  // isn't cut off by the serverless runtime freezing after the redirect. The
+  // account is already stored, so a sync failure still leaves it connected for
+  // the scheduled sync to backfill.
+  try {
+    await runSyncAdPlatformForTenant(tenantId, 'meta', supabase);
+  } catch (err) {
+    console.error('[meta-callback] sync error', err);
+  }
 
   return oauthSuccessRedirect(appUrl, state.returnTo, 'meta');
 }
